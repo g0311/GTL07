@@ -81,6 +81,11 @@ private:
 	bool IsStatEnabled(EStatType InStatType) const;
 
 	IDWriteTextFormat* TextFormat = nullptr;
-	
+
 	IDWriteFactory* DWriteFactory = nullptr;
+
+	// D2D Resources
+	ID2D1Factory1* D2DFactory = nullptr;
+	ID2D1Device* D2DDevice = nullptr;
+	ID2D1DeviceContext* D2DContext = nullptr;
 };

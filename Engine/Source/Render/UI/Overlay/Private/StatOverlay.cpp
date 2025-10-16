@@ -28,11 +28,56 @@ void UStatOverlay::Initialize()
             &TextFormat
         );
     }
+
+    // D2D 초기화
+    ID3D11Device* D3DDevice = DeviceResources->GetDevice();
+    if (!D3DDevice)
+    {
+        return;
+    }
+
+    // D2D Factory 생성
+    D2D1_FACTORY_OPTIONS opts{};
+#ifdef _DEBUG
+    opts.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+#endif
+    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), &opts, (void**)&D2DFactory);
+    if (FAILED(hr))
+    {
+        return;
+    }
+
+    // DXGI Device 가져오기
+    IDXGIDevice* DXGIDevice = nullptr;
+    hr = D3DDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&DXGIDevice);
+    if (FAILED(hr))
+    {
+        return;
+    }
+
+    // D2D Device 생성
+    hr = D2DFactory->CreateDevice(DXGIDevice, &D2DDevice);
+    SafeRelease(DXGIDevice);
+
+    if (FAILED(hr))
+    {
+        return;
+    }
+
+    // D2D Device Context 생성
+    hr = D2DDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &D2DContext);
+    if (FAILED(hr))
+    {
+        return;
+    }
 }
 
 void UStatOverlay::Release()
 {
     SafeRelease(TextFormat);
+    SafeRelease(D2DContext);
+    SafeRelease(D2DDevice);
+    SafeRelease(D2DFactory);
 
     DWriteFactory = nullptr;
 }
@@ -41,29 +86,20 @@ void UStatOverlay::Render()
 {
     TIME_PROFILE(StatDrawn);
 
+    if (!D2DContext || !D2DDevice || !D2DFactory)
+    {
+        return;
+    }
+
     auto* DeviceResources = URenderer::GetInstance().GetDeviceResources();
     IDXGISwapChain* SwapChain = DeviceResources->GetSwapChain();
-    ID3D11Device* D3DDevice = DeviceResources->GetDevice();
-
-    ID2D1Factory1* D2DFactory = nullptr;
-    D2D1_FACTORY_OPTIONS opts{};
-#ifdef _DEBUG
-    opts.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
-#endif
-    if (FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), &opts, (void**)&D2DFactory)))
-        return;
 
     IDXGISurface* Surface = nullptr;
-    SwapChain->GetBuffer(0, __uuidof(IDXGISurface), (void**)&Surface);
-
-    IDXGIDevice* DXGIDevice = nullptr;
-    D3DDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&DXGIDevice);
-
-    ID2D1Device* D2DDevice = nullptr;
-    D2DFactory->CreateDevice(DXGIDevice, &D2DDevice);
-
-    ID2D1DeviceContext* D2DCtx = nullptr;
-    D2DDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &D2DCtx);
+    HRESULT hr = SwapChain->GetBuffer(0, __uuidof(IDXGISurface), (void**)&Surface);
+    if (FAILED(hr))
+    {
+        return;
+    }
 
     D2D1_BITMAP_PROPERTIES1 BmpProps = {};
     BmpProps.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -73,26 +109,27 @@ void UStatOverlay::Render()
     BmpProps.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
 
     ID2D1Bitmap1* TargetBmp = nullptr;
-    D2DCtx->CreateBitmapFromDxgiSurface(Surface, &BmpProps, &TargetBmp);
+    hr = D2DContext->CreateBitmapFromDxgiSurface(Surface, &BmpProps, &TargetBmp);
+    if (FAILED(hr))
+    {
+        SafeRelease(Surface);
+        return;
+    }
 
-    D2DCtx->SetTarget(TargetBmp);
-    D2DCtx->BeginDraw();
+    D2DContext->SetTarget(TargetBmp);
+    D2DContext->BeginDraw();
 
-    if (IsStatEnabled(EStatType::FPS))     RenderFPS(D2DCtx);
-    if (IsStatEnabled(EStatType::Memory))  RenderMemory(D2DCtx);
-    if (IsStatEnabled(EStatType::Picking)) RenderPicking(D2DCtx);
-    if (IsStatEnabled(EStatType::Time))    RenderTimeInfo(D2DCtx);
-    if (IsStatEnabled(EStatType::Decal))   RenderDecalInfo(D2DCtx);
+    if (IsStatEnabled(EStatType::FPS))     RenderFPS(D2DContext);
+    if (IsStatEnabled(EStatType::Memory))  RenderMemory(D2DContext);
+    if (IsStatEnabled(EStatType::Picking)) RenderPicking(D2DContext);
+    if (IsStatEnabled(EStatType::Time))    RenderTimeInfo(D2DContext);
+    if (IsStatEnabled(EStatType::Decal))   RenderDecalInfo(D2DContext);
 
-    D2DCtx->EndDraw();
-    D2DCtx->SetTarget(nullptr);
+    D2DContext->EndDraw();
+    D2DContext->SetTarget(nullptr);
 
     SafeRelease(TargetBmp);
-    SafeRelease(D2DCtx);
-    SafeRelease(D2DDevice);
-    SafeRelease(DXGIDevice);
     SafeRelease(Surface);
-    SafeRelease(D2DFactory);
 }
 
 void UStatOverlay::RenderFPS(ID2D1DeviceContext* D2DCtx)
