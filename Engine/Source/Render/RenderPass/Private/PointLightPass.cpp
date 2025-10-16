@@ -31,14 +31,8 @@ void FPointLightPass::Execute(FRenderingContext& Context)
 	const auto& Renderer = URenderer::GetInstance();
     const auto& DeviceResources = Renderer.GetDeviceResources();
     ID3D11RenderTargetView* RTV = nullptr;
-    if (Renderer.GetFXAA())
-    {
-        RTV = DeviceResources->GetSceneColorRenderTargetView();	
-    }
-    else
-    {
-        RTV = DeviceResources->GetFrameBufferRTV();	
-    }
+    RTV = DeviceResources->GetSceneColorRenderTargetView();	
+
     ID3D11RenderTargetView* RTVs[1] = { RTV };
     Pipeline->SetRenderTargets(1, RTVs, nullptr);
     auto RS = FRenderResourceFactory::GetRasterizerState( { ECullMode::None, EFillMode::Solid }); 
@@ -48,7 +42,7 @@ void FPointLightPass::Execute(FRenderingContext& Context)
     Pipeline->SetVertexBuffer(VertexBuffer, sizeof(FNormalVertex));
 
     Pipeline->SetTexture(1, false, DeviceResources->GetNormalSRV());
-    Pipeline->SetTexture(2, false, DeviceResources->GetDepthSRV());
+    Pipeline->SetTexture(2, false, DeviceResources->GetDepthStencilSRV());
     Pipeline->SetSamplerState(0, false, PointLightSampler);
 
     for (auto PointLight : Context.PointLights)
@@ -62,11 +56,11 @@ void FPointLightPass::Execute(FRenderingContext& Context)
         PointLightPerFrame.InvView = ViewProjConstantsInverse.View;
         PointLightPerFrame.InvProjection = ViewProjConstantsInverse.Projection;
         PointLightPerFrame.CameraLocation = Context.CurrentCamera->GetLocation();
-
+        
         const D3D11_VIEWPORT& ViewportInfo = Context.Viewport;
         PointLightPerFrame.Viewport = FVector4(ViewportInfo.TopLeftX, ViewportInfo.TopLeftY, ViewportInfo.Width, ViewportInfo.Height);
         PointLightPerFrame.RenderTargetSize = FVector2(Context.RenderTargetSize.X, Context.RenderTargetSize.Y);
-
+        
         FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPerFrame, PointLightPerFrame);
         Pipeline->SetConstantBuffer(0, false, ConstantBufferPerFrame);
         
@@ -88,16 +82,8 @@ void FPointLightPass::Execute(FRenderingContext& Context)
     ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
     ID3D11RenderTargetView* NormalRTV = DeviceResources->GetNormalRenderTargetView();
 
-    if (Renderer.GetFXAA())
-    {
-        ID3D11RenderTargetView* RTVs[] = { DeviceResources->GetSceneColorRenderTargetView(), NormalRTV };
-        Pipeline->SetRenderTargets(2, RTVs, DSV);
-    }
-    else
-    {
-        ID3D11RenderTargetView* RTVs[] = { DeviceResources->GetFrameBufferRTV(), NormalRTV };
-        Pipeline->SetRenderTargets(2, RTVs, DSV);
-    }
+    ID3D11RenderTargetView* NRTVs[] = { DeviceResources->GetSceneColorRenderTargetView(), NormalRTV };
+    Pipeline->SetRenderTargets(2, NRTVs, DSV);
 }
 
 void FPointLightPass::Release()

@@ -37,7 +37,7 @@ void FSceneDepthPass::Execute(FRenderingContext& Context)
     FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPerFrame, SceneDepthConstants);
     Pipeline->SetConstantBuffer(0, false, ConstantBufferPerFrame);
     Pipeline->SetConstantBuffer(1, false, ConstantBufferCamera);
-    Pipeline->SetTexture(0, false, DeviceResources->GetDepthSRV());
+    Pipeline->SetTexture(0, false, DeviceResources->GetDepthStencilSRV());
     Pipeline->SetSamplerState(0, false, SamplerState);
 
     Pipeline->Draw(3, 0);

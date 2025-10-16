@@ -4,12 +4,12 @@
 #include "Component/Public/PrimitiveComponent.h"
 #include "Editor/Public/EditorPrimitive.h"
 #include "Render/Renderer/Public/Pipeline.h"
-#include "Render/RenderPass/Public/FXAAPass.h"
 
 class FViewport;
 class UCamera;
 class UPipeline;
 class FViewportClient;
+class FCopyPass;
 class FFXAAPass;
 
 /**
@@ -35,8 +35,9 @@ public:
 	void CreatePointLightShader();
 	void CreateFogShader();
 	void CreateConstantBuffers();
+	void CreateCopyShader();
 	void CreateFXAAShader();
-
+	
 	
 	// Release
 	void ReleaseConstantBuffers();
@@ -69,7 +70,6 @@ public:
 	FViewport* GetViewportClient() const { return ViewportClient; }
 	UPipeline* GetPipeline() const { return Pipeline; }
 	bool GetIsResizing() const { return bIsResizing; }
-	bool GetFXAA() const { return bFXAAEnabled; }
 
 	ID3D11DepthStencilState* GetDefaultDepthStencilState() const { return DefaultDepthStencilState; }
 	ID3D11DepthStencilState* GetDisabledDepthStencilState() const { return DisabledDepthStencilState; }
@@ -103,11 +103,19 @@ private:
 	ID3D11PixelShader* DefaultPixelShader = nullptr;
 	ID3D11InputLayout* DefaultInputLayout = nullptr;
 
+	// Copy Shaders
+	ID3D11VertexShader* CopyVertexShader = nullptr;
+	ID3D11PixelShader* CopyPixelShader = nullptr;
+	ID3D11InputLayout* CopyInputLayout = nullptr;
+	ID3D11SamplerState* CopySamplerState = nullptr;
+
 	// FXAA Shaders
 	ID3D11VertexShader* FXAAVertexShader = nullptr;
 	ID3D11PixelShader* FXAAPixelShader = nullptr;
 	ID3D11InputLayout* FXAAInputLayout = nullptr;
 	ID3D11SamplerState* FXAASamplerState = nullptr;
+
+
 	
 	// Texture Shaders
 	ID3D11VertexShader* TextureVertexShader = nullptr;
@@ -135,9 +143,9 @@ private:
 	FViewport* ViewportClient = nullptr;
 	
 	bool bIsResizing = false;
-	bool bFXAAEnabled = true;
 
 	TArray<class FRenderPass*> RenderPasses;
 
+	FCopyPass* CopyPass = nullptr;
 	FFXAAPass* FXAAPass = nullptr;
 };

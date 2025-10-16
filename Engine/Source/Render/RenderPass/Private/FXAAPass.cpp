@@ -57,12 +57,6 @@ void FFXAAPass::Execute(FRenderingContext& Context)
 
     // 정리
     Pipeline->SetTexture(0, false, nullptr);
-
-    URenderer& Renderer = URenderer::GetInstance();
-    auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
-    ID3D11RenderTargetView* rtvs[] = { SceneColorRenderTargetView };
-    ID3D11DepthStencilView* dsv = DeviceResources->GetDepthStencilView();
-    Renderer.GetDeviceContext()->OMSetRenderTargets(1, rtvs, dsv);
 }
 
 void FFXAAPass::Release()
