@@ -1,0 +1,104 @@
+{
+  "Actors" : {
+    "113" : {
+      "Components" : [{
+          "IsEditorOnly" : "false",
+          "IsVisualizationComponent" : "false",
+          "Location" : [-7.605518, -3.140660, -3.040559],
+          "Name" : "USceneComponent_0",
+          "ParentName" : "",
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.513062, 1.513062, 1.513062],
+          "Type" : "USceneComponent"
+        }, {
+          "IsEditorOnly" : "true",
+          "IsVisualizationComponent" : "false",
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Name" : "UUUIDTextComponent_0",
+          "ParentName" : "USceneComponent_0",
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UUUIDTextComponent"
+        }, {
+          "FogCutoffDistance" : "50000.000000",
+          "FogDensity" : "0.050000",
+          "FogHeightFalloff" : "0.010000",
+          "FogInScatteringColor" : [0.501961, 0.501961, 0.501961],
+          "FogMaxOpacity" : "0.980000",
+          "IsEditorOnly" : "false",
+          "IsVisualizationComponent" : "false",
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Name" : "UHeightFogComponent_0",
+          "ParentName" : "USceneComponent_0",
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "StartDistance" : "1.500000",
+          "Type" : "UHeightFogComponent"
+        }],
+      "Location" : [-7.605518, -3.140660, -3.040559],
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.513062, 1.513062, 1.513062],
+      "Type" : "AActor",
+      "bCanEverTick" : "false",
+      "bTickInEditor" : "false"
+    },
+    "117" : {
+      "Components" : [{
+          "IsEditorOnly" : "false",
+          "IsVisualizationComponent" : "false",
+          "Location" : [0.000000, 0.000000, 0.098140],
+          "Name" : "UStaticMeshComponent_0",
+          "ObjStaticMeshAsset" : "Data/Alley/Alley.obj",
+          "ParentName" : "",
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.756325, 1.756325, 1.756325],
+          "Type" : "UStaticMeshComponent"
+        }, {
+          "IsEditorOnly" : "true",
+          "IsVisualizationComponent" : "false",
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Name" : "UUUIDTextComponent_1",
+          "ParentName" : "UStaticMeshComponent_0",
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UUUIDTextComponent"
+        }],
+      "Location" : [0.000000, 0.000000, 0.098140],
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.756325, 1.756325, 1.756325],
+      "Type" : "ACubeActor",
+      "bCanEverTick" : "false",
+      "bTickInEditor" : "false"
+    }
+  },
+  "NextUUID" : 0,
+  "PerspectiveCamera" : [{
+      "FOV" : [90.000000],
+      "FarClip" : [1000.000000],
+      "Location" : [-15.000000, 0.000000, 10.000000],
+      "NearClip" : [0.100000],
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "ViewportCameraType" : 0
+    }, {
+      "FOV" : [90.000000],
+      "FarClip" : [1000.000000],
+      "Location" : [-15.000000, 0.000000, 10.000000],
+      "NearClip" : [0.100000],
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "ViewportCameraType" : 0
+    }, {
+      "FOV" : [90.000000],
+      "FarClip" : [1000.000000],
+      "Location" : [-15.000000, 0.000000, 10.000000],
+      "NearClip" : [0.100000],
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "ViewportCameraType" : 0
+    }, {
+      "FOV" : [90.000000],
+      "FarClip" : [1000.000000],
+      "Location" : [19.334011, 30.114664, 17.478107],
+      "NearClip" : [0.100000],
+      "Rotation" : [0.000000, 22.299843, -122.152023],
+      "ViewportCameraType" : 0
+    }]
+}
