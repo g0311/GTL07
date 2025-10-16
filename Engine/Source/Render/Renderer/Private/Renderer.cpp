@@ -85,8 +85,7 @@ void URenderer::Init(HWND InWindowHandle)
 	// UPipeline* InPipeline, UDeviceResources* InDeviceResources, ID3D11VertexShader* InVS,
 	// ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout, ID3D11SamplerState* InSampler
 	FXAAPass = new FFXAAPass(Pipeline, DeviceResources, FXAAVertexShader, FXAAPixelShader, FXAAInputLayout, FXAASamplerState);
-	//RenderPasses.push_back(FXAAPass);
-	
+	RenderPasses.push_back(FXAAPass);
 }
 
 void URenderer::Release()
@@ -102,8 +101,6 @@ void URenderer::Release()
 		RenderPass->Release();
 		SafeDelete(RenderPass);
 	}
-	FXAAPass->Release();
-	SafeDelete(FXAAPass);
 	
 	SafeDelete(ViewportClient);
 	SafeDelete(Pipeline);
@@ -231,20 +228,14 @@ void URenderer::CreatePointLightShader()
 
 void URenderer::CreateFogShader()
 {
-	TArray<D3D11_INPUT_ELEMENT_DESC> FogLayout =
-	{
-	};
+	TArray<D3D11_INPUT_ELEMENT_DESC> FogLayout = {};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/HeightFogShader.hlsl", FogLayout, &FogVertexShader, &FogInputLayout);
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/HeightFogShader.hlsl", &FogPixelShader);
 }
 
 void URenderer::CreateFXAAShader()
 {
-	TArray<D3D11_INPUT_ELEMENT_DESC> FXAALayout =
-	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-    };
+	TArray<D3D11_INPUT_ELEMENT_DESC> FXAALayout = {};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/FXAAShader.hlsl", FXAALayout, &FXAAVertexShader, &FXAAInputLayout);
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/FXAAShader.hlsl", &FXAAPixelShader);
 	
@@ -327,29 +318,33 @@ void URenderer::Update()
         Pipeline->SetConstantBuffer(1, true, ConstantBufferViewProj);
 	    
 	    {
+        	TIME_PROFILE(RenderLevel)
+			RenderLevel(ViewportClient);
+	    }
+	    {
         	TIME_PROFILE(RenderEditor)
 			GEditor->GetEditorModule()->RenderEditor();
 	    }
-        {
-            TIME_PROFILE(RenderLevel)
-            RenderLevel(ViewportClient);
-        }
     	
         // Gizmo는 최종적으로 렌더
         GEditor->GetEditorModule()->RenderGizmo(CurrentCamera);
     }
 
+	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
+	ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
+	GetDeviceContext()->OMSetRenderTargets(1, rtvs, DeviceResources->GetDepthStencilView());
+	
     // 모든 지오메트리 패스가 끝난 직후, UI/오버레이를 그리기 전 실행
 	// FXAAPass->Execute의 RenderingContext는 쓰레기 값
 	// TODO : 포스트 프로세스 패스를 따로 파야할지도
-    if (bFXAAEnabled)
-    {
-        ID3D11RenderTargetView* nullRTV[] = { nullptr };
-        GetDeviceContext()->OMSetRenderTargets(1, nullRTV, nullptr);
-
-        FRenderingContext RenderingContext;
-        FXAAPass->Execute(RenderingContext);
-    }
+    // if (bFXAAEnabled)
+    // {
+    //     ID3D11RenderTargetView* nullRTV[] = { nullptr };
+    //     GetDeviceContext()->OMSetRenderTargets(1, nullRTV, nullptr);
+    //
+    //     FRenderingContext RenderingContext;
+    //     FXAAPass->Execute(RenderingContext);
+    // }
 
     {
         TIME_PROFILE(UUIManager)
@@ -449,7 +444,6 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 		RenderingContext.PointLights.push_back(PointLight);
 	}
 
-	// 2. Collect HeightFogComponents from all actors in the level
 	for (const auto& Actor : CurrentLevel->GetLevelActors())
 	{
 		for (const auto& Component : Actor->GetOwnedComponents())
@@ -472,6 +466,10 @@ void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const
     // Use the global stride if InStride is 0
     const uint32 FinalStride = (InStride == 0) ? Stride : InStride;
 
+	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
+	ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
+	GetDeviceContext()->OMSetRenderTargets(1, rtvs, DeviceResources->GetDepthStencilView());
+	
     // Allow for custom shaders, fallback to default
     FPipelineInfo PipelineInfo = {
         InPrimitive.InputLayout ? InPrimitive.InputLayout : DefaultInputLayout,
