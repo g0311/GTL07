@@ -37,7 +37,7 @@ void FPointLightPass::Execute(FRenderingContext& Context)
     Pipeline->SetRenderTargets(1, RTVs, nullptr);
     auto RS = FRenderResourceFactory::GetRasterizerState( { ECullMode::None, EFillMode::Solid }); 
 
-    FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, PS, BS };
+    FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, PS, BS, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST};
     Pipeline->UpdatePipeline(PipelineInfo);
     Pipeline->SetVertexBuffer(VertexBuffer, sizeof(FNormalVertex));
 

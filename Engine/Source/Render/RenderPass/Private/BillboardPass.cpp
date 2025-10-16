@@ -21,7 +21,7 @@ void FBillboardPass::Execute(FRenderingContext& Context)
         RenderState.CullMode = ECullMode::None;
         RenderState.FillMode = EFillMode::WireFrame;
     }
-    FPipelineInfo PipelineInfo = { InputLayout, VS, FRenderResourceFactory::GetRasterizerState(RenderState), DS, PS, BS };
+    FPipelineInfo PipelineInfo = { InputLayout, VS, FRenderResourceFactory::GetRasterizerState(RenderState), DS, PS, BS, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
     Pipeline->UpdatePipeline(PipelineInfo);
 
     if (!(Context.ShowFlags & EEngineShowFlags::SF_Billboard)) { return; }

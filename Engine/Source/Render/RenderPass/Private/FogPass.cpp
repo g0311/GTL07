@@ -40,7 +40,7 @@ void FFogPass::Execute(FRenderingContext& Context)
     
     // --- Set Pipeline State --- //
     FPipelineInfo PipelineInfo = { InputLayout, VS, FRenderResourceFactory::GetRasterizerState({ ECullMode::Back, EFillMode::Solid }),
-        DS_Read, PS, BlendState };
+        DS_Read, PS, BlendState,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST};
     Pipeline->UpdatePipeline(PipelineInfo);
     
     // --- Draw Fog --- //

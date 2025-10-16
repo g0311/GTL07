@@ -48,6 +48,7 @@ void URenderer::Init(HWND InWindowHandle)
 	CreateDepthStencilState();
 	CreateBlendState();
 	CreateSamplerState();
+	
 	CreateDefaultShader();
 	CreateTextureShader();
 	CreateDecalShader();

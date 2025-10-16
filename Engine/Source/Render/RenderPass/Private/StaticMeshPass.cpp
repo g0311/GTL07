@@ -20,7 +20,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 		RenderState.CullMode = ECullMode::None; RenderState.FillMode = EFillMode::WireFrame;
 	}
 	ID3D11RasterizerState* RS = FRenderResourceFactory::GetRasterizerState(RenderState);
-	FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, PS, nullptr };
+	FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, PS, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
 	Pipeline->UpdatePipeline(PipelineInfo);
 
 	// Set a default sampler to slot 0 to ensure one is always bound
