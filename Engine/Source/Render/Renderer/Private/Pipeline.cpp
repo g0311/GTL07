@@ -5,6 +5,13 @@
 UPipeline::UPipeline(ID3D11DeviceContext* InDeviceContext)
 	: DeviceContext(InDeviceContext)
 {
+    LastPipelineInfo.InputLayout = (ID3D11InputLayout*)-1;
+    LastPipelineInfo.VertexShader = (ID3D11VertexShader*)-1;
+    LastPipelineInfo.RasterizerState = (ID3D11RasterizerState*)-1;
+    LastPipelineInfo.DepthStencilState = (ID3D11DepthStencilState*)-1;
+    LastPipelineInfo.PixelShader = (ID3D11PixelShader*)-1;
+    LastPipelineInfo.BlendState = (ID3D11BlendState*)-1;
+    LastPipelineInfo.Topology = (D3D11_PRIMITIVE_TOPOLOGY)-1;
 }
 
 UPipeline::~UPipeline()

@@ -37,6 +37,6 @@ public:
 	void DrawIndexed(uint32 IndexCount, uint32 StartIndexLocation, int32 BaseVertexLocation);
 
 private:
-	FPipelineInfo LastPipelineInfo{};
+	FPipelineInfo LastPipelineInfo;
 	ID3D11DeviceContext* DeviceContext;
 };

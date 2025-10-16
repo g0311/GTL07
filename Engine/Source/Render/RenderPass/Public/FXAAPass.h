@@ -13,6 +13,12 @@ struct alignas(16) FFXAAConstants
     float Padding = 0.0f;
 };
 
+struct FFXAAViewportConstants
+{
+	FVector2 RenderTargetSize;
+	float Padding[2];
+};
+
 class FFXAAPass : public FRenderPass
 {
 public:
@@ -41,6 +47,7 @@ public:
 	 * @brief FXAA 렌더링 패스를 실행합니다.
 	 * @param Context 렌더링 컨텍스트입니다.
 	 */
+	void PreExecute(FRenderingContext& Context);
 	void Execute(FRenderingContext& Context) override;
 
 	/**
@@ -50,15 +57,11 @@ public:
 
 
 private:
-	/**
-	 * @brief 전체 화면 사각형을 초기화합니다.
-	 */
-	void InitializeFullscreenQuad();
 
 	/**
 	 * @brief FXAA에 사용되는 상수 버퍼를 업데이트합니다.
 	 */
-	void UpdateConstants();
+	void UpdateConstants(FRenderingContext& Context);
 
 	/**
 	 * @brief 렌더 타겟을 설정합니다.
@@ -73,11 +76,7 @@ private:
     ID3D11InputLayout* InputLayout = nullptr;
     ID3D11SamplerState* SamplerState = nullptr;
 
-    ID3D11Buffer* FullscreenVB = nullptr;
-    ID3D11Buffer* FullscreenIB = nullptr;
-    UINT FullscreenStride = 0;
-    UINT FullscreenIndexCount = 0;
-
     ID3D11Buffer* FXAAConstantBuffer = nullptr;
+    ID3D11Buffer* FXAAViewportBuffer = nullptr;
     FFXAAConstants FXAAParams{};
 };

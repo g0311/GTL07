@@ -15,7 +15,7 @@
 #include "Optimization/Public/OcclusionCuller.h"
 #include "Render/RenderPass/Public/BillboardPass.h"
 #include "Render/RenderPass/Public/DecalPass.h"
-#include "Render/RenderPass/Public/FXAAPass.h"
+#include "Render/RenderPass/Public/CopyPass.h"
 #include "Render/RenderPass/Public/FogPass.h"
 #include "Render/RenderPass/Public/PointLightPass.h"
 #include "Render/RenderPass/Public/RenderPass.h"
@@ -24,6 +24,8 @@
 #include "Render/RenderPass/Public/TextPass.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Render/Renderer/Public/Renderer.h"
+#include "Render/Renderer/Public/Pipeline.h"
+#include "Render/RenderPass/Public/FXAAPass.h"
 
 #include "Render/RenderPass/Public/SceneDepthPass.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
@@ -46,14 +48,15 @@ void URenderer::Init(HWND InWindowHandle)
 	CreateDepthStencilState();
 	CreateBlendState();
 	CreateSamplerState();
+	
 	CreateDefaultShader();
 	CreateTextureShader();
 	CreateDecalShader();
 	CreatePointLightShader();
 	CreateFogShader();
 	CreateConstantBuffers();
+	CreateCopyShader();
 	CreateFXAAShader();
-	
 
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
@@ -81,12 +84,15 @@ void URenderer::Init(HWND InWindowHandle)
 
 	FSceneDepthPass* SceneDepthPass = new FSceneDepthPass(Pipeline, ConstantBufferViewProj, DisabledDepthStencilState);
 	RenderPasses.push_back(SceneDepthPass);
-
-	// UPipeline* InPipeline, UDeviceResources* InDeviceResources, ID3D11VertexShader* InVS,
-	// ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout, ID3D11SamplerState* InSampler
-	FXAAPass = new FFXAAPass(Pipeline, DeviceResources, FXAAVertexShader, FXAAPixelShader, FXAAInputLayout, FXAASamplerState);
-	//RenderPasses.push_back(FXAAPass);
 	
+	// Create final passes
+	{
+		CopyPass = new FCopyPass(Pipeline, DeviceResources, CopyVertexShader, CopyPixelShader, CopyInputLayout, CopySamplerState);
+		RenderPasses.push_back(CopyPass);
+	
+		FXAAPass = new FFXAAPass(Pipeline, DeviceResources, FXAAVertexShader, FXAAPixelShader, FXAAInputLayout, FXAASamplerState);
+		RenderPasses.push_back(FXAAPass);
+	}
 }
 
 void URenderer::Release()
@@ -102,8 +108,6 @@ void URenderer::Release()
 		RenderPass->Release();
 		SafeDelete(RenderPass);
 	}
-	FXAAPass->Release();
-	SafeDelete(FXAAPass);
 	
 	SafeDelete(ViewportClient);
 	SafeDelete(Pipeline);
@@ -231,25 +235,42 @@ void URenderer::CreatePointLightShader()
 
 void URenderer::CreateFogShader()
 {
-	TArray<D3D11_INPUT_ELEMENT_DESC> FogLayout =
-	{
-	};
+	TArray<D3D11_INPUT_ELEMENT_DESC> FogLayout = {};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/HeightFogShader.hlsl", FogLayout, &FogVertexShader, &FogInputLayout);
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/HeightFogShader.hlsl", &FogPixelShader);
 }
 
+void URenderer::CreateCopyShader()
+{
+    // Shaders
+    TArray<D3D11_INPUT_ELEMENT_DESC> CopyLayout = {};
+	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/Copy.hlsl", CopyLayout, &CopyVertexShader, &CopyInputLayout);
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/Copy.hlsl", &CopyPixelShader);
+
+    // Sampler
+    D3D11_SAMPLER_DESC SamplerDesc = {};
+    SamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    SamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    SamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    SamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    SamplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    SamplerDesc.MinLOD = 0;
+    SamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    GetDevice()->CreateSamplerState(&SamplerDesc, &CopySamplerState);
+}
+
 void URenderer::CreateFXAAShader()
 {
-	TArray<D3D11_INPUT_ELEMENT_DESC> FXAALayout =
-	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-    };
+    // Shaders
+    TArray<D3D11_INPUT_ELEMENT_DESC> FXAALayout = {};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/FXAAShader.hlsl", FXAALayout, &FXAAVertexShader, &FXAAInputLayout);
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/FXAAShader.hlsl", &FXAAPixelShader);
-	
-	FXAASamplerState = FRenderResourceFactory::CreateFXAASamplerState();
+
+    // Sampler
+    FXAASamplerState = FRenderResourceFactory::CreateFXAASamplerState();
 }
+
+
 
 void URenderer::ReleaseDefaultShader()
 {
@@ -272,10 +293,16 @@ void URenderer::ReleaseDefaultShader()
 	SafeRelease(FogVertexShader);
 	SafeRelease(FogPixelShader);
 	SafeRelease(FogInputLayout);
-	
+
+	SafeRelease(CopyVertexShader);
+	SafeRelease(CopyPixelShader);
+	SafeRelease(CopyInputLayout);
+
 	SafeRelease(FXAAVertexShader);
 	SafeRelease(FXAAPixelShader);
 	SafeRelease(FXAAInputLayout);
+	
+
 }
 
 void URenderer::ReleaseDepthStencilState()
@@ -297,22 +324,13 @@ void URenderer::ReleaseBlendState()
 
 void URenderer::ReleaseSamplerState()
 {
-	SafeRelease(FXAASamplerState);
 	SafeRelease(DefaultSampler);
+	SafeRelease(CopySamplerState);
+	SafeRelease(FXAASamplerState);
 }
 
 void URenderer::Update()
 {
-	// 토글에 따라서 FXAA bool값 세팅
-    if (const ULevel* CurrentLevel = GWorld->GetLevel())
-    {
-        bFXAAEnabled = (CurrentLevel->GetShowFlags() & EEngineShowFlags::SF_FXAA) != 0;
-    }
-    else
-    {
-        bFXAAEnabled = true;
-    }
-
     RenderBegin();
 
     for (FViewportClient& ViewportClient : ViewportClient->GetViewports())
@@ -327,28 +345,16 @@ void URenderer::Update()
         Pipeline->SetConstantBuffer(1, true, ConstantBufferViewProj);
 	    
 	    {
+        	TIME_PROFILE(RenderLevel)
+			RenderLevel(ViewportClient);
+	    }
+	    {
         	TIME_PROFILE(RenderEditor)
 			GEditor->GetEditorModule()->RenderEditor();
 	    }
-        {
-            TIME_PROFILE(RenderLevel)
-            RenderLevel(ViewportClient);
-        }
     	
         // Gizmo는 최종적으로 렌더
         GEditor->GetEditorModule()->RenderGizmo(CurrentCamera);
-    }
-
-    // 모든 지오메트리 패스가 끝난 직후, UI/오버레이를 그리기 전 실행
-	// FXAAPass->Execute의 RenderingContext는 쓰레기 값
-	// TODO : 포스트 프로세스 패스를 따로 파야할지도
-    if (bFXAAEnabled)
-    {
-        ID3D11RenderTargetView* nullRTV[] = { nullptr };
-        GetDeviceContext()->OMSetRenderTargets(1, nullRTV, nullptr);
-
-        FRenderingContext RenderingContext;
-        FXAAPass->Execute(RenderingContext);
     }
 
     {
@@ -375,23 +381,12 @@ void URenderer::RenderBegin() const
 	auto* DepthStencilView = DeviceResources->GetDepthStencilView();
 	GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-	// FXAA bool값 변수에 따라서 RTV세팅
-    if (bFXAAEnabled)
-    {
-        auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
-        GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
-        GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-        ID3D11RenderTargetView* rtvs[] = { SceneColorRenderTargetView };
-        GetDeviceContext()->OMSetRenderTargets(1, rtvs, DepthStencilView);
-    }
-    else
-    {
-        auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
-        GetDeviceContext()->ClearRenderTargetView(RenderTargetView, ClearColor);
-        GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-        ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
-        GetDeviceContext()->OMSetRenderTargets(1, rtvs, DepthStencilView);
-    }
+	// 항상 SceneColorRenderTargetView를 기본 렌더 타겟으로 사용
+	auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
+	GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
+	GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	ID3D11RenderTargetView* rtvs[] = { SceneColorRenderTargetView };
+	GetDeviceContext()->OMSetRenderTargets(1, rtvs, DepthStencilView);
 
     DeviceResources->UpdateViewport();
 }
@@ -449,7 +444,6 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 		RenderingContext.PointLights.push_back(PointLight);
 	}
 
-	// 2. Collect HeightFogComponents from all actors in the level
 	for (const auto& Actor : CurrentLevel->GetLevelActors())
 	{
 		for (const auto& Component : Actor->GetOwnedComponents())
@@ -472,6 +466,10 @@ void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const
     // Use the global stride if InStride is 0
     const uint32 FinalStride = (InStride == 0) ? Stride : InStride;
 
+	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
+	ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
+	GetDeviceContext()->OMSetRenderTargets(1, rtvs, DeviceResources->GetDepthStencilView());
+	
     // Allow for custom shaders, fallback to default
     FPipelineInfo PipelineInfo = {
         InPrimitive.InputLayout ? InPrimitive.InputLayout : DefaultInputLayout,
@@ -510,6 +508,7 @@ void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const
 
 void URenderer::RenderEnd() const
 {
+	// Copy Pass Call !!
 	TIME_PROFILE(DrawCall)
 	GetSwapChain()->Present(0, 0);
 	TIME_PROFILE_END(DrawCall)
@@ -537,9 +536,7 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight) const
 	DeviceResources->CreateDepthBuffer();
 	DeviceResources->CreateNormalBuffer();
 
-    ID3D11RenderTargetView* targetView = bFXAAEnabled
-        ? DeviceResources->GetSceneColorRenderTargetView()
-        : DeviceResources->GetFrameBufferRTV();
+    ID3D11RenderTargetView* targetView = DeviceResources->GetSceneColorRenderTargetView();
     ID3D11RenderTargetView* targetViews[] = { targetView };
     GetDeviceContext()->OMSetRenderTargets(1, targetViews, DeviceResources->GetDepthStencilView());
 }
