@@ -365,7 +365,7 @@ void URenderer::Update()
 
 void URenderer::RenderBegin() const
 {
-	auto* RenderTargetView = DeviceResources->GetRenderTargetView();
+	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
 	GetDeviceContext()->ClearRenderTargetView(RenderTargetView, ClearColor);
 
 	// @TODO: The clear color for the normal buffer should be a specific value (e.g., {0.5, 0.5, 1.0, 1.0})
@@ -386,7 +386,7 @@ void URenderer::RenderBegin() const
     }
     else
     {
-        auto* RenderTargetView = DeviceResources->GetRenderTargetView();
+        auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
         GetDeviceContext()->ClearRenderTargetView(RenderTargetView, ClearColor);
         GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
         ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
@@ -539,7 +539,7 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight) const
 
     ID3D11RenderTargetView* targetView = bFXAAEnabled
         ? DeviceResources->GetSceneColorRenderTargetView()
-        : DeviceResources->GetRenderTargetView();
+        : DeviceResources->GetFrameBufferRTV();
     ID3D11RenderTargetView* targetViews[] = { targetView };
     GetDeviceContext()->OMSetRenderTargets(1, targetViews, DeviceResources->GetDepthStencilView());
 }

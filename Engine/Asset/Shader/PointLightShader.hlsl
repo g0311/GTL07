@@ -31,7 +31,6 @@ cbuffer PointLightConstants : register(b1)
 // ------------------------------------------------
 // Textures and Sampler
 // ------------------------------------------------
-Texture2D SceneColorTex : register(t0);
 Texture2D NormalTex     : register(t1);
 Texture2D DepthTex      : register(t2);
 
@@ -89,13 +88,12 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
     float2 UV = ScreenPosition / RenderTargetSize;
 
     // Read G-Buffer data
-    float4 BaseColor = SceneColorTex.Sample(LinearSampler, UV);
     float4 EncodedNormal = NormalTex.Sample(LinearSampler, UV);
     float Depth = DepthTex.Sample(LinearSampler, UV).r;
 
     // Skip background (no depth)
     if (Depth >= 1.0f)
-        return BaseColor;
+        return float4(0, 0, 0, 0);
 
     // Decode normal
     float3 Normal = normalize(EncodedNormal.xyz * 2.0f - 1.0f);

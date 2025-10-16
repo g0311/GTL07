@@ -121,7 +121,7 @@ void FFXAAPass::UpdateConstants()
 
 void FFXAAPass::SetRenderTargets()
 {
-    ID3D11RenderTargetView* RTV = DeviceResources->GetRenderTargetView(); // 스왑체인 RTV
+    ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferRTV(); // 스왑체인 RTV
     DeviceResources->GetDeviceContext()->OMSetRenderTargets(1, &RTV, nullptr);
 
     const D3D11_VIEWPORT& VP = DeviceResources->GetViewportInfo();

@@ -23,7 +23,7 @@ void FSceneDepthPass::Execute(FRenderingContext& Context)
     
 	const auto& Renderer = URenderer::GetInstance();
     const auto& DeviceResources = Renderer.GetDeviceResources();
-    ID3D11RenderTargetView* RTV = DeviceResources->GetRenderTargetView();
+    ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferRTV();
     ID3D11RenderTargetView* RTVs[] = { RTV };
     Pipeline->SetRenderTargets(1, RTVs, nullptr);
     auto RS = FRenderResourceFactory::GetRasterizerState( { ECullMode::None, EFillMode::Solid }); 

@@ -57,7 +57,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 	}
 	else
 	{
-		RTV = DeviceResources->GetRenderTargetView();	
+		RTV = DeviceResources->GetFrameBufferRTV();	
 	}
 	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
 	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();

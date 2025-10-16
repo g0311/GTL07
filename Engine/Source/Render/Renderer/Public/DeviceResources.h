@@ -29,11 +29,11 @@ public:
 	ID3D11Device* GetDevice() const { return Device; }
 	ID3D11DeviceContext* GetDeviceContext() const { return DeviceContext; }
 	IDXGISwapChain* GetSwapChain() const { return SwapChain; }
-	ID3D11RenderTargetView* GetRenderTargetView() const { return FrameBufferRTV; }
+	ID3D11RenderTargetView* GetFrameBufferRTV() const { return FrameBufferRTV; }
 	ID3D11RenderTargetView* GetNormalRenderTargetView() const { return NormalBufferRTV; }
 	ID3D11DepthStencilView* GetDepthStencilView() const { return DepthStencilView; }
 
-	ID3D11ShaderResourceView* GetSceneColorSRV() const { return FrameBufferSRV; }
+	ID3D11ShaderResourceView* GetFrameBufferSRV() const { return FrameBufferSRV; }
 	ID3D11ShaderResourceView* GetNormalSRV() const { return NormalBufferSRV; }
 	ID3D11ShaderResourceView* GetDepthSRV() const { return DepthBufferSRV; }
 	ID3D11ShaderResourceView* GetDepthStencilSRV() const { return DepthStencilSRV; }

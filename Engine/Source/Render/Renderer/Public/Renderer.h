@@ -62,7 +62,7 @@ public:
 	ID3D11SamplerState* GetDefaultSampler() const { return DefaultSampler; }
 	ID3D11ShaderResourceView* GetDepthSRV() const { return DeviceResources->GetDepthStencilSRV(); }
 	
-	ID3D11RenderTargetView* GetRenderTargetView() const { return DeviceResources->GetRenderTargetView(); }
+	ID3D11RenderTargetView* GetRenderTargetView() const { return DeviceResources->GetFrameBufferRTV(); }
 	ID3D11RenderTargetView* GetSceneColorRenderTargetView()const {return DeviceResources->GetSceneColorRenderTargetView(); }
 	
 	UDeviceResources* GetDeviceResources() const { return DeviceResources; }

@@ -29,7 +29,7 @@ void FFogPass::Execute(FRenderingContext& Context)
     ID3D11RenderTargetView* RTV;
     if (!(Context.ShowFlags & EEngineShowFlags::SF_FXAA))
     {
-        RTV = Renderer.GetDeviceResources()->GetRenderTargetView();
+        RTV = Renderer.GetDeviceResources()->GetFrameBufferRTV();
     }
     else
     {

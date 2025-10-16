@@ -23,6 +23,7 @@ UDecalSpotLightComponent::UDecalSpotLightComponent()
 
 UDecalSpotLightComponent::~UDecalSpotLightComponent()
 {
+	SafeDelete(SpotLightBoundingBox);
 }
 
 void UDecalSpotLightComponent::TickComponent(float DeltaTime)
