@@ -347,13 +347,13 @@
     <ClInclude Include="Source\Component\Public\BillBoardComponent.h" />
     <ClInclude Include="Source\Component\Public\DecalComponent.h" />
     <ClInclude Include="Source\Component\Public\DecalSpotLightComponent.h" />
-    <ClInclude Include="Source\Component\Public\PointLightComponent.h" />
+    <ClInclude Include="Source\Component\Public\FakePointLightComponent.h" />
     <ClInclude Include="Source\Component\Public\MovementComponent.h" />
     <ClInclude Include="Source\Component\Public\ProjectileMovementComponent.h" />
     <ClInclude Include="Source\Component\Public\RotatingMovementComponent.h" />
     <ClInclude Include="Source\Component\Public\HeightFogComponent.h" />
     <ClInclude Include="Source\Component\Public\TextComponent.h" />
-    <ClInclude Include="Source\Component\Public\LightComponent.h" />
+    <ClInclude Include="Source\Component\Public\FakeLightComponent.h" />
     <ClInclude Include="Source\Component\Public\UUIDTextComponent.h" />
     <ClInclude Include="Source\Component\Public\PrimitiveComponent.h" />
     <ClInclude Include="Source\Component\Public\SceneComponent.h" />
@@ -538,8 +538,8 @@
     <ClCompile Include="Source\Component\Private\BillBoardComponent.cpp" />
     <ClCompile Include="Source\Component\Private\DecalComponent.cpp" />
     <ClCompile Include="Source\Component\Private\DecalSpotLightComponent.cpp" />
-    <ClCompile Include="Source\Component\Private\LightComponent.cpp" />
-    <ClCompile Include="Source\Component\Private\PointLightComponent.cpp" />
+    <ClCompile Include="Source\Component\Private\FakeLightComponent.cpp" />
+    <ClCompile Include="Source\Component\Private\FakePointLightComponent.cpp" />
     <ClCompile Include="Source\Component\Private\MovementComponent.cpp" />
     <ClCompile Include="Source\Component\Private\ProjectileMovementComponent.cpp" />
     <ClCompile Include="Source\Component\Private\RotatingMovementComponent.cpp" />

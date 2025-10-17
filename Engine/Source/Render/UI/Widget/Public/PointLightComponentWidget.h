@@ -3,7 +3,7 @@
 #include "Widget.h"
 
 class UClass;
-class UPointLightComponent;
+class UFakePointLightComponent;
 
 UCLASS()
 class UPointLightComponentWidget : public UWidget
@@ -28,5 +28,5 @@ public:
         UPointLightComponentWidget Features
      -----------------------------------------------------------------------------*/
 private:
-    UPointLightComponent* PointLightComponent = nullptr;
+    UFakePointLightComponent* PointLightComponent = nullptr;
 };

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Component/Public/PointLightComponent.h"
+#include "Component/Public/FakePointLightComponent.h"
 #include "Editor/Public/Camera.h"
 #include "Render/RenderPass/Public/PointLightPass.h"
 #include "Render/Renderer/Public/Renderer.h"
