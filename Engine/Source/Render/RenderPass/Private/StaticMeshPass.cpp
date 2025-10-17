@@ -118,11 +118,15 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				{
 					Pipeline->SetTexture(2, false, SpecularTexture->GetTextureSRV());
 				}
+				if (UTexture* NormalTexture = Material->GetNormalTexture())
+				{
+					Pipeline->SetTexture(3, false, NormalTexture->GetTextureSRV());
+				}
 				if (UTexture* AlphaTexture = Material->GetAlphaTexture())
 				{
 					Pipeline->SetTexture(4, false, AlphaTexture->GetTextureSRV());
 				}
-				
+
 				CurrentMaterial = Material;
 			}
 			Pipeline->DrawIndexed(Section.IndexCount, Section.StartIndex, 0);
@@ -138,7 +142,6 @@ void FStaticMeshPass::PostExecute(FRenderingContext& Context)
 	Pipeline->SetTexture(3, false, nullptr);
 	Pipeline->SetTexture(4, false, nullptr);
 	Pipeline->SetTexture(5, false, nullptr);
-	// --- RTVs Reset End ---
 }
 
 void FStaticMeshPass::Release()
