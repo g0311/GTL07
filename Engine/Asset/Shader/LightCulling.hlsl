@@ -7,8 +7,10 @@
 #define TILE_SIZE 32
 
 // 광원 타입 정의
-#define LIGHT_TYPE_POINT 0
-#define LIGHT_TYPE_SPOT 1
+#define LIGHT_TYPE_DIRECTIONAL 0
+#define LIGHT_TYPE_AMBIENT 1
+#define LIGHT_TYPE_POINT 2
+#define LIGHT_TYPE_SPOT 3
 
 // 점 광원과 스포트라이트를 모두 표현하기 위한 범용 광원 구조체
 struct Light
@@ -19,19 +21,30 @@ struct Light
     float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), zw: 사용 안함
 };
 
-// 씬에 존재하는 모든 광원의 정보. CPU에서 채워줌.
+// Z 범위(Near/Far) 컬링을 수행하는 함수
+bool IsInZRange(float4 lightPosView, float lightRadius)
+{
+    // isVisible 기본값을 true로 가정하고, 범위를 벗어날 때만 false를 반환
+    if (lightPosView.z + lightRadius < 0.1f || lightPosView.z - lightRadius > 1000.0f)
+    {
+        return false;
+    }
+    return true;
+}
+
+// 씬에 존재하는 모든 광원의 정보
 StructuredBuffer<Light> AllLights;
 
 // 컬링 계산에 필요한 파라미터들을 담는 상수 버퍼
 cbuffer CullingParams : register(b0)
 {
-    matrix View;                            // 뷰 행렬
-    matrix Projection;                  // 투영 행렬
-    uint2 RenderTargetSize;      // 전체 렌더 타겟 크기
-    uint2 ViewportOffset;        // 현재 뷰포트의 시작 오프셋
-    uint2 ViewportSize;          // 현재 뷰포트의 크기
-    uint NumLights;              // 씬에 있는 전체 광원 개수
-    uint Padding;                // 16바이트 정렬을 위한 패딩
+    matrix View; // 뷰 행렬
+    matrix Projection; // 투영 행렬
+    uint2 RenderTargetSize; // 전체 렌더 타겟 크기
+    uint2 ViewportOffset; // 현재 뷰포트의 시작 오프셋
+    uint2 ViewportSize; // 현재 뷰포트의 크기
+    uint NumLights; // 씬에 있는 전체 광원 개수
+    uint Padding; // 16바이트 정렬을 위한 패딩
 };
 
 // 출력용 UAV(Unordered Access View) 버퍼들
@@ -136,8 +149,16 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         
         bool isVisible = true;
         
+        if (lightType == LIGHT_TYPE_AMBIENT)
+        {
+            isVisible = true;     
+        }
+        else if (lightType == LIGHT_TYPE_DIRECTIONAL)
+        {
+            isVisible = true;
+        }
         // 포인트 라이트: 구-프러스텀 교차 검사를 수행
-        if (lightType == LIGHT_TYPE_POINT)
+        else if (lightType == LIGHT_TYPE_POINT)
         {
             //반복 없이 풀어 쓰라는 키워드 => jump 배제로 성능 향상
             [unroll]
@@ -150,6 +171,12 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
                     isVisible = false;
                     break;
                 }
+            }
+
+            // Z-테스트는 Point/Spot 라이트에만 적용
+            if (isVisible)
+            {
+                isVisible = IsInZRange(lightPosView, lightRadius);
             }
         }
         // 스포트 라이트: 원뿔-프러스텀 교차 검사를 수행
@@ -190,14 +217,11 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
                     isVisible = false;
                 }
             }
-        }
-        
-        // Z 범위 검사: 뷰 공간에서의 깊이 값을 기준으로 기본적인 Near/Far 평면 컬링을 수행
-        if (isVisible)
-        {
-            if (lightPosView.z + lightRadius < 0.1f || lightPosView.z - lightRadius > 1000.0f) // Near/Far 값은 상수
+
+            // Z-테스트는 Point/Spot 라이트에만 적용
+            if (isVisible)
             {
-                isVisible = false;
+                isVisible = IsInZRange(lightPosView, lightRadius);
             }
         }
         
@@ -227,7 +251,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         InterlockedAdd(LightIndexBuffer[0], numVisibleLights, globalOffset);
         globalOffset += 1; // 0번 인덱스는 카운터이므로 1부터 실제 데이터 저장
         
-        // TileLightInfo 버퍼에 현재 타일의 정보를 기록함 (시작 오프셋, 광원 개수).
+        // TileLightInfo 버퍼에 현재 타일의 정보를 기록 (시작 오프셋, 광원 개수)
         uint tileIndex = Gid.y * ((RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE) + Gid.x;
         TileLightInfo[tileIndex] = uint2(globalOffset, min(numVisibleLights, 1024u));
     }
