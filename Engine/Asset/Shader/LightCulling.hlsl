@@ -1,128 +1,149 @@
 /**
  * @file LightCulling.hlsl
- * @brief Tile-based light culling compute shader.
+ * @brief 타일 기반 광원 컬링 컴퓨트 셰이더
  */
 
+// 타일 한 변의 크기 정의. TILE_SIZE x TILE_SIZE 스레드가 하나의 타일을 처리
 #define TILE_SIZE 32
 
-// Light types
+// 광원 타입 정의
 #define LIGHT_TYPE_POINT 0
 #define LIGHT_TYPE_SPOT 1
 
-// Universal light struct for both point and spot lights
+// 점 광원과 스포트라이트를 모두 표현하기 위한 범용 광원 구조체
 struct Light
 {
-    float4 position;    // xyz: world position, w: radius
-    float4 color;       // xyz: color, w: intensity
-    float4 direction;   // xyz: direction (for spot), w: light type (0=point, 1=spot)
-    float4 angles;      // x: inner cone angle (cos), y: outer cone angle (cos), z,w: unused
+    float4 position;    // xyz: 월드 위치, w: 영향 반경
+    float4 color;       // xyz: 색상, w: 강도
+    float4 direction;   // xyz: 방향 (스포트라이트용), w: 광원 타입 (0=점, 1=스포트)
+    float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), zw: 사용 안함
 };
 
+// 씬에 존재하는 모든 광원의 정보. CPU에서 채워줌.
 StructuredBuffer<Light> AllLights;
 
+// 컬링 계산에 필요한 파라미터들을 담는 상수 버퍼
 cbuffer CullingParams : register(b0)
 {
-    matrix View;                 // 64 bytes (4x4 float matrix)
-    matrix Projection;           // 64 bytes (4x4 float matrix)
-    uint2 ScreenDimensions;      // 8 bytes
-    uint2 ViewportOffset;        // 8 bytes  
-    uint2 ViewportSize;          // 8 bytes
-    uint NumLights;              // 4 bytes
-    uint Padding;                // 4 bytes
+    matrix View;                            // 뷰 행렬
+    matrix Projection;                  // 투영 행렬
+    uint2 RenderTargetSize;      // 전체 렌더 타겟 크기
+    uint2 ViewportOffset;        // 현재 뷰포트의 시작 오프셋
+    uint2 ViewportSize;          // 현재 뷰포트의 크기
+    uint NumLights;              // 씬에 있는 전체 광원 개수
+    uint Padding;                // 16바이트 정렬을 위한 패딩
 };
 
-// Output UAVs
-RWStructuredBuffer<uint> LightIndexBuffer; // Global list of visible light indices for all tiles
-RWStructuredBuffer<uint2> TileLightInfo;   // For each tile: x = offset in LightIndexBuffer, y = number of lights
+// 출력용 UAV(Unordered Access View) 버퍼들
+RWStructuredBuffer<uint> LightIndexBuffer; // 타일별로 컬링된 광원 인덱스들이 저장될 전역 버퍼
+RWStructuredBuffer<uint2> TileLightInfo;   // 각 타일의 광원 정보 (LightIndexBuffer에서의 시작 오프셋, 광원 개수)
 
-// Thread group shared memory to store indices for one tile
-groupshared uint visibleLightIndices[1024];
-groupshared uint numVisibleLights;
+// 스레드 그룹 내에서만 사용하는 공유 메모리. 한 타일에 속한 광원 인덱스들을 임시 저장
+groupshared uint visibleLightIndices[1024]; // 최대 1024개의 광원 인덱스 저장
+groupshared uint numVisibleLights;          // 현재 타일에서 찾은 광원의 개수
 
+// 컴퓨트 셰이더 메인 함수. TILE_SIZE x TILE_SIZE x 1 개의 스레드가 하나의 그룹으로 실행
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : SV_GroupIndex)
 {
-    // 뷰포트 영역을 벗어난 타일은 처리하지 않음
+    // --- 초기화 및 타일 유효성 검사 ---
+    
+    // 현재 스레드 그룹이 처리할 타일의 좌표
     uint2 tilePos = Gid.xy;
+    // 타일의 스크린 좌표 경계 계산
     uint2 tileMinBound = tilePos * TILE_SIZE;
     uint2 tileMaxBound = tileMinBound + TILE_SIZE;
     
-    // 뷰포트 영역을 벗어난 타일인지 확인
+    // 타일이 뷰포트 영역을 완전히 벗어났으면 더 이상 처리하지 않고 종료
     if (tileMinBound.x >= ViewportOffset.x + ViewportSize.x || 
         tileMinBound.y >= ViewportOffset.y + ViewportSize.y ||
         tileMaxBound.x <= ViewportOffset.x ||
         tileMaxBound.y <= ViewportOffset.y)
     {
-        return; // 이 타일은 뷰포트 영역에 포함되지 않음
+        return;
     }
 
-    // Reset shared memory counter
+    // 그룹의 첫 스레드(GI == 0)가 공유 메모리의 카운터를 0으로 초기화
     if (GI == 0)
     {
         numVisibleLights = 0;
     }
+    // 그룹 내 모든 스레드가 초기화를 마칠 때까지 대기.
     GroupMemoryBarrierWithGroupSync();
 
-    // Step 1: 타일 프러스텀 계산 (뷰 스페이스에서)
-    // 뷰포트 오프셋을 고려한 스크린 좌표 계산
-    uint2 actualTileMin = max(tileMinBound, ViewportOffset);
-    uint2 actualTileMax = min(tileMaxBound, ViewportOffset + ViewportSize);
+    // --- 1단계: 타일 프러스텀 계산 (뷰 공간 기준) ---
     
-    // NDC 좌표로 변환 (-1 to 1)
-    float2 tileMinNDC = float2(
-        (2.0f * actualTileMin.x) / ScreenDimensions.x - 1.0f,
-        1.0f - (2.0f * actualTileMin.y) / ScreenDimensions.y
-    );
-    float2 tileMaxNDC = float2(
-        (2.0f * actualTileMax.x) / ScreenDimensions.x - 1.0f,
-        1.0f - (2.0f * actualTileMax.y) / ScreenDimensions.y
-    );
-    
-    // 뷰 스페이스에서 프러스텀 계삵 (단순화된 방법)
-    // 프로젝션 매트릭스에서 FOV 정보 추출
-    float tanHalfFovY = 1.0f / Projection[1][1];
+    // --- 타일의 네 꼭짓점에 해당하는 뷰 공간 방향 벡터 계산 ---
+    //      카메라 원점(뷰 공간의 0,0,0)에서의 3D 방향 벡터를 계산
+
+    // (1) 뷰 공간 계산에 필요한 FOV(시야각) 정보를 투영 행렬로부터 역산
     float tanHalfFovX = 1.0f / Projection[0][0];
+    float tanHalfFovY = 1.0f / Projection[1][1];
+
+    // (2) 타일의 화면상 픽셀 좌표 범위를 계산함. (min: 좌상단, max: 우하단)
+    float2 tileMinPixelPos = Gid.xy * TILE_SIZE;
+    float2 tileMaxPixelPos = (Gid.xy + 1) * TILE_SIZE;
+
+    // (3) 네 꼭짓점의 '절대 픽셀 좌표'를 '현재 뷰포트 기준의 상대 좌표'로 변환 후, NDC(-1 ~ 1 범위)로 변환
+    //     프로젝션 행렬은 뷰포트 기준으로 적용되므로, NDC 계산 또한 뷰포트 크기와 위치에 맞춤
+    float2 uv_LT = float2(tileMinPixelPos.x - ViewportOffset.x, tileMinPixelPos.y - ViewportOffset.y) / ViewportSize;
+    float2 uv_RB = float2(tileMaxPixelPos.x - ViewportOffset.x, tileMaxPixelPos.y - ViewportOffset.y) / ViewportSize;
+    float2 ndc_LT = (uv_LT * 2) - 1;
+    float2 ndc_RB = (uv_RB * 2) - 1;
+
+    // (4) NDC 좌표를 뷰 공간의 방향 벡터로 변환
+    //     z=1 평면에 투영된 지점의 좌표를 계산하는 것과 동일
+    float view_L = ndc_LT.x * tanHalfFovX; // 왼쪽 X
+    float view_R = ndc_RB.x * tanHalfFovX; // 오른쪽 X
+    float view_T = ndc_LT.y * tanHalfFovY; // 위쪽 Y
+    float view_B = ndc_RB.y * tanHalfFovY; // 아래쪽 Y
+
+    // (5) 최종적으로 뷰 공간의 네 꼭짓점 방향 벡터(c1~c4)를 정의
+    //     (이후 평면 계산 순서에 맞춰 c1~c4를 정의)
+    // c1: 좌하단 (Left-Bottom)
+    // c2: 우하단 (Right-Bottom)
+    // c3: 좌상단 (Left-Top)
+    // c4: 우상단 (Right-Top)
+    float4 c1 = float4(view_L, view_B, 1.0f, 0.0f);
+    float4 c2 = float4(view_R, view_B, 1.0f, 0.0f);
+    float4 c3 = float4(view_L, view_T, 1.0f, 0.0f);
+    float4 c4 = float4(view_R, view_T, 1.0f, 0.0f);
     
-    // 타일 경계를 뷰 스페이스 방향벡터로 변환
-    float2 tileScale = float2(ScreenDimensions) * rcp(float(2 * TILE_SIZE));
-    float2 tileBias = tileScale - float2(Gid.xy);
-    
-    float4 c1 = float4(-1.0f * tanHalfFovX * tileBias.x, -1.0f * tanHalfFovY * tileBias.y, 1.0f, 0.0f);
-    float4 c2 = float4( 1.0f * tanHalfFovX * (tileScale.x - tileBias.x), -1.0f * tanHalfFovY * tileBias.y, 1.0f, 0.0f);
-    float4 c3 = float4(-1.0f * tanHalfFovX * tileBias.x,  1.0f * tanHalfFovY * (tileScale.y - tileBias.y), 1.0f, 0.0f);
-    float4 c4 = float4( 1.0f * tanHalfFovX * (tileScale.x - tileBias.x),  1.0f * tanHalfFovY * (tileScale.y - tileBias.y), 1.0f, 0.0f);
-    
-    // 프러스텀 평면 계산 (뷰 스페이스)
+    // 4개의 모서리 벡터를 이용해 타일 프러스텀을 구성하는 4개의 평면(왼쪽, 오른쪽, 위, 아래)을 계산
     float4 frustumPlanes[4];
     frustumPlanes[0] = float4(normalize(cross(c1.xyz, c3.xyz)), 0.0f); // Left
     frustumPlanes[1] = float4(normalize(cross(c4.xyz, c2.xyz)), 0.0f); // Right  
     frustumPlanes[2] = float4(normalize(cross(c2.xyz, c1.xyz)), 0.0f); // Top
     frustumPlanes[3] = float4(normalize(cross(c3.xyz, c4.xyz)), 0.0f); // Bottom
     
-    // Step 2: 프러스텀과 라이트 교차 여부 검사
+    // --- 2단계: 프러스텀과 광원 교차 검사 ---
+    
+    // 그룹 내 스레드들이 전체 광원 목록을 나누어 검사하도록 범위를 설정
     const uint threadsPerGroup = TILE_SIZE * TILE_SIZE;
     const uint lightsPerThread = (NumLights + threadsPerGroup - 1) / threadsPerGroup;
     const uint startLightIndex = GI * lightsPerThread;
     const uint endLightIndex = min(startLightIndex + lightsPerThread, NumLights);
     
-    // 각 스레드가 담당할 라이트들을 검사
+    // 각 스레드가 자신이 맡은 광원들을 순회하며 검사
     for (uint lightIndex = startLightIndex; lightIndex < endLightIndex; ++lightIndex)
     {
         Light light = AllLights[lightIndex];
         
-        // 라이트를 뷰 스페이스로 변환
+        // 광원 위치를 월드 공간에서 뷰 공간으로 변환
         float4 lightPosView = mul(View, float4(light.position.xyz, 1.0));
         float lightRadius = light.position.w;
         uint lightType = (uint)light.direction.w;
         
         bool isVisible = true;
         
+        // 포인트 라이트: 구-프러스텀 교차 검사를 수행
         if (lightType == LIGHT_TYPE_POINT)
         {
-            // Point Light: Sphere-Frustum intersection test
+            //반복 없이 풀어 쓰라는 키워드 => jump 배제로 성능 향상
             [unroll]
             for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
             {
+                // 광원 중심과 평면 사이의 거리를 계산 거리가 반경보다 작으면 평면 뒤에 있음
                 float distance = dot(frustumPlanes[planeIndex].xyz, lightPosView.xyz) + frustumPlanes[planeIndex].w;
                 if (distance < -lightRadius)
                 {
@@ -131,18 +152,16 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
                 }
             }
         }
+        // 스포트 라이트: 원뿔-프러스텀 교차 검사를 수행
         else if (lightType == LIGHT_TYPE_SPOT)
         {
-            // SpotLight: Cone-Frustum intersection test
+            // 계산 편의를 위해 원뿔을 감싸는 바운딩 스피어로 근사하여 1차 검사를 수행
             float3 lightDirView = normalize(mul(View, float4(light.direction.xyz, 0.0)).xyz);
             float cosOuterAngle = light.angles.y;
             
-            // 스포몇 라이트 컨과 타일 프러스텀 교차 검사
-            // 단순화된 방법: 컨의 바운딩 스피어로 근사
             float coneHeight = lightRadius / cosOuterAngle;
             float3 coneEnd = lightPosView.xyz + lightDirView * coneHeight;
             
-            // 컨의 바운딩 스피어로 근사하여 검사
             float3 sphereCenter = (lightPosView.xyz + coneEnd) * 0.5;
             float sphereRadius = length(lightPosView.xyz - coneEnd) * 0.5 + lightRadius * 0.5;
             
@@ -157,17 +176,15 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
                 }
             }
             
-            // 추가 검사: 컨 방향과 타일 중심 간의 각도 검사
+            // 1차 검사를 통과했으면, 더 정확한 2차 검사를 수행
             if (isVisible)
             {
-                // 타일 중심을 뷰 스페이스로 근사 (더 정확한 방법 필요)
-                float3 tileCenterView = (c1.xyz + c2.xyz + c3.xyz + c4.xyz) * 0.25f;
-                tileCenterView = normalize(tileCenterView);
-                
+                // 타일 중심 방향과 광원 방향을 비교하여 원뿔 범위 내에 있는지 검사
+                float3 tileCenterView = normalize((c1.xyz + c2.xyz + c3.xyz + c4.xyz) * 0.25f);
                 float3 lightToTile = normalize(tileCenterView);
-                float dotProduct = dot(-lightDirView, lightToTile); // 라이트 방향의 역방향
+                float dotProduct = dot(-lightDirView, lightToTile);
                 
-                // 컨 범위를 벗어난 경우
+                // 내적값이 외부 원뿔 각도의 코사인값보다 작으면 범위를 벗어남
                 if (dotProduct < cosOuterAngle)
                 {
                     isVisible = false;
@@ -175,49 +192,54 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
             }
         }
         
-        // Z 범위 검사 (기본적인 near/far plane 처리)
+        // Z 범위 검사: 뷰 공간에서의 깊이 값을 기준으로 기본적인 Near/Far 평면 컬링을 수행
         if (isVisible)
         {
-            if (lightPosView.z + lightRadius < 0.1f || lightPosView.z - lightRadius > 1000.0f)
+            if (lightPosView.z + lightRadius < 0.1f || lightPosView.z - lightRadius > 1000.0f) // Near/Far 값은 상수
             {
                 isVisible = false;
             }
         }
         
-        // 보이는 라이트를 shared memory에 추가
+        // 최종적으로 보이는 광원이면, 공유 메모리에 해당 광원의 인덱스를 추가
         if (isVisible)
         {
             uint index;
+            // 여러 스레드가 동시에 접근할 수 있으므로 원자적 연산(InterlockedAdd)으로 카운터를 안전하게 증가
             InterlockedAdd(numVisibleLights, 1, index);
-            if (index < 1024)
+            if (index < 1024) // 공유 메모리 크기를 넘지 않는지 확인
             {
                 visibleLightIndices[index] = lightIndex;
             }
         }
     }
     
-    // 모든 스레드가 라이트 검사를 마칠 때까지 대기
+    // 그룹 내 모든 스레드가 광원 검사를 마칠 때까지 대기
     GroupMemoryBarrierWithGroupSync();
     
-    // Step 3: UAV에 결과 저장
+    // --- 3단계: UAV에 결과 저장 ---
+    
+    // 그룹의 첫 스레드가, 보이는 광원이 있을 경우에만 결과를 전역 버퍼에 기록
     if (GI == 0 && numVisibleLights > 0)
     {
-        // 전역 버퍼에 공간 예약
         uint globalOffset;
+        // LightIndexBuffer의 전역 카운터(0번 인덱스)를 원자적으로 증가시켜, 이 타일이 사용할 공간을 예약
         InterlockedAdd(LightIndexBuffer[0], numVisibleLights, globalOffset);
-        globalOffset += 1; // 첫 번째 요소는 카운터용
+        globalOffset += 1; // 0번 인덱스는 카운터이므로 1부터 실제 데이터 저장
         
-        // 타일 정보 저장 (오프셋과 라이트 개수)
-        uint tileIndex = Gid.y * ((ScreenDimensions.x + TILE_SIZE - 1) / TILE_SIZE) + Gid.x;
+        // TileLightInfo 버퍼에 현재 타일의 정보를 기록함 (시작 오프셋, 광원 개수).
+        uint tileIndex = Gid.y * ((RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE) + Gid.x;
         TileLightInfo[tileIndex] = uint2(globalOffset, min(numVisibleLights, 1024u));
     }
     
-    // 모든 스레드가 보이는 라이트 인덱스를 전역 버퍼에 쓰기
+    // 그룹 내 모든 스레드가 협력하여 공유 메모리의 내용을 전역 버퍼(LightIndexBuffer)에 복사
     if (numVisibleLights > 0)
     {
-        uint globalOffset = TileLightInfo[Gid.y * ((ScreenDimensions.x + TILE_SIZE - 1) / TILE_SIZE) + Gid.x].x;
+        uint tileIndex = Gid.y * ((RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE) + Gid.x;
+        uint globalOffset = TileLightInfo[tileIndex].x;
         uint actualCount = min(numVisibleLights, 1024u);
         
+        // 스레드들이 순번대로 돌아가며 visibleLightIndices의 내용을 LightIndexBuffer로 복사
         for (uint i = GI; i < actualCount; i += threadsPerGroup)
         {
             LightIndexBuffer[globalOffset + i] = visibleLightIndices[i];

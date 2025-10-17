@@ -33,21 +33,17 @@ struct FLightParams
     FVector4 Angles;      // x: inner cone angle (cos), y: outer cone angle (cos), z,w: unused
 };
 
-// 호환성을 위한 기존 구조체 (삭제 예정)
-struct FPointLightParams
-{
-    FVector Position;
-    FVector Color;
-};
-
 class FLightCullingPass : public FRenderPass
 {
 public:
     FLightCullingPass(UPipeline* InPipeline, UDeviceResources* InDeviceResources);
     ~FLightCullingPass() override;
 
+    void PreExecute(FRenderingContext& Context) override;
     void Execute(FRenderingContext& Context) override;
+    void PostExecute(FRenderingContext& Context) override;
 
+    void Release() override;
 private:
     void CreateResources();
     void ReleaseResources();

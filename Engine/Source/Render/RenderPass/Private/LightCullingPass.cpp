@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Render/RenderPass/Public/LightCullingPass.h"
-
 #include "Component/Light/Public/PointLightComponent.h"
 #include "Component/Light/Public/SpotLightComponent.h"
+#include "Component/Public/FakePointLightComponent.h"
 #include "Editor/Public/Camera.h"
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"
@@ -185,12 +185,17 @@ void FLightCullingPass::RecreateResourcesIfNeeded()
     }
 }
 
-void FLightCullingPass::Execute(FRenderingContext& Context)
+void FLightCullingPass::PreExecute(FRenderingContext& Context)
 {
     // 리사이즈 시 리소스 재생성 확인
     RecreateResourcesIfNeeded();
+}
+
+void FLightCullingPass::Execute(FRenderingContext& Context)
+{
+    TIME_PROFILE(LightCullingPass)
     
-    ID3D11DeviceContext* pContext = DeviceResources->GetDeviceContext();
+    ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
 
     // 1. 상수 버퍼 업데이트
     FCullingParams cullingParams;
@@ -205,7 +210,7 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     cullingParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
     cullingParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
     // 리소스 크기 체크 및 라이트 데이터 준비
-    const uint32 totalLights = Context.PointLights.size() + Context.SpotLights.size();
+    const uint32 totalLights = static_cast<uint32>(Context.PointLights.size() + Context.SpotLights.size());
     cullingParams.NumLights = totalLights;
     
     // 라이트 데이터 배열 준비 (AllLights 버퍼용)
@@ -245,7 +250,7 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     if (totalLights > 0 && totalLights <= MAX_LIGHTS)
     {
         D3D11_MAPPED_SUBRESOURCE mappedResource;
-        HRESULT hr = pContext->Map(AllLightsBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+        HRESULT hr = DeviceContext->Map(AllLightsBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
         if (SUCCEEDED(hr))
         {
             // 전체 버퍼 클리어 (이전 프레임의 데이터 제거)
@@ -255,7 +260,7 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
             {
                 memcpy(mappedResource.pData, allLights.data(), sizeof(FLightParams) * totalLights);
             }
-            pContext->Unmap(AllLightsBuffer, 0);
+            DeviceContext->Unmap(AllLightsBuffer, 0);
         }
         else
         {
@@ -265,36 +270,51 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     else if (totalLights > MAX_LIGHTS)
     {
         // 경고: 최대 라이트 개수 초과
-        UE_LOG_WARNING("라이트 개수가 최대치를 초과했습니다: %d > %d", totalLights, MAX_LIGHTS);
+        UE_LOG_WARNING("라이트 개수가 최대치를 초과했습니다: %d > %d", static_cast<int>(totalLights), static_cast<int>(MAX_LIGHTS));
         cullingParams.NumLights = MAX_LIGHTS; // 최대치로 제한
     }
 
     // 2. 리소스 바인딩
-    pContext->CSSetShader(CullingCS, nullptr, 0);
-    pContext->CSSetConstantBuffers(0, 1, &CullingParamsCB);
+    DeviceContext->CSSetShader(CullingCS, nullptr, 0);
+    DeviceContext->CSSetConstantBuffers(0, 1, &CullingParamsCB);
 
     // 라이트 데이터 SRV 바인딩 (버퍼는 항상 존재)
-    pContext->CSSetShaderResources(0, 1, &AllLightsSRV);
+    DeviceContext->CSSetShaderResources(0, 1, &AllLightsSRV);
 
     // UAVs 바인딩
-    pContext->CSSetUnorderedAccessViews(0, 1, &LightIndexBufferUAV, nullptr);
-    pContext->CSSetUnorderedAccessViews(1, 1, &TileLightInfoUAV, nullptr);
+    DeviceContext->CSSetUnorderedAccessViews(0, 1, &LightIndexBufferUAV, nullptr);
+    DeviceContext->CSSetUnorderedAccessViews(1, 1, &TileLightInfoUAV, nullptr);
 
     // 3. 컴퓨트 셰이더 디스패치 (뷰포트 크기 기반)
-    const uint32 TILE_SIZE = 32; // 셰이더와 일치해야 함
+    const uint32 TILE_SIZE = 32;
+
     const uint32 viewportWidth = static_cast<uint32>(Context.Viewport.Width);
     const uint32 viewportHeight = static_cast<uint32>(Context.Viewport.Height);
+    
     const uint32 numTilesX = (viewportWidth + TILE_SIZE - 1) / TILE_SIZE;
     const uint32 numTilesY = (viewportHeight + TILE_SIZE - 1) / TILE_SIZE;
+        //소수점 버리기를 제거하기 위해 TILE_SIZE - 1을 더한 후 나눗셈
 
-    pContext->Dispatch(numTilesX, numTilesY, 1);
+    DeviceContext->Dispatch(numTilesX, numTilesY, 1);
+}
 
-    // 4. 리소스 언바인딩
+void FLightCullingPass::PostExecute(FRenderingContext& Context)
+{
+    const auto& Renderer = URenderer::GetInstance();
+    const auto& DeviceResources = Renderer.GetDeviceResources();
+    ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
+
     ID3D11UnorderedAccessView* nullUAVs[2] = { nullptr, nullptr };
-    pContext->CSSetUnorderedAccessViews(0, 2, nullUAVs, nullptr);
+    DeviceContext->CSSetUnorderedAccessViews(0, 2, nullUAVs, nullptr);
     ID3D11ShaderResourceView* nullSRVs[1] = { nullptr };
-    pContext->CSSetShaderResources(0, 1, nullSRVs);
+    DeviceContext->CSSetShaderResources(0, 1, nullSRVs);
     ID3D11Buffer* nullCB = nullptr;
-    pContext->CSSetConstantBuffers(0, 1, &nullCB);
-    pContext->CSSetShader(nullptr, nullptr, 0);
+    DeviceContext->CSSetConstantBuffers(0, 1, &nullCB);
+    DeviceContext->CSSetShader(nullptr, nullptr, 0);
+}
+
+void FLightCullingPass::Release()
+{
+
+    
 }

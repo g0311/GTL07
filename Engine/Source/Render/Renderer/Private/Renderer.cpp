@@ -26,6 +26,7 @@
 #include "Render/Renderer/Public/Renderer.h"
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/RenderPass/Public/FXAAPass.h"
+#include "Render/RenderPass/Public/LightCullingPass.h"
 
 #include "Render/RenderPass/Public/SceneDepthPass.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
@@ -60,8 +61,8 @@ void URenderer::Init(HWND InWindowHandle)
 
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
-	//ADD Light Cull Pass
-	
+	FLightCullingPass* LightCullPass = new FLightCullingPass(Pipeline, DeviceResources);
+	RenderPasses.push_back(LightCullPass);
 	
 	FStaticMeshPass* StaticMeshPass = new FStaticMeshPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
 		TextureVertexShader, TexturePixelShader, TextureInputLayout, DefaultDepthStencilState);
