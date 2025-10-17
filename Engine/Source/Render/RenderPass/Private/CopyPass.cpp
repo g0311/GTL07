@@ -32,6 +32,13 @@ void FCopyPass::Release()
     SafeRelease(ViewportBuffer);
 }
 
+void FCopyPass::PreExecute(FRenderingContext& Context)
+{
+    // Set Render Target to Back Buffer
+    ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferRTV();
+    Pipeline->SetRenderTargets(1, &RTV, nullptr);
+}
+
 void FCopyPass::Execute(FRenderingContext& Context)
 {
     if (Context.ShowFlags & EEngineShowFlags::SF_FXAA) return;
@@ -43,10 +50,6 @@ void FCopyPass::Execute(FRenderingContext& Context)
     FCopyViewportConstants ViewportConstants;
     ViewportConstants.RenderTargetSize = { Context.RenderTargetSize.X, Context.RenderTargetSize.Y };
     FRenderResourceFactory::UpdateConstantBufferData(ViewportBuffer, ViewportConstants);
-
-    // Set Render Target to Back Buffer
-    ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferRTV();
-    DeviceResources->GetDeviceContext()->OMSetRenderTargets(1, &RTV, nullptr);
 
     // Set Pipeline
     FPipelineInfo PipelineInfo = {};
@@ -66,7 +69,10 @@ void FCopyPass::Execute(FRenderingContext& Context)
 
     // Draw
     Pipeline->Draw(3, 0);
+}
 
+void FCopyPass::PostExecute(FRenderingContext& Context)
+{
     // Unbind
     Pipeline->SetTexture(0, false, nullptr);
 }

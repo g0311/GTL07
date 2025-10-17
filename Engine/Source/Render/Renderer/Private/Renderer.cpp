@@ -3,7 +3,7 @@
 #include "Component/Mesh/Public/StaticMeshComponent.h"
 #include "Component/Public/DecalComponent.h"
 #include "Component/Public/HeightFogComponent.h"
-#include "Component/Public/PointLightComponent.h"
+#include "Component/Public/FakePointLightComponent.h"
 #include "Component/Public/PrimitiveComponent.h"
 #include "Component/Public/UUIDTextComponent.h"
 #include "Editor/Public/Camera.h"
@@ -384,12 +384,10 @@ void URenderer::RenderBegin() const
 	auto* DepthStencilView = DeviceResources->GetDepthStencilView();
 	GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-	// 항상 SceneColorRenderTargetView를 기본 렌더 타겟으로 사용
 	auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
 	GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
-	GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-	ID3D11RenderTargetView* rtvs[] = { SceneColorRenderTargetView };
-	GetDeviceContext()->OMSetRenderTargets(1, rtvs, DepthStencilView);
+	
+
 
     DeviceResources->UpdateViewport();
 }
@@ -460,7 +458,9 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 
 	for (auto RenderPass: RenderPasses)
 	{
+		RenderPass->PreExecute(RenderingContext);
 		RenderPass->Execute(RenderingContext);
+		RenderPass->PostExecute(RenderingContext);
 	}
 }
 

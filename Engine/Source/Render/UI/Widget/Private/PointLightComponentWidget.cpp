@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "Render/UI/Widget/Public/PointLightComponentWidget.h"
-#include "Component/Public/PointLightComponent.h"
+#include "Component/Public/FakePointLightComponent.h"
 #include "Editor/Public/Editor.h"
 #include "Level/Public/Level.h"
 #include "Component/Public/ActorComponent.h"
@@ -20,7 +20,7 @@ void UPointLightComponentWidget::Update()
         UActorComponent* NewSelectedComponent = GEditor->GetEditorModule()->GetSelectedComponent();
         if (PointLightComponent != NewSelectedComponent)
         {
-            PointLightComponent = Cast<UPointLightComponent>(NewSelectedComponent);
+            PointLightComponent = Cast<UFakePointLightComponent>(NewSelectedComponent);
         }
     }
 }

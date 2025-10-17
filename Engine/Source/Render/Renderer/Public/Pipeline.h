@@ -34,9 +34,14 @@ public:
 
 	void Draw(uint32 VertexCount, uint32 StartLocation);
 
-	void DrawIndexed(uint32 IndexCount, uint32 StartIndexLocation, int32 BaseVertexLocation);
+	void DrawIndexed(uint32 IndexCount, uint32 IndexLocation, int32 BaseVertexLocation);
 
 private:
 	FPipelineInfo LastPipelineInfo;
 	ID3D11DeviceContext* DeviceContext;
+
+    // 캐시된 RTV/DSV 상태
+    ID3D11RenderTargetView* LastBoundRTVs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { nullptr };
+    ID3D11DepthStencilView* LastBoundDSV = nullptr;
+    uint32 LastBoundNumRTVs = 0;
 };

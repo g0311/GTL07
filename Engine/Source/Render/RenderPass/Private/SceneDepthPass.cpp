@@ -17,15 +17,21 @@ FSceneDepthPass::FSceneDepthPass(UPipeline* InPipeline, ID3D11Buffer* InConstant
     ConstantBufferPerFrame = FRenderResourceFactory::CreateConstantBuffer<FSceneDepthConstants>();
 }
 
+void FSceneDepthPass::PreExecute(FRenderingContext& Context)
+{
+    const auto& Renderer = URenderer::GetInstance();
+    const auto& DeviceResources = Renderer.GetDeviceResources();
+    ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
+    ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() }; // Bind both
+    Pipeline->SetRenderTargets(2, RTVs, nullptr); // Set NumViews to 2, and pass DSV
+}
+
 void FSceneDepthPass::Execute(FRenderingContext& Context)
 {
     if (Context.ViewMode != EViewModeIndex::VMI_SceneDepth) { return; }
     
 	const auto& Renderer = URenderer::GetInstance();
     const auto& DeviceResources = Renderer.GetDeviceResources();
-    ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferRTV();
-    ID3D11RenderTargetView* RTVs[] = { RTV };
-    Pipeline->SetRenderTargets(1, RTVs, nullptr);
     auto RS = FRenderResourceFactory::GetRasterizerState( { ECullMode::None, EFillMode::Solid }); 
 
     FPipelineInfo PipelineInfo = { nullptr, VertexShader, RS, DS, PixelShader, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
@@ -41,9 +47,11 @@ void FSceneDepthPass::Execute(FRenderingContext& Context)
     Pipeline->SetSamplerState(0, false, SamplerState);
 
     Pipeline->Draw(3, 0);
+}
 
-    ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
-    Pipeline->SetRenderTargets(1, RTVs, DSV);
+void FSceneDepthPass::PostExecute(FRenderingContext& Context)
+{
+    Pipeline->SetTexture(0, false, nullptr);
 }
 
 void FSceneDepthPass::Release()

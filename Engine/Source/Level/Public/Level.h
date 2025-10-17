@@ -9,7 +9,7 @@ using JSON = json::JSON;
 class UWorld;
 class AActor;
 class UPrimitiveComponent;
-class UPointLightComponent;
+class UFakePointLightComponent;
 class FOctree;
 
 UCLASS()
@@ -118,8 +118,8 @@ private:
 		Lighting Management
 	-----------------------------------------------------------------------------*/
 public:
-	const TArray<UPointLightComponent*>& GetPointLights() const { return PointLights; } 
+	const TArray<UFakePointLightComponent*>& GetPointLights() const { return PointLights; } 
 
 private:
-	TArray<UPointLightComponent*> PointLights;
+	TArray<UFakePointLightComponent*> PointLights;
 };

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Component/Public/PointLightComponent.h"
+#include "Component/Public/FakePointLightComponent.h"
 #include "Editor/Public/Camera.h"
 #include "Render/RenderPass/Public/PointLightPass.h"
 #include "Render/Renderer/Public/Renderer.h"
@@ -21,6 +21,15 @@ FPointLightPass::FPointLightPass(UPipeline* InPipeline,
     PointLightSampler = FRenderResourceFactory::CreateSamplerState(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP);
 }
 
+void FPointLightPass::PreExecute(FRenderingContext& Context)
+{
+    const auto& Renderer = URenderer::GetInstance();
+    const auto& DeviceResources = Renderer.GetDeviceResources();
+    ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
+    ID3D11RenderTargetView* RTVs[1] = { RTV };
+    Pipeline->SetRenderTargets(1, RTVs, nullptr);
+}
+
 void FPointLightPass::Execute(FRenderingContext& Context)
 {
     if (Context.ViewMode != EViewModeIndex::VMI_Lit)
@@ -30,11 +39,6 @@ void FPointLightPass::Execute(FRenderingContext& Context)
     
 	const auto& Renderer = URenderer::GetInstance();
     const auto& DeviceResources = Renderer.GetDeviceResources();
-    ID3D11RenderTargetView* RTV = nullptr;
-    RTV = DeviceResources->GetSceneColorRenderTargetView();	
-
-    ID3D11RenderTargetView* RTVs[1] = { RTV };
-    Pipeline->SetRenderTargets(1, RTVs, nullptr);
     auto RS = FRenderResourceFactory::GetRasterizerState( { ECullMode::None, EFillMode::Solid }); 
 
     FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, PS, BS, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST};
@@ -76,14 +80,12 @@ void FPointLightPass::Execute(FRenderingContext& Context)
 
         Pipeline->Draw(3, 0);
     }
+}
+
+void FPointLightPass::PostExecute(FRenderingContext& Context)
+{
     Pipeline->SetTexture(1, false, nullptr);
     Pipeline->SetTexture(2, false, nullptr);
-
-    ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
-    ID3D11RenderTargetView* NormalRTV = DeviceResources->GetNormalRenderTargetView();
-
-    ID3D11RenderTargetView* NRTVs[] = { DeviceResources->GetSceneColorRenderTargetView(), NormalRTV };
-    Pipeline->SetRenderTargets(2, NRTVs, DSV);
 }
 
 void FPointLightPass::Release()
