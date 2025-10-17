@@ -46,13 +46,13 @@ void FWorldNormalPass::Execute(FRenderingContext& Context)
 	ID3D11DeviceContext* DeviceContext = Renderer.GetDeviceContext();
 	DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 
-	FPipelineInfo PipelineInfo = { nullptr, VertexShader, RS, DS, PixelShader, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
+	FPipelineInfo PipelineInfo = { nullptr, VertexShader, RS, nullptr, PixelShader, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
 	Pipeline->UpdatePipeline(PipelineInfo);
 
 	FWorldNormalConstants WorldNormalConstants;
 	WorldNormalConstants.RenderTargetSize = FVector2(Context.RenderTargetSize.X, Context.RenderTargetSize.Y);
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPerFrame, WorldNormalConstants);
-	Pipeline->SetConstantBuffer(0, false, ConstantBufferPerFrame);
+	Pipeline->SetConstantBuffer(1, false, ConstantBufferPerFrame);
 	Pipeline->SetTexture(0, false, DeviceResources->GetNormalSRV());
 	Pipeline->SetSamplerState(0, false, SamplerState);
 

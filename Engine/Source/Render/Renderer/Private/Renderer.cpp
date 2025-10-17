@@ -377,11 +377,18 @@ void URenderer::Update()
 
 void URenderer::RenderBegin() const
 {
+	// Clear sRGB RTV (for normal rendering and UI)
 	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
 	GetDeviceContext()->ClearRenderTargetView(RenderTargetView, ClearColor);
 
-	// Clear Normal buffer to black (0,0,0,1) - represents zero/invalid normals
-	float NormalClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	// Clear Linear RTV (for WorldNormal mode)
+	// Both RTVs point to the same backbuffer but with different format interpretations
+	auto* LinearRenderTargetView = DeviceResources->GetFrameBufferLinearRTV();
+	GetDeviceContext()->ClearRenderTargetView(LinearRenderTargetView, ClearColor);
+
+	// Clear Normal buffer to (0.5, 0.5, 0.5, 0) - when decoded becomes (0,0,0) which represents invalid/no normals
+	// Alpha = 0 to indicate no geometry rendered here
+	float NormalClearColor[4] = { 0.5f, 0.5f, 0.5f, 0.0f };
 	auto* NormalRenderTargetView = DeviceResources->GetNormalRenderTargetView();
 	GetDeviceContext()->ClearRenderTargetView(NormalRenderTargetView, NormalClearColor);
 
@@ -390,7 +397,7 @@ void URenderer::RenderBegin() const
 
 	auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
 	GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
-	
+
 
 
     DeviceResources->UpdateViewport();

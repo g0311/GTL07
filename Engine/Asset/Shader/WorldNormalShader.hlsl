@@ -8,9 +8,10 @@
 // ------------------------------------------------
 // Constant Buffers
 // ------------------------------------------------
-cbuffer PerFrameConstants : register(b0)
+cbuffer PerFrameConstants : register(b1)
 {
     float2 RenderTargetSize;
+    float2 Padding;
 };
 
 // ------------------------------------------------
@@ -56,6 +57,14 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 
     // Sample the encoded normal from the texture
     float4 encodedNormal = NormalTexture.Sample(PointSampler, uv);
+
+    // Check if this pixel has valid geometry (alpha != 0)
+    // If alpha is 0, it means no geometry was rendered here (background)
+    if (encodedNormal.a < 0.01f)
+    {
+        // Return background color (black)
+        return float4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
 
     // Decode from [0,1] to [-1,1]
     float3 worldNormal = encodedNormal.rgb * 2.0f - 1.0f;
