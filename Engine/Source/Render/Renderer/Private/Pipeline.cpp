@@ -5,6 +5,7 @@
 UPipeline::UPipeline(ID3D11DeviceContext* InDeviceContext)
 	: DeviceContext(InDeviceContext)
 {
+    // LastPipelineInfo를 유효하지 않은 값으로 초기화하여 첫 UpdatePipeline 호출 시 모든 상태를 강제로 설정
     LastPipelineInfo.InputLayout = (ID3D11InputLayout*)-1;
     LastPipelineInfo.VertexShader = (ID3D11VertexShader*)-1;
     LastPipelineInfo.RasterizerState = (ID3D11RasterizerState*)-1;
@@ -12,6 +13,14 @@ UPipeline::UPipeline(ID3D11DeviceContext* InDeviceContext)
     LastPipelineInfo.PixelShader = (ID3D11PixelShader*)-1;
     LastPipelineInfo.BlendState = (ID3D11BlendState*)-1;
     LastPipelineInfo.Topology = (D3D11_PRIMITIVE_TOPOLOGY)-1;
+
+    // 캐시된 RTV/DSV 상태 초기화
+    for (uint32 i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+    {
+        LastBoundRTVs[i] = (ID3D11RenderTargetView*)-1;
+    }
+    LastBoundDSV = (ID3D11DepthStencilView*)-1;
+    LastBoundNumRTVs = (uint32)-1; // 첫 설정을 강제하기 위해 유효하지 않은 값 사용
 }
 
 UPipeline::~UPipeline()
@@ -94,7 +103,43 @@ void UPipeline::SetSamplerState(uint32 Slot, bool bIsVS, ID3D11SamplerState* Sam
 void UPipeline::SetRenderTargets(uint32 NumViews, ID3D11RenderTargetView* const* RenderTargetViews,
 	ID3D11DepthStencilView* DepthStencilView)
 {
-	DeviceContext->OMSetRenderTargets(NumViews, RenderTargetViews, DepthStencilView);
+    bool changed = false;
+
+    // NumViews 변경 여부 확인
+    if (LastBoundNumRTVs != NumViews)
+    {
+        changed = true;
+    }
+    else
+    {
+        // RTV 변경 여부 확인
+        for (uint32 i = 0; i < NumViews; ++i)
+        {
+            if (LastBoundRTVs[i] != RenderTargetViews[i])
+            {
+                changed = true;
+                break;
+            }
+        }
+        // DSV 변경 여부 확인
+        if (LastBoundDSV != DepthStencilView)
+        {
+            changed = true;
+        }
+    }
+
+    if (changed)
+    {
+	    DeviceContext->OMSetRenderTargets(NumViews, RenderTargetViews, DepthStencilView);
+
+        // 캐시된 상태 업데이트
+        for (uint32 i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+        {
+            LastBoundRTVs[i] = (i < NumViews) ? RenderTargetViews[i] : nullptr;
+        }
+        LastBoundDSV = DepthStencilView;
+        LastBoundNumRTVs = NumViews;
+    }
 }
 
 /// @brief 정점 개수를 기반으로 드로우 호출

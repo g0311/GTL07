@@ -138,9 +138,19 @@ FDecalPass::FDecalPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCame
     ConstantBufferDecal = FRenderResourceFactory::CreateConstantBuffer<FDecalConstants>();
 }
 
+void FDecalPass::PreExecute(FRenderingContext& Context)
+{
+	const auto& Renderer = URenderer::GetInstance();
+	const auto& DeviceResources = Renderer.GetDeviceResources();
+	ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
+	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
+	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
+	Pipeline->SetRenderTargets(2, RTVs, DSV);
+}
+
 void FDecalPass::Execute(FRenderingContext& Context)
 {
-	TIME_PROFILE(DecalPass)
+    TIME_PROFILE(DecalPass)
 
     if (!(Context.ShowFlags & EEngineShowFlags::SF_Decal) || (Context.ViewMode == EViewModeIndex::VMI_SceneDepth)) return;
     
@@ -149,29 +159,29 @@ void FDecalPass::Execute(FRenderingContext& Context)
         DS_Read, PS, BlendState, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
     Pipeline->UpdatePipeline(PipelineInfo);
     Pipeline->SetConstantBuffer(1, true, ConstantBufferCamera);
-
+    
     // --- Decals Stats ---
     uint32 RenderedDecal = 0;
     uint32 CollidedComps = 0;
-    
     TArray<UPrimitiveComponent*>& DynamicPrimitives = GWorld->GetLevel()->GetDynamicPrimitives();
-    
+
     // --- Render Decals ---
+
     for (UDecalComponent* Decal : Context.Decals)
     {
         if (!Decal || !Decal->IsVisible()) { continue; }
-
+        
         const IBoundingVolume* DecalBV = Decal->GetBoundingBox();
         if (!DecalBV || DecalBV->GetType() != EBoundingVolumeType::OBB) { continue; }
+
         RenderedDecal++;
         
         const FOBB* DecalOBB = static_cast<const FOBB*>(DecalBV);
-
         Decal->UpdateProjectionMatrix();
 
         // --- Get Decal Transform ---
         FMatrix View = Decal->GetWorldTransformMatrixInverse();
-
+        
         // --- Update Decal Constant Buffer ---
         FDecalConstants DecalConstants;
         DecalConstants.DecalWorld = Decal->GetWorldTransformMatrix();
@@ -180,14 +190,15 @@ void FDecalPass::Execute(FRenderingContext& Context)
 
         FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferDecal, DecalConstants);
         Pipeline->SetConstantBuffer(2, false, ConstantBufferDecal);
-
+        
         // --- Bind Decal Texture ---
+
         if (UTexture* DecalTexture = Decal->GetTexture())
         {
             Pipeline->SetTexture(0, false, DecalTexture->GetTextureSRV());
             Pipeline->SetSamplerState(0, false, DecalTexture->GetTextureSampler());
         }
-
+        
         if (UTexture* FadeTexture = Decal->GetFadeTexture())
         {
             Pipeline->SetTexture(1, false, FadeTexture->GetTextureSRV());
@@ -195,37 +206,30 @@ void FDecalPass::Execute(FRenderingContext& Context)
         }
 
         TArray<UPrimitiveComponent*> Primitives;
-
         // --- Enable Octree Optimization --- 
         ULevel* CurrentLevel = GWorld->GetLevel();
 
         Query(CurrentLevel->GetStaticOctree(), Decal, Primitives);
         Primitives.insert(Primitives.end(), DynamicPrimitives.begin(), DynamicPrimitives.end());
-
         // --- Disable Octree Optimization --- 
         // Primitives = Context.DefaultPrimitives;
-
+        
         for (UPrimitiveComponent* Prim : Primitives)
         {
             if (!Prim || !Prim->IsVisible() || Prim->IsVisualizationComponent() || !Prim->bReceivesDecals) { continue; }
-
             const IBoundingVolume* PrimBV = Prim->GetBoundingBox();
-        	if (!PrimBV || PrimBV->GetType() != EBoundingVolumeType::AABB) { continue; }
-        
-        	FVector WorldMin, WorldMax;
-        	Prim->GetWorldAABB(WorldMin, WorldMax);
-        	const FAABB WorldAABB(WorldMin, WorldMax);
-        
-        	if (!Intersects(*DecalOBB, WorldAABB))
-        	{
-        		continue;
-        	}
+            if (!PrimBV || PrimBV->GetType() != EBoundingVolumeType::AABB) { continue; }
+            FVector WorldMin, WorldMax; Prim->GetWorldAABB(WorldMin, WorldMax);
+            const FAABB WorldAABB(WorldMin, WorldMax);
+            if (!Intersects(*DecalOBB, WorldAABB))
+            {
+                continue;
+            }
             CollidedComps++;
-
+            
             FModelConstants ModelConstants{ Prim->GetWorldTransformMatrix(), Prim->GetWorldTransformMatrixInverse().Transpose() };
             FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPrim, ModelConstants);
             Pipeline->SetConstantBuffer(0, true, ConstantBufferPrim);
-
             Pipeline->SetVertexBuffer(Prim->GetVertexBuffer(), sizeof(FNormalVertex));
             if (Prim->GetIndexBuffer() && Prim->GetIndicesData())
             {
@@ -240,6 +244,10 @@ void FDecalPass::Execute(FRenderingContext& Context)
     }
 
     UStatOverlay::GetInstance().RecordDecalStats(RenderedDecal, CollidedComps);
+}
+
+void FDecalPass::PostExecute(FRenderingContext& Context)
+{
 }
 
 void FDecalPass::Release()
