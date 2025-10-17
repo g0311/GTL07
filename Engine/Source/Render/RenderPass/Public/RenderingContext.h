@@ -22,5 +22,6 @@ struct FRenderingContext
     TArray<class UUUIDTextComponent*> UUIDs;
     TArray<class UDecalComponent*> Decals;
     TArray<class UPointLightComponent*> PointLights;
+    TArray<class USpotLightComponent*> SpotLights;
     TArray<class UHeightFogComponent*> Fogs;
 };
