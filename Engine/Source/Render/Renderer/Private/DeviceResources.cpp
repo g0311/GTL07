@@ -305,14 +305,14 @@ void UDeviceResources::CreateDepthBuffer()
 	dsDesc.CPUAccessFlags = 0;
 	dsDesc.MiscFlags = 0;
 
-	Device->CreateTexture2D(&dsDesc, nullptr, &DepthBuffer);
+	Device->CreateTexture2D(&dsDesc, nullptr, &DepthStencilBuffer);
 
 	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 	dsvDesc.Texture2D.MipSlice = 0;
 
-	Device->CreateDepthStencilView(DepthBuffer, &dsvDesc, &DepthStencilView);
+	Device->CreateDepthStencilView(DepthStencilBuffer, &dsvDesc, &DepthStencilView);
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
@@ -320,8 +320,7 @@ void UDeviceResources::CreateDepthBuffer()
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = 1;
 
-	Device->CreateShaderResourceView(DepthBuffer, &srvDesc, &DepthBufferSRV);
-	Device->CreateShaderResourceView(DepthBuffer, &srvDesc, &DepthStencilSRV);
+	Device->CreateShaderResourceView(DepthStencilBuffer, &srvDesc, &DepthStencilSRV);
 }
 
 void UDeviceResources::ReleaseDepthBuffer()
@@ -336,15 +335,10 @@ void UDeviceResources::ReleaseDepthBuffer()
 		DepthStencilSRV->Release();
 		DepthStencilSRV = nullptr;
 	}
-	if (DepthBuffer)
+	if (DepthStencilBuffer)
 	{
-		DepthBuffer->Release();
-		DepthBuffer = nullptr;
-	}
-	if (DepthBufferSRV)
-	{
-		DepthBufferSRV->Release();
-		DepthBufferSRV = nullptr;
+		DepthStencilBuffer->Release();
+		DepthStencilBuffer = nullptr;
 	}
 }
 

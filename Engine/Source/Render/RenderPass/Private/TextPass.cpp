@@ -48,6 +48,7 @@ void FTextPass::Execute(FRenderingContext& Context)
     PipelineInfo.RasterizerState = FRenderResourceFactory::GetRasterizerState({ ECullMode::None, EFillMode::Solid });
     PipelineInfo.BlendState = URenderer::GetInstance().GetAlphaBlendState();
     PipelineInfo.DepthStencilState = URenderer::GetInstance().GetDefaultDepthStencilState(); // Or DisabledDepthStencilState based on a flag
+    PipelineInfo.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     Pipeline->UpdatePipeline(PipelineInfo);
     if (!(Context.ShowFlags & EEngineShowFlags::SF_Text)) { return; }
 

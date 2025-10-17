@@ -12,27 +12,43 @@ cbuffer FXAAParams : register(b0)
     float FXAAReduceMin;    // minimum reduce value (ex: 1/128)
 }
 
+cbuffer ViewportInfo : register(b1)
+{
+    float2 RenderTargetSize;
+}
+
 Texture2D SceneColor : register(t0);
 SamplerState SceneSampler : register(s0);
 
-struct VSInput
+struct PSInput
 {
-    float2 Position : POSITION;
-    float2 TexCoord : TEXCOORD0;
+	float4 Position : SV_POSITION;
 };
 
-struct VSOutput
+PSInput mainVS(uint vertexID : SV_VertexID)
 {
-    float4 Position : SV_POSITION;
-    float2 TexCoord : TEXCOORD0;
-};
+    PSInput output;
 
-VSOutput mainVS(VSInput input)
-{
-    VSOutput output;
-    output.Position = float4(input.Position, 0.0f, 1.0f);
-    output.TexCoord = input.TexCoord;
-    return output;
+    // SV_VertexID를 사용하여 화면을 덮는 큰 삼각형의 클립 공간 좌표를 생성
+    // ID가 0일 때: (-1, -1)
+    // ID가 1일 때: ( 3, -1)
+    // ID가 2일 때: (-1,  3)
+    switch (vertexID)
+    {
+    case 0:
+        output.Position = float4(-1.f, -1.f, 0.f, 1.f);
+        break;
+    case 1:
+        output.Position = float4(3.f, -1.f, 0.f, 1.f);
+        break;
+    case 2:
+        output.Position = float4(-1.f, 3.f, 0.f, 1.f);
+        break;
+    default:
+        output.Position = float4(0.f, 0.f, 0.f, 1.f);
+        break;
+    }
+    return output;       
 }
 
 //------------------------------------------------------------------------------
@@ -52,9 +68,9 @@ float Luma(float3 color)
 //------------------------------------------------------------------------------
 // Pixel Shader: Corrected Unreal-style FXAA
 //------------------------------------------------------------------------------
-float4 mainPS(VSOutput input) : SV_Target
+float4 mainPS(PSInput input) : SV_Target
 {
-    float2 tex = input.TexCoord;
+    float2 tex = input.Position.xy / RenderTargetSize;
     float2 inv = InvResolution;
 
     // Fetch 5 samples (center + 4 diagonals)

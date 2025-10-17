@@ -28,7 +28,7 @@ void FSceneDepthPass::Execute(FRenderingContext& Context)
     Pipeline->SetRenderTargets(1, RTVs, nullptr);
     auto RS = FRenderResourceFactory::GetRasterizerState( { ECullMode::None, EFillMode::Solid }); 
 
-    FPipelineInfo PipelineInfo = { nullptr, VertexShader, RS, DS, PixelShader, nullptr };
+    FPipelineInfo PipelineInfo = { nullptr, VertexShader, RS, DS, PixelShader, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
     Pipeline->UpdatePipeline(PipelineInfo);
 
     FSceneDepthConstants SceneDepthConstants;
@@ -37,7 +37,7 @@ void FSceneDepthPass::Execute(FRenderingContext& Context)
     FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPerFrame, SceneDepthConstants);
     Pipeline->SetConstantBuffer(0, false, ConstantBufferPerFrame);
     Pipeline->SetConstantBuffer(1, false, ConstantBufferCamera);
-    Pipeline->SetTexture(0, false, DeviceResources->GetDepthSRV());
+    Pipeline->SetTexture(0, false, DeviceResources->GetDepthStencilSRV());
     Pipeline->SetSamplerState(0, false, SamplerState);
 
     Pipeline->Draw(3, 0);
