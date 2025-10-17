@@ -24,7 +24,9 @@ FFXAAPass::~FFXAAPass()
 
 void FFXAAPass::PreExecute(FRenderingContext& Context)
 {
-    
+    // Set Render Target to Back Buffer
+    ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferRTV(); // 스왑체인 RTV
+    Pipeline->SetRenderTargets(1, &RTV, nullptr);
 }
 
 void FFXAAPass::Execute(FRenderingContext& Context)
@@ -34,7 +36,6 @@ void FFXAAPass::Execute(FRenderingContext& Context)
     if (!(Context.ShowFlags & EEngineShowFlags::SF_FXAA)) return;
 
     UpdateConstants(Context);
-    SetRenderTargets();
 
     FPipelineInfo PipelineInfo = {};
     PipelineInfo.InputLayout = InputLayout;
@@ -54,7 +55,10 @@ void FFXAAPass::Execute(FRenderingContext& Context)
     Pipeline->SetSamplerState(0, false, SamplerState);
 
     Pipeline->Draw(3, 0);
+}
 
+void FFXAAPass::PostExecute(FRenderingContext& Context)
+{
     // 정리
     Pipeline->SetTexture(0, false, nullptr);
 }
@@ -78,13 +82,4 @@ void FFXAAPass::UpdateConstants(FRenderingContext& Context)
     FFXAAViewportConstants ViewportConstants;
     ViewportConstants.RenderTargetSize = { Context.RenderTargetSize.X, Context.RenderTargetSize.Y };
     FRenderResourceFactory::UpdateConstantBufferData(FXAAViewportBuffer, ViewportConstants);
-}
-
-void FFXAAPass::SetRenderTargets()
-{
-    ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferRTV(); // 스왑체인 RTV
-    DeviceResources->GetDeviceContext()->OMSetRenderTargets(1, &RTV, nullptr);
-
-    // const D3D11_VIEWPORT& VP = DeviceResources->GetViewportInfo();
-    // DeviceResources->GetDeviceContext()->RSSetViewports(1, &VP);
 }

@@ -38,6 +38,17 @@ FTextPass::FTextPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCamera
     FontTexture = ResourceManager.LoadTexture("Data/Texture/DejaVu Sans Mono.png");
 }
 
+void FTextPass::PreExecute(FRenderingContext& Context)
+{
+    const auto& Renderer = URenderer::GetInstance();
+    const auto& DeviceResources = Renderer.GetDeviceResources();
+    ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
+
+    ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
+    ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
+    Pipeline->SetRenderTargets(2, RTVs, DSV);
+}
+
 void FTextPass::Execute(FRenderingContext& Context)
 {
     // Set up pipeline
@@ -76,6 +87,10 @@ void FTextPass::Execute(FRenderingContext& Context)
         FString UUIDString = "UID: " + std::to_string(PickedBillboard->GetUUID());
         RenderTextInternal(UUIDString, PickedBillboard->GetRTMatrix());
     }
+}
+
+void FTextPass::PostExecute(FRenderingContext& Context)
+{
 }
 
 void FTextPass::RenderTextInternal(const FString& Text, const FMatrix& WorldMatrix)

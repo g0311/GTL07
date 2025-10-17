@@ -13,6 +13,16 @@ FBillboardPass::FBillboardPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBu
     BillboardMaterialConstants.Kd = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
+void FBillboardPass::PreExecute(FRenderingContext& Context)
+{
+	const auto& Renderer = URenderer::GetInstance();
+	const auto& DeviceResources = Renderer.GetDeviceResources();
+	ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
+	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
+	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
+	Pipeline->SetRenderTargets(2, RTVs, DSV);
+}
+
 void FBillboardPass::Execute(FRenderingContext& Context)
 {
     FRenderState RenderState = UBillBoardComponent::GetClassDefaultRenderState();
@@ -79,6 +89,10 @@ void FBillboardPass::Execute(FRenderingContext& Context)
         Pipeline->DrawIndexed(BillBoardComp->GetNumIndices(), 0, 0);
     }
 
+}
+
+void FBillboardPass::PostExecute(FRenderingContext& Context)
+{
 }
 
 void FBillboardPass::Release()

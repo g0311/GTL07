@@ -7,7 +7,9 @@ class FBillboardPass : public FRenderPass
 public:
     FBillboardPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCamera, ID3D11Buffer* InConstantBufferModel,
         ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS, ID3D11BlendState* InBS);
+    void PreExecute(FRenderingContext& Context) override;
     void Execute(FRenderingContext& Context) override;
+    void PostExecute(FRenderingContext& Context) override;
     void Release() override;
 
 private:

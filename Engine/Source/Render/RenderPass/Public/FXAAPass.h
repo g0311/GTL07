@@ -47,9 +47,10 @@ public:
 	 * @brief FXAA 렌더링 패스를 실행합니다.
 	 * @param Context 렌더링 컨텍스트입니다.
 	 */
-	void PreExecute(FRenderingContext& Context);
+	void PreExecute(FRenderingContext& Context) override;
 	void Execute(FRenderingContext& Context) override;
-
+	void PostExecute(FRenderingContext& Context) override;
+    
 	/**
 	 * @brief FXAAPass에서 사용된 리소스를 해제합니다.
 	 */
