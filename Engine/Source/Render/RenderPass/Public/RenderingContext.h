@@ -23,4 +23,5 @@ struct FRenderingContext
     TArray<class UDecalComponent*> Decals;
     TArray<class UFakePointLightComponent*> PointLights;
     TArray<class UHeightFogComponent*> Fogs;
+    TArray<class ULightComponent*> Lights;
 };

@@ -47,6 +47,18 @@ struct FMaterialConstants
 	float Time; // Time in seconds
 };
 
+struct FLight
+{
+	unsigned long long Count;
+	float Intensity[8];
+	FVector4 Light[8];
+};
+
+struct FLightConstants
+{
+	FLight AmbientLight;
+};
+
 struct FVertex
 {
 	FVector Position;

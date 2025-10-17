@@ -92,6 +92,7 @@ PS_OUTPUT mainPS(PS_INPUT input) : SV_TARGET
 	float4 ambientColor = Ka;
 	if (MaterialFlags & HAS_AMBIENT_MAP)
 	{
+		// Material Ambient Reflectance
 		ambientColor *= AmbientTexture.Sample(SamplerWrap, UV);
 	}
 

@@ -16,4 +16,5 @@ private:
     ID3D11DepthStencilState* DS = nullptr;
     
     ID3D11Buffer* ConstantBufferMaterial = nullptr;
+    ID3D11Buffer* ConstantBufferLight = nullptr;
 };

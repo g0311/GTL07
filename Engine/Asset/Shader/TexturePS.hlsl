@@ -1,6 +1,12 @@
 #include "TextureVS.hlsl"
 
-cbuffer MaterialConstants : register(b2)
+struct FAmbientLightInfo
+{
+    float4 AmbientColor;
+    float Intensity;
+};
+
+cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
 {
     float4 Ka;		// Ambient color
     float4 Kd;		// Diffuse color
@@ -10,6 +16,12 @@ cbuffer MaterialConstants : register(b2)
     float D;		// Dissolve factor
     uint MaterialFlags;	// Which textures are available (bitfield)
     float Time;
+};
+
+cbuffer Lighting : register(b3)
+{
+    int AmbientCount;
+    FAmbientLightInfo Ambient[8];
 };
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
@@ -54,9 +66,18 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float4 AmbientColor = Ka;
     if (MaterialFlags & HAS_AMBIENT_MAP)
     {
-        AmbientColor *= AmbientTexture.Sample(SamplerWrap, UV);
+        // Material Ambient Reflection
+        AmbientColor *= AmbientTexture.Sample(SamplerWrap, UV); 
     }
+    // Add Ambient Light  from cbuffer
+    float4 AccumulatedAmbientColor = 0;
+    for (int i = 0; i < AmbientCount; i++)
+    {
+        AccumulatedAmbientColor+= Ambient[i].AmbientColor*Ambient[i].Intensity;
+    }
+    AmbientColor *= AccumulatedAmbientColor;   
 
+    // Add Final Color 
     FinalColor.rgb = DiffuseColor.rgb + AmbientColor.rgb;
 
     // Alpha handling

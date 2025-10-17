@@ -37,6 +37,7 @@ public:
 	void CreateConstantBuffers();
 	void CreateCopyShader();
 	void CreateFXAAShader();
+	void CreateUberShader();
 	
 	
 	// Release
@@ -114,8 +115,6 @@ private:
 	ID3D11PixelShader* FXAAPixelShader = nullptr;
 	ID3D11InputLayout* FXAAInputLayout = nullptr;
 	ID3D11SamplerState* FXAASamplerState = nullptr;
-
-
 	
 	// Texture Shaders
 	ID3D11VertexShader* TextureVertexShader = nullptr;
@@ -137,6 +136,12 @@ private:
 	ID3D11PixelShader* FogPixelShader = nullptr;
 	ID3D11InputLayout* FogInputLayout = nullptr;
 	ID3D11SamplerState* DefaultSampler = nullptr;
+
+	// Uber Shaders
+	ID3D11VertexShader* UberVertexShader = nullptr;
+	ID3D11PixelShader*  UberPixelShader = nullptr;
+	ID3D11InputLayout*  UberInputLayout = nullptr;
+	ID3D11SamplerState* UberSampler = nullptr;
 	
 	uint32 Stride = 0;
 
