@@ -28,10 +28,9 @@ void FWorldNormalPass::PreExecute(FRenderingContext& Context)
 	// This is necessary because StaticMeshPass binds NormalRTV, and we can't read from a bound RTV
 	Pipeline->SetRenderTargets(0, nullptr, nullptr);
 
-	// Render directly to FrameBuffer to avoid CopyPass
-	// WorldNormal data is directional vectors, not colors, so we bypass the SceneColor intermediate buffer
-	// This prevents the automatic linear→sRGB conversion that would occur in CopyPass
-	ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();
+	// Render directly to FrameBuffer using Linear RTV (UNORM format, no sRGB conversion)
+	// WorldNormal data is directional vectors, not colors, so must remain linear
+	ID3D11RenderTargetView* RTV = DeviceResources->GetFrameBufferLinearRTV();
 	Pipeline->SetRenderTargets(1, &RTV, nullptr);
 }
 
