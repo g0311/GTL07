@@ -3,7 +3,7 @@
 #include "Component/Mesh/Public/StaticMeshComponent.h"
 #include "Component/Public/DecalComponent.h"
 #include "Component/Public/HeightFogComponent.h"
-#include "Component/Public/PointLightComponent.h"
+#include "Component/Public/FakePointLightComponent.h"
 #include "Component/Public/PrimitiveComponent.h"
 #include "Component/Public/UUIDTextComponent.h"
 #include "Editor/Public/Camera.h"
