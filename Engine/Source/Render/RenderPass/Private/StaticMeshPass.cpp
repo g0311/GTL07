@@ -12,6 +12,17 @@ FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstant
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
 }
 
+void FStaticMeshPass::PreExecute(FRenderingContext& Context)
+{
+	const auto& Renderer = URenderer::GetInstance();
+	const auto& DeviceResources = Renderer.GetDeviceResources();
+	ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
+
+	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
+	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
+	Pipeline->SetRenderTargets(2, RTVs, DSV);
+}
+
 void FStaticMeshPass::Execute(FRenderingContext& Context)
 {
 	FRenderState RenderState = UStaticMeshComponent::GetClassDefaultRenderState();
@@ -41,21 +52,6 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 
 	FStaticMesh* CurrentMeshAsset = nullptr;
 	UMaterial* CurrentMaterial = nullptr;
-
-	// --- RTVs Setup ---
-	
-	/**
-	 * @todo Find a better way to reduce depdency upon Renderer class.
-	 * @note How about introducing methods like BeginPass(), EndPass() to set up and release pass specific state?
-	 */
-	const auto& Renderer = URenderer::GetInstance();
-	const auto& DeviceResources = Renderer.GetDeviceResources();
-	ID3D11RenderTargetView* RTV = nullptr;
-	RTV = DeviceResources->GetSceneColorRenderTargetView();	
-
-	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
-	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
-	Pipeline->SetRenderTargets(2, RTVs, DSV);
 
 	// --- RTVs Setup End ---
 
@@ -132,17 +128,16 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 			Pipeline->DrawIndexed(Section.IndexCount, Section.StartIndex, 0);
 		}
 	}
-	Pipeline->SetConstantBuffer(2, false, nullptr);
+}
 
-	
-	// --- RTVs Reset ---
-	
-	/**
-	 * @todo Find a better way to reduce depdency upon Renderer class.
-	 * @note How about introducing methods like BeginPass(), EndPass() to set up and release pass specific state?
-	 */
-	Pipeline->SetRenderTargets(1, RTVs, DSV);
-
+void FStaticMeshPass::PostExecute(FRenderingContext& Context)
+{
+	Pipeline->SetTexture(0, false, nullptr);
+	Pipeline->SetTexture(1, false, nullptr);
+	Pipeline->SetTexture(2, false, nullptr);
+	Pipeline->SetTexture(3, false, nullptr);
+	Pipeline->SetTexture(4, false, nullptr);
+	Pipeline->SetTexture(5, false, nullptr);
 	// --- RTVs Reset End ---
 }
 

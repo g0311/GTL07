@@ -39,7 +39,9 @@ public:
         ID3D11DepthStencilState* InDS_Read,
         ID3D11BlendState* InBlendState);
     
+    void PreExecute(FRenderingContext& Context) override;
     void Execute(FRenderingContext& Context) override;
+    void PostExecute(FRenderingContext& Context) override;
     void Release() override;
 
 private:

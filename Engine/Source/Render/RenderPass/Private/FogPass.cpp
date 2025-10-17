@@ -16,6 +16,15 @@ FFogPass::FFogPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferViewProj
     ConstantBufferViewportInfo = FRenderResourceFactory::CreateConstantBuffer<FViewportConstants>();
 }
 
+void FFogPass::PreExecute(FRenderingContext& Context)
+{
+    const auto& Renderer = URenderer::GetInstance();
+    const auto& DeviceResources = Renderer.GetDeviceResources();
+    ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
+    ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
+    Pipeline->SetRenderTargets(2, RTVs, nullptr);
+}
+
 void FFogPass::Execute(FRenderingContext& Context)
 {
     TIME_PROFILE(FogPass)
@@ -24,19 +33,6 @@ void FFogPass::Execute(FRenderingContext& Context)
 
     //--- Get Renderer Singleton ---//
     URenderer& Renderer = URenderer::GetInstance();
-
-    //--- Detatch DSV from GPU ---//
-    ID3D11RenderTargetView* RTV;
-    if (!(Context.ShowFlags & EEngineShowFlags::SF_FXAA))
-    {
-        RTV = Renderer.GetDeviceResources()->GetFrameBufferRTV();
-    }
-    else
-    {
-        RTV = Renderer.GetDeviceResources()->GetSceneColorRenderTargetView();
-    }
-    auto* DSV = Renderer.GetDeviceResources()->GetDepthStencilView();
-    Renderer.GetDeviceContext()->OMSetRenderTargets(1, &RTV, nullptr);
     
     // --- Set Pipeline State --- //
     FPipelineInfo PipelineInfo = { InputLayout, VS, FRenderResourceFactory::GetRasterizerState({ ECullMode::Back, EFillMode::Solid }),
@@ -79,9 +75,11 @@ void FFogPass::Execute(FRenderingContext& Context)
 
         Pipeline->Draw(3,0);
     }
+}
+
+void FFogPass::PostExecute(FRenderingContext& Context)
+{
     Pipeline->SetTexture(0, false, nullptr);
-    
-    Renderer.GetDeviceContext()->OMSetRenderTargets(1, &RTV, DSV);
 }
 
 void FFogPass::Release()
