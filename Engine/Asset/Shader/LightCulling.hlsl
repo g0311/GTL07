@@ -63,7 +63,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     }
     GroupMemoryBarrierWithGroupSync();
 
-    // Step 1: 현재 타일 프러스텀 계산
+    // Step 1: 타일 프러스텀 계산 (뷰 스페이스에서)
     // 뷰포트 오프셋을 고려한 스크린 좌표 계산
     uint2 actualTileMin = max(tileMinBound, ViewportOffset);
     uint2 actualTileMax = min(tileMaxBound, ViewportOffset + ViewportSize);
@@ -78,38 +78,26 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         1.0f - (2.0f * actualTileMax.y) / ScreenDimensions.y
     );
     
-    // 프러스텀 평면 계산 (뷰 스페이스에서)
-    matrix invProj = transpose(Projection); // 역행렬 근사치 (단순화를 위해)
+    // 뷰 스페이스에서 프러스텀 계삵 (단순화된 방법)
+    // 프로젝션 매트릭스에서 FOV 정보 추출
+    float tanHalfFovY = 1.0f / Projection[1][1];
+    float tanHalfFovX = 1.0f / Projection[0][0];
     
-    // 타일의 4개 모서리 좌표를 뷰 스페이스로 변환
-    float3 frustumCorners[4];
-    frustumCorners[0] = float3(tileMinNDC.x, tileMinNDC.y, 1.0f); // Near top-left
-    frustumCorners[1] = float3(tileMaxNDC.x, tileMinNDC.y, 1.0f); // Near top-right
-    frustumCorners[2] = float3(tileMinNDC.x, tileMaxNDC.y, 1.0f); // Near bottom-left
-    frustumCorners[3] = float3(tileMaxNDC.x, tileMaxNDC.y, 1.0f); // Near bottom-right
+    // 타일 경계를 뷰 스페이스 방향벡터로 변환
+    float2 tileScale = float2(ScreenDimensions) * rcp(float(2 * TILE_SIZE));
+    float2 tileBias = tileScale - float2(Gid.xy);
     
-    // 프러스텀 평면들 계산 (Left, Right, Top, Bottom)
+    float4 c1 = float4(-1.0f * tanHalfFovX * tileBias.x, -1.0f * tanHalfFovY * tileBias.y, 1.0f, 0.0f);
+    float4 c2 = float4( 1.0f * tanHalfFovX * (tileScale.x - tileBias.x), -1.0f * tanHalfFovY * tileBias.y, 1.0f, 0.0f);
+    float4 c3 = float4(-1.0f * tanHalfFovX * tileBias.x,  1.0f * tanHalfFovY * (tileScale.y - tileBias.y), 1.0f, 0.0f);
+    float4 c4 = float4( 1.0f * tanHalfFovX * (tileScale.x - tileBias.x),  1.0f * tanHalfFovY * (tileScale.y - tileBias.y), 1.0f, 0.0f);
+    
+    // 프러스텀 평면 계산 (뷰 스페이스)
     float4 frustumPlanes[4];
-    
-    // Left plane: 왼쪽 모서리에서
-    float3 leftNormal = cross(frustumCorners[0], frustumCorners[2]);
-    leftNormal = normalize(leftNormal);
-    frustumPlanes[0] = float4(leftNormal, 0);
-    
-    // Right plane: 오른쪽 모서리에서
-    float3 rightNormal = cross(frustumCorners[3], frustumCorners[1]);
-    rightNormal = normalize(rightNormal);
-    frustumPlanes[1] = float4(rightNormal, 0);
-    
-    // Top plane: 위쪽 모서리에서
-    float3 topNormal = cross(frustumCorners[1], frustumCorners[0]);
-    topNormal = normalize(topNormal);
-    frustumPlanes[2] = float4(topNormal, 0);
-    
-    // Bottom plane: 아래쪽 모서리에서
-    float3 bottomNormal = cross(frustumCorners[2], frustumCorners[3]);
-    bottomNormal = normalize(bottomNormal);
-    frustumPlanes[3] = float4(bottomNormal, 0);
+    frustumPlanes[0] = float4(normalize(cross(c1.xyz, c3.xyz)), 0.0f); // Left
+    frustumPlanes[1] = float4(normalize(cross(c4.xyz, c2.xyz)), 0.0f); // Right  
+    frustumPlanes[2] = float4(normalize(cross(c2.xyz, c1.xyz)), 0.0f); // Top
+    frustumPlanes[3] = float4(normalize(cross(c3.xyz, c4.xyz)), 0.0f); // Bottom
     
     // Step 2: 프러스텀과 라이트 교차 여부 검사
     const uint threadsPerGroup = TILE_SIZE * TILE_SIZE;
@@ -172,16 +160,12 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
             // 추가 검사: 컨 방향과 타일 중심 간의 각도 검사
             if (isVisible)
             {
-                // 타일 중심에서 라이트로의 벡터
-                float2 tileCenter = (actualTileMin + actualTileMax) * 0.5;
-                float2 tileCenterNDC = float2(
-                    (2.0f * tileCenter.x) / ScreenDimensions.x - 1.0f,
-                    1.0f - (2.0f * tileCenter.y) / ScreenDimensions.y
-                );
-                float3 tileCenterView = float3(tileCenterNDC.x, tileCenterNDC.y, 1.0f); // 근사치
+                // 타일 중심을 뷰 스페이스로 근사 (더 정확한 방법 필요)
+                float3 tileCenterView = (c1.xyz + c2.xyz + c3.xyz + c4.xyz) * 0.25f;
+                tileCenterView = normalize(tileCenterView);
                 
-                float3 lightToTile = normalize(tileCenterView - lightPosView.xyz);
-                float dotProduct = dot(lightDirView, lightToTile);
+                float3 lightToTile = normalize(tileCenterView);
+                float dotProduct = dot(-lightDirView, lightToTile); // 라이트 방향의 역방향
                 
                 // 컨 범위를 벗어난 경우
                 if (dotProduct < cosOuterAngle)
