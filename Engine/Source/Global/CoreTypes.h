@@ -86,6 +86,7 @@ struct FRenderState
 {
 	ECullMode CullMode = ECullMode::None;
 	EFillMode FillMode = EFillMode::Solid;
+	EBlendMode BlendMode = EBlendMode::Opaque;
 };
 
 /**

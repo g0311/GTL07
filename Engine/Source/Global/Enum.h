@@ -144,6 +144,14 @@ enum class EFillMode : uint8_t
 	End = 0xFF
 };
 
+enum class EBlendMode : uint8_t
+{
+	Opaque,
+	Transparent,
+	
+	End = 0xFF
+};
+
 enum class EViewModeIndex : uint32
 {
 	VMI_Lit,
