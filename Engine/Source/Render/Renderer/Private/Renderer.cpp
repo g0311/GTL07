@@ -60,6 +60,9 @@ void URenderer::Init(HWND InWindowHandle)
 
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
+	//ADD Light Cull Pass
+	
+	
 	FStaticMeshPass* StaticMeshPass = new FStaticMeshPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
 		TextureVertexShader, TexturePixelShader, TextureInputLayout, DefaultDepthStencilState);
 	RenderPasses.push_back(StaticMeshPass);
@@ -529,8 +532,8 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight) const
         UE_LOG("OnResize Failed");
         return;
     }
-
 	DeviceResources->UpdateViewport();
+	
     DeviceResources->CreateSceneColorTarget();
 	DeviceResources->CreateFrameBuffer();
 	DeviceResources->CreateDepthBuffer();
