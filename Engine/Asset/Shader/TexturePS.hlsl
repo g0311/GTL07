@@ -169,6 +169,13 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
+
+    float3 Diffuse;
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        // AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
+        Diffuse = DiffuseTexture.Sample(SamplerWrap, UV);
+    }
     
     // Ambient contribution
     float3 AmbientColor = CalculateAmbientFactor(UV).rgb;
@@ -205,7 +212,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     }
     // Final Color
     float4 FinalColor;
-    FinalColor.rgb = AmbientColor + SpotlightColor + DirectLighting + PointLighting;
+    FinalColor.rgb = AmbientColor + Diffuse * (SpotlightColor + DirectLighting + PointLighting);
     FinalColor.a = 1.0f;
     Output.SceneColor = FinalColor;
     
