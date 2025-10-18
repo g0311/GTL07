@@ -1,6 +1,7 @@
 cbuffer Model : register(b0)
 {
 	row_major float4x4 World;
+	row_major float4x4 WorldInverseTranspose;
 }
 
 cbuffer Camera : register(b1)
@@ -39,20 +40,15 @@ PS_INPUT mainVS(VS_INPUT Input)
 	Output.WorldPosition = mul(float4(Input.Position, 1.0f), World).xyz;
 	Output.Position = mul(mul(mul(float4(Input.Position, 1.0f), World), View), Projection);
 
-	// Transform normal to world space
-	float3 WorldNormal = mul(Input.Normal, (float3x3)World);
-	float NormalLength = length(WorldNormal);
-	Output.WorldNormal = (NormalLength > 0.0001f) ? (WorldNormal / NormalLength) : float3(0.0f, 0.0f, 1.0f);
+	// Transform normal to world space using inverse transpose for non-uniform scale
+	// Do NOT normalize here - let GPU interpolate, then normalize in PS
+	Output.WorldNormal = mul(Input.Normal, (float3x3)WorldInverseTranspose);
 
-	// Transform tangent to world space
-	float3 WorldTangent = mul(Input.Tangent, (float3x3)World);
-	float TangentLength = length(WorldTangent);
-	Output.WorldTangent = (TangentLength > 0.0001f) ? (WorldTangent / TangentLength) : float3(1.0f, 0.0f, 0.0f);
+	// Transform tangent to world space using inverse transpose
+	Output.WorldTangent = mul(Input.Tangent, (float3x3)WorldInverseTranspose);
 
-	// Transform bitangent to world space
-	float3 WorldBitangent = mul(Input.Bitangent, (float3x3)World);
-	float BitangentLength = length(WorldBitangent);
-	Output.WorldBitangent = (BitangentLength > 0.0001f) ? (WorldBitangent / BitangentLength) : float3(0.0f, 1.0f, 0.0f);
+	// Transform bitangent to world space using inverse transpose
+	Output.WorldBitangent = mul(Input.Bitangent, (float3x3)WorldInverseTranspose);
 
 	Output.Tex = Input.Tex;
 

@@ -508,8 +508,10 @@ void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const
     Pipeline->UpdatePipeline(PipelineInfo);
 
     // Update constant buffers
-	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModels,
-		FMatrix::GetModelMatrix(InPrimitive.Location, InPrimitive.Rotation, InPrimitive.Scale));
+	FMatrix WorldMatrix = FMatrix::GetModelMatrix(InPrimitive.Location, InPrimitive.Rotation, InPrimitive.Scale);
+	FMatrix WorldInverseTranspose = FMatrix::GetModelMatrixInverse(InPrimitive.Location, InPrimitive.Rotation, InPrimitive.Scale).Transpose();
+	FModelConstants ModelConstants{ WorldMatrix, WorldInverseTranspose };
+	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModels, ModelConstants);
 	Pipeline->SetConstantBuffer(0, true, ConstantBufferModels);
 	Pipeline->SetConstantBuffer(1, true, ConstantBufferViewProj);
 	
@@ -569,7 +571,7 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight) const
 
 void URenderer::CreateConstantBuffers()
 {
-	ConstantBufferModels = FRenderResourceFactory::CreateConstantBuffer<FMatrix>();
+	ConstantBufferModels = FRenderResourceFactory::CreateConstantBuffer<FModelConstants>();
 	ConstantBufferColor = FRenderResourceFactory::CreateConstantBuffer<FVector4>();
 	ConstantBufferViewProj = FRenderResourceFactory::CreateConstantBuffer<FCameraConstants>();
 }
