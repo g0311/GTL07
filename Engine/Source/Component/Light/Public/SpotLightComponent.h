@@ -12,30 +12,44 @@ public:
 	UClass* GetSpecificWidgetClass() const override;
 	
 	void SetRange(float InRange) { Range = InRange; }
-	void SetOuterAngle(float InOutAngle) { OuterConeAngle = InOutAngle; }
-	void SetInnerAngle(float InInnerAngle) { InnerConeAngle = InInnerAngle; }
+	void SetOuterAngleRad(float InOutAngleRad) { OuterConeAngleRad = InOutAngleRad; }
+	void SetInnerAngleRad(float InInnerAngleRad) { InnerConeAngleRad = InInnerAngleRad; }
 	void SetFalloff(float InFalloff) { Light.Falloff = InFalloff; }
 
 	float GetRange() { return Range; }
-	float GetInnerConeAngle() { return InnerConeAngle; }
-	float GetOuterConeAngle() { return OuterConeAngle; }
+	float GetInnerConeAngleRad() { return InnerConeAngleRad; }
+	float GetOuterConeAngleRad() { return OuterConeAngleRad; }
 	
 	/* Todo : rename & 통일 Method name && set Dirty Bit*/
 	FSpotLight GetSpotInfo()
 	{
-		Light.Position = GetRelativeLocation();
+		// Use World coordinates for shader calculations
+		Light.Position = GetWorldLocation();
 		Light.InvRange2 = 1/(Range*Range);
 		Light.Direction = GetWorldRotationAsQuaternion().RotateVector(FVector(1,0,0));
-		Light.CosInner = cos(InnerConeAngle);
-		Light.CosOuter = cos(OuterConeAngle);
+		
+		Light.CosInner = cos(InnerConeAngleRad);
+		Light.CosOuter = cos(OuterConeAngleRad);
+		
+		if (Light.CosOuter > Light.CosInner)
+		{
+			float temp = Light.CosOuter;
+			Light.CosOuter = Light.CosInner;
+			Light.CosInner = temp;
+
+			float temp2 = InnerConeAngleRad;
+			InnerConeAngleRad = OuterConeAngleRad;
+			OuterConeAngleRad = temp2;
+		}
+
 		Light.Color = Color;
 		Light.Intensity = Intensity;
 		return Light;
 	}
-	
+
 private:
-	float InnerConeAngle;
-	float OuterConeAngle;
+	float InnerConeAngleRad = 0.0f; // Stored in radians
+	float OuterConeAngleRad = 0.785398f; // 45 degrees default, stored in radians
 	float Range = 50.0f;
 
 	FSpotLight Light;
