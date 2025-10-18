@@ -71,7 +71,12 @@ void UImGuiHelper::BeginFrame() const
 	{
 		return;
 	}
-
+	
+	// Set Render Target to Back Buffer
+	// @TODO 종속성 관리 필
+	ID3D11RenderTargetView* RTV = URenderer::GetInstance().GetDeviceResources()->GetFrameBufferRTV();
+	URenderer::GetInstance().GetPipeline()->SetRenderTargets(1, &RTV, nullptr);
+	
 	// Get New Frame
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
