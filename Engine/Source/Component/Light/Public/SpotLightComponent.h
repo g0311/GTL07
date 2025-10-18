@@ -28,13 +28,15 @@ public:
 		Light.Direction = GetWorldRotationAsQuaternion().RotateVector(FVector(1,0,0));
 		Light.CosInner = cos(InnerConeAngle);
 		Light.CosOuter = cos(OuterConeAngle);
+		Light.Color = Color;
+		Light.Intensity = Intensity;
 		return Light;
 	}
 	
 private:
 	float InnerConeAngle;
 	float OuterConeAngle;
-	float Range;
+	float Range = 50.0f;
 
 	FSpotLight Light;
 };

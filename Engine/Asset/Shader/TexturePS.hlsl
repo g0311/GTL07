@@ -89,12 +89,14 @@ float3 CalculateSpotlightFactors(float3 Position, float3 Norm, float3 ViewDir, f
     float3 AccumulatedSpotlightColor = 0;
     for (int i = 0; i < SpotlightCount; i++)
     {
-        float3 LightDir = normalize(Spotlight[i].Position - Position);
+        float3 LightVec = Spotlight[i].Position - Position;
+        float Distance = length(LightVec);
+        float3 LightDir = LightVec / Distance;
 
         // Attenuation : Range & Cone(Cos)
-        float RangeAttenuation = saturate(1.0 - length(LightDir) * Spotlight[i].InvRange2);
+        float RangeAttenuation = saturate(1.0 - Distance * Distance * Spotlight[i].InvRange2);
         
-        float SpotLightCos = dot(LightDir, normalize(Spotlight[i].Direction));
+        float SpotLightCos = dot(-LightDir, normalize(Spotlight[i].Direction));
         float ConeWidth = max(Spotlight[i].CosInner - Spotlight[i].CosOuter, 1e-5);
         float SpotRatio = saturate((SpotLightCos - Spotlight[i].CosOuter) / ConeWidth);
         SpotRatio = pow(SpotRatio, max(Spotlight[i].Falloff, 0.0));
@@ -137,14 +139,14 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     
     // Ambient contribution
     float3 AmbientColor = CalculateAmbientFactor(UV).rgb;
-    //
-    // // Spotlight contribution
-    // float3 SpotlightColor = CalculateSpotlightFactors(Input.WorldPosition, Norm, ViewDir, kD, kS, Ns);
-    //
-    // float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
-    // FinalColor.rgb = AmbientColor + SpotlightColor;
-    //
-    // // Alpha handling
+    
+    // Spotlight contribution
+    float3 SpotlightColor = CalculateSpotlightFactors(Input.WorldPosition, Norm, ViewDir, kD, kS, Ns);
+    
+    float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
+    FinalColor.rgb = AmbientColor + SpotlightColor;
+    
+    // Alpha handling
     // /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
     // if (MaterialFlags & HAS_DIFFUSE_MAP)
     // {
@@ -152,8 +154,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     //     FinalColor.a = D * alpha;
     // }
 
-    // Output.SceneColor = FinalColor;
-    Output.SceneColor.rgb = AmbientColor;
+    Output.SceneColor = FinalColor;
     Output.SceneColor.a = 1.0;
     float3 EncodedNormal = normalize(Norm) * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
