@@ -122,16 +122,16 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				{
 					if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Context.Lights[i]))
 					{
-						int Idx = LightConstants.AmbientCount;
-						LightConstants.AmbientLight[Idx].Intensity = Ambient->GetIntensity(); 
-						LightConstants.AmbientLight[Idx].Color = Ambient->GetColor();
-						LightConstants.AmbientCount++;
+						int Idx = LightConstants.NumAmbientLights;
+						LightConstants.AmbientLights[Idx].Intensity = Ambient->GetIntensity(); 
+						LightConstants.AmbientLights[Idx].Color = Ambient->GetColor();
+						LightConstants.NumAmbientLights++;
 					}
 					else if (USpotLightComponent* Spotlight = Cast<USpotLightComponent>(Context.Lights[i]))
 					{
-						int Idx = LightConstants.SpotlightCount;
-						LightConstants.SpotLight[Idx] = Spotlight->GetSpotInfo();
-						LightConstants.SpotlightCount++;
+						int Idx = LightConstants.NumSpotLights;
+						LightConstants.SpotLights[Idx] = Spotlight->GetSpotInfo();
+						LightConstants.NumSpotLights++;
 					}
 				}
 				

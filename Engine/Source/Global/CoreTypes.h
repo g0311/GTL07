@@ -53,44 +53,33 @@ struct FMaterialConstants
 	float Time; // Time in seconds
 };
 
-struct FLight
+#define MAX_POINT_LIGHTS 8
+#define MAX_SPOT_LIGHTS 8
+
+struct FAmbientLightData
 {
 	FVector4 Color;
 	float Intensity;
-	FVector   _pad0; 
+	FVector _padding;
 };
 
-struct FSpotLight
+struct FSpotLightData
 {
 	FVector4 Color;
-	
 	float Intensity;
 	FVector Position;
-
 	FVector Direction;
-	float InvRange2;// 1/(Range*Range) : Spotlight Range
-
-	float Falloff;  // Inner Cone부터 Outer Cone까지 범위의 감쇠율
-	float CosOuter;   // Spotlight의 바깥 Cone
-	float CosInner; // Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
-	float   _pad0;
-};
-
-struct FLightConstantss
-{
-	int AmbientCount;
-	FVector _pad0;
-	FLight AmbientLight[8];
-
-	int SpotlightCount;
-	FVector _pad1;
-	FSpotLight SpotLight[8];
+	float InvRange2;	// 1/(Range*Range) : Spotlight Range
+	float Falloff;		// Inner Cone부터 Outer Cone까지 범위의 감쇠율
+	float CosOuter;		// Spotlight의 바깥 Cone
+	float CosInner;		// Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
+	float _padding;
 };
 
 struct FDirectionalLightData
 {
 	FVector Direction;
-	float _Padding;
+	float _padding;
 	FVector Color;
 	float Intensity;
 };
@@ -105,6 +94,17 @@ struct FPointLightData
 	float _padding[3];
 };
 
+struct FLightConstantss
+{
+	int NumAmbientLights;
+	FVector _pad0;
+	FAmbientLightData AmbientLights[8];
+
+	int NumSpotLights;
+	FVector _pad1;
+	FSpotLightData SpotLights[MAX_SPOT_LIGHTS];
+};
+
 struct FLightConstants
 {
 	/* Directional Light */
@@ -115,7 +115,7 @@ struct FLightConstants
 	/* Point Light */
 	int NumPointLights;
 	float _padding1[3];
-	FPointLightData PointLights[8];
+	FPointLightData PointLights[MAX_POINT_LIGHTS];
 };
 
 struct FVertex
