@@ -14,6 +14,8 @@
 #include "Render/UI/Overlay/Public/StatOverlay.h"
 #include "Component/Public/DecalSpotLightComponent.h"
 #include "Component/Light/Public/SpotLightComponent.h"
+#include "Component/Light/Public/PointLightComponent.h"
+#include "Component/Light/Public/DirectionalLightComponent.h"
 
 UEditor::UEditor()
 {
@@ -63,6 +65,8 @@ void UEditor::RenderEditor()
 {
 	if (GEditor->IsPIESessionActive()) { return; }
 	BatchLines.Render();
+	SpotLightDirectionGizmo.Render();
+	DirectionalLightDirectionGizmo.Render();
 	Axis.Render();
 }
 
@@ -160,6 +164,8 @@ void UEditor::InitializeLayout()
 void UEditor::UpdateBatchLines()
 {
 	uint64 ShowFlags = GWorld->GetLevel()->GetShowFlags();
+	SpotLightDirectionGizmo.Clear();
+	DirectionalLightDirectionGizmo.Clear();
 
 	if (ShowFlags & EEngineShowFlags::SF_Octree)
 	{
@@ -202,12 +208,32 @@ void UEditor::UpdateBatchLines()
 			if (ShowFlags & EEngineShowFlags::SF_Bounds)
 			{
 				BatchLines.UpdateSpotLightConeVertices(SpotLightComp);
+				SpotLightDirectionGizmo.UpdateFromSpotLight(SpotLightComp);
+				return;
+			}
+		}
+		// PointLightComponent는 PrimitiveComponent가 아니므로 따로 처리
+		else if (UPointLightComponent* PointLightComp = Cast<UPointLightComponent>(Component))
+		{
+			if (ShowFlags & EEngineShowFlags::SF_Bounds)
+			{
+				BatchLines.UpdatePointLightRangeVertices(PointLightComp);
+				return;
+			}
+		}
+		else if (UDirectionalLightComponent* DirectionalLightComp = Cast<UDirectionalLightComponent>(Component))
+		{
+			if (ShowFlags & EEngineShowFlags::SF_Bounds)
+			{
+				DirectionalLightDirectionGizmo.UpdateFromLight(DirectionalLightComp);
 				return;
 			}
 		}
 	}
 
 	BatchLines.DisableRenderBoundingBox();
+	SpotLightDirectionGizmo.Clear();
+	DirectionalLightDirectionGizmo.Clear();
 }
 
 void UEditor::UpdateLayout()

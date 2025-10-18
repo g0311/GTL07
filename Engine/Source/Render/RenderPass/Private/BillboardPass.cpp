@@ -10,6 +10,7 @@ FBillboardPass::FBillboardPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBu
 {
     ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
     BillboardMaterialConstants.MaterialFlags |= HAS_DIFFUSE_MAP;
+    BillboardMaterialConstants.MaterialFlags |= UNLIT;
     BillboardMaterialConstants.Kd = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 

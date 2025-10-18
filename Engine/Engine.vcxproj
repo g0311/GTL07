@@ -369,6 +369,9 @@
     <ClInclude Include="Source\Editor\Public\EditorEngine.h" />
     <ClInclude Include="Source\Editor\Public\SplitterWindow.h" />
     <ClInclude Include="Source\Editor\Public\SpotLightLines.h" />
+    <ClInclude Include="Source\Editor\Public\PointLightLines.h" />
+    <ClInclude Include="Source\Editor\Public\SpotLightDirectionGizmo.h" />
+    <ClInclude Include="Source\Editor\Public\DirectionalLightDirectionGizmo.h" />
     <ClInclude Include="Source\Editor\Public\ViewportClient.h" />
     <ClInclude Include="Source\Editor\Public\Viewport.h" />
     <ClInclude Include="Source\Global\BVH.h" />
@@ -568,6 +571,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\Private\SplitterWindow.cpp" />
     <ClCompile Include="Source\Editor\Private\SpotLightLines.cpp" />
+    <ClCompile Include="Source\Editor\Private\PointLightLines.cpp" />
+    <ClCompile Include="Source\Editor\Private\SpotLightDirectionGizmo.cpp" />
+    <ClCompile Include="Source\Editor\Private\DirectionalLightDirectionGizmo.cpp" />
     <ClCompile Include="Source\Editor\Private\ViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Private\Viewport.cpp" />
     <ClCompile Include="Source\Global\BVH.cpp" />
