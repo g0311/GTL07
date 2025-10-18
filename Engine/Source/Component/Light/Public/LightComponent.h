@@ -6,6 +6,8 @@ class ULightComponent : public ULightComponentBase
 {
 	GENERATED_BODY()
 	DECLARE_CLASS(ULightComponent, ULightComponentBase)
+	
+	UClass* GetSpecificWidgetClass() const override;
 
 public:
 	ULightComponent() {};

@@ -4,10 +4,12 @@
 #include "Editor/Public/EditorPrimitive.h"
 #include "Editor/Public/Grid.h"
 #include "Editor/Public/BoundingBoxLines.h"
+#include "Editor/Public/SpotLightLines.h"
 
 struct FVertex;
 class FOctree;
 class UDecalSpotLightComponent;
+class USpotLightComponent;
 
 class UBatchLines : UObject
 {
@@ -22,6 +24,8 @@ public:
 	void UpdateOctreeVertices(const FOctree* InOctree);
 	// Decal SpotLight용 불법 증축
 	void UpdateSpotLightVertices(UDecalSpotLightComponent* SpotLightComponent);
+	// SpotLight Cone Lines
+	void UpdateSpotLightConeVertices(USpotLightComponent* SpotLightComponent);
 	// GPU VertexBuffer에 복사
 	void UpdateVertexBuffer();
 
@@ -39,6 +43,7 @@ public:
 	{
 		UpdateBoundingBoxVertices(BoundingBoxLines.GetDisabledBoundingBox());
 		bRenderSpotLight = false;
+		bRenderSpotLightCone = false;
 	}
 
 	void ClearOctreeLines()
@@ -71,9 +76,11 @@ private:
 	UGrid Grid;
 	UBoundingBoxLines BoundingBoxLines;
 	UBoundingBoxLines SpotLightOBBLines;
+	USpotLightLines SpotLightConeLines;
 	TArray<UBoundingBoxLines> OctreeLines;
 
 	bool bRenderBox;
 	bool bRenderSpotLight = false;
+	bool bRenderSpotLightCone = false;
 };
 

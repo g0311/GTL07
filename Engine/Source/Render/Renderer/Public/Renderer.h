@@ -166,6 +166,12 @@ private:
 	ID3D11PixelShader* FogPixelShader = nullptr;
 	ID3D11InputLayout* FogInputLayout = nullptr;
 	ID3D11SamplerState* DefaultSampler = nullptr;
+
+	// Uber Shaders
+	ID3D11VertexShader* UberVertexShader = nullptr;
+	ID3D11PixelShader*  UberPixelShader = nullptr;
+	ID3D11InputLayout*  UberInputLayout = nullptr;
+	ID3D11SamplerState* UberSampler = nullptr;
 	
 	uint32 Stride = 0;
 

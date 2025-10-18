@@ -14,10 +14,13 @@ public:
 	static ID3D11SamplerState* CreateFXAASamplerState();
 	static ID3D11RasterizerState* GetRasterizerState(const FRenderState& InRenderState);
 	static void ReleaseRasterizerState();
+	static ID3D11BlendState* GetBlendState(const FRenderState& InRenderState);
+	static void ReleaseBlendState();
 
 	// Helper function
 	static D3D11_CULL_MODE ToD3D11(ECullMode InCull);
 	static D3D11_FILL_MODE ToD3D11(EFillMode InFill);
+	static D3D11_BLEND_DESC ToD3D11(EBlendMode InBlend);
 
 	template<typename T>
 	static ID3D11Buffer* CreateConstantBuffer()
@@ -66,6 +69,20 @@ private:
 		}
 	};
 
+	struct FBlendKey
+	{
+		BOOL AlphaToCoverageEnable = FALSE;
+		BOOL IndependentBlendEnable = FALSE;
+		D3D11_RENDER_TARGET_BLEND_DESC RenderTarget[8] = {};
+
+		bool operator==(const FBlendKey& InKey) const
+		{
+			return AlphaToCoverageEnable == InKey.AlphaToCoverageEnable &&
+				IndependentBlendEnable == InKey.IndependentBlendEnable &&
+				memcmp(RenderTarget, InKey.RenderTarget, sizeof(D3D11_RENDER_TARGET_BLEND_DESC) * 8) == 0;
+		}
+	};
+
 	struct FRasterKeyHasher
 	{
 		size_t operator()(const FRasterKey& InKey) const noexcept
@@ -83,5 +100,33 @@ private:
 		}
 	};
 
+	struct FBlendKeyHasher
+	{
+		size_t operator()(const FBlendKey& InKey) const noexcept
+		{
+			auto Mix = [](size_t& H, size_t V)
+			{
+				H ^= V + 0x9e3779b97f4a7c15ULL + (H << 6) + (H << 2);
+			};
+
+			size_t H = 0;
+			Mix(H, (size_t)InKey.AlphaToCoverageEnable);
+			Mix(H, (size_t)InKey.IndependentBlendEnable);
+			for (size_t i = 0; i < 8; i++)
+			{
+				Mix(H, (size_t)InKey.RenderTarget[i].BlendEnable);
+				Mix(H, (size_t)InKey.RenderTarget[i].SrcBlend);
+				Mix(H, (size_t)InKey.RenderTarget[i].DestBlend);
+				Mix(H, (size_t)InKey.RenderTarget[i].BlendOp);
+				Mix(H, (size_t)InKey.RenderTarget[i].SrcBlendAlpha);
+				Mix(H, (size_t)InKey.RenderTarget[i].DestBlendAlpha);
+				Mix(H, (size_t)InKey.RenderTarget[i].BlendOpAlpha);
+				Mix(H, (size_t)InKey.RenderTarget[i].RenderTargetWriteMask);
+			}
+			return H;
+		}
+	};
+
 	static TMap<FRasterKey, ID3D11RasterizerState*, FRasterKeyHasher> RasterCache;
+	static TMap<FBlendKey, ID3D11BlendState*, FBlendKeyHasher> BlendCache;
 };

@@ -260,6 +260,9 @@
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorSpawnWidget.cpp">
       <Filter>Source\Render\UI\Widget\Private</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Render\UI\Widget\Light\Private\AmbientLightComponentWidget.cpp">
+      <Filter>Source\Render\UI\Widget\Private</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Render\UI\Widget\Private\PointLightComponentWidget.cpp">
       <Filter>Source\Render\UI\Widget\Private</Filter>
     </ClCompile>
@@ -690,6 +693,9 @@
       <Filter>Source\Render\UI\Widget\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorSpawnWidget.h">
+      <Filter>Source\Render\UI\Widget\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Render\UI\Widget\Light\Public\AmbientLightComponentWidget.h">
       <Filter>Source\Render\UI\Widget\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Render\UI\Widget\Public\PointLightComponentWidget.h">

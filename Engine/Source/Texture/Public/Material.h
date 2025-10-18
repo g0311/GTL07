@@ -64,6 +64,8 @@ public:
 	UMaterial() {}
 	~UMaterial() override;
 
+	void SetMaterialData(FMaterial InMaterialData) { MaterialData = InMaterialData; }
+	
 	FVector GetAmbientColor() const { return MaterialData.Ka; }
 	FVector GetDiffuseColor() const { return MaterialData.Kd; }
 	FVector GetSpecularColor() const { return MaterialData.Ks; }

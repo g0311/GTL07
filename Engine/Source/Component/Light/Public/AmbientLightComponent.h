@@ -6,4 +6,7 @@ class UAmbientLightComponent : public ULightComponent
 {
 	GENERATED_BODY()
 	DECLARE_CLASS(UAmbientLightComponent, ULightComponent)
+
+public:
+	UClass* GetSpecificWidgetClass() const override;
 };

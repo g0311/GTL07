@@ -33,7 +33,7 @@ void FBillboardPass::Execute(FRenderingContext& Context)
     }
     FPipelineInfo PipelineInfo = { InputLayout, VS, FRenderResourceFactory::GetRasterizerState(RenderState), DS, PS, BS, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
     Pipeline->UpdatePipeline(PipelineInfo);
-
+    
     if (!(Context.ShowFlags & EEngineShowFlags::SF_Billboard)) { return; }
 
     FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, BillboardMaterialConstants);

@@ -308,6 +308,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Source\Actor\Light\Public\DirectionalLightActor.h" />
+    <ClInclude Include="Source\Actor\Light\Public\PointLightActor.h" />
     <ClInclude Include="Source\Actor\Public\Actor.h" />
     <ClInclude Include="Source\Actor\Public\BillBoardActor.h" />
     <ClInclude Include="Source\Actor\Public\CubeActor.h" />
@@ -315,7 +317,6 @@
     <ClInclude Include="Source\Actor\Public\DecalSpotLightActor.h" />
     <ClInclude Include="Source\Actor\Public\HeightFogActor.h" />
     <ClInclude Include="Source\Actor\Public\MovingCubeActor.h" />
-    <ClInclude Include="Source\Actor\Public\PointLightActor.h" />
     <ClInclude Include="Source\Actor\Public\SphereActor.h" />
     <ClInclude Include="Source\Actor\Public\StaticMeshActor.h">
       <DeploymentContent>false</DeploymentContent>
@@ -447,6 +448,9 @@
     <ClInclude Include="Source\Render\UI\Factory\Public\UIWindowFactory.h" />
     <ClInclude Include="Source\Render\UI\ImGui\Public\ImGuiHelper.h" />
     <ClInclude Include="Source\Render\UI\Overlay\Public\StatOverlay.h" />
+    <ClInclude Include="Source\Render\UI\Widget\Light\Public\AmbientComponentWidget.h" />
+    <ClInclude Include="Source\Render\UI\Widget\Light\Public\LightComponentWidget.h" />
+    <ClInclude Include="Source\Render\UI\Widget\Light\Public\SpotlightComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorDetailWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorTerminationWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\CameraControlWidget.h" />
@@ -499,6 +503,8 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Source\Actor\Light\Private\DirectionalLightActor.cpp" />
+    <ClCompile Include="Source\Actor\Light\Private\PointLightActor.cpp" />
     <ClCompile Include="Source\Actor\Private\Actor.cpp" />
     <ClCompile Include="Source\Actor\Private\BillBoardActor.cpp" />
     <ClCompile Include="Source\Actor\Private\CubeActor.cpp" />
@@ -507,7 +513,6 @@
     <ClCompile Include="Source\Actor\Private\HeightFogActor.cpp" />
     <ClCompile Include="Source\Actor\Private\MovingCubeActor.cpp">
     </ClCompile>
-    <ClCompile Include="Source\Actor\Private\PointLightActor.cpp" />
     <ClCompile Include="Source\Actor\Private\SphereActor.cpp" />
     <ClCompile Include="Source\Actor\Private\StaticMeshActor.cpp">
       <DeploymentContent>false</DeploymentContent>
@@ -628,6 +633,9 @@
     <ClCompile Include="Source\Render\UI\Factory\Private\UIWindowFactory.cpp" />
     <ClCompile Include="Source\Render\UI\ImGui\Private\ImGuiHelper.cpp" />
     <ClCompile Include="Source\Render\UI\Overlay\Private\StatOverlay.cpp" />
+    <ClCompile Include="Source\Render\UI\Widget\Light\Private\AmbientComponentWidget.cpp" />
+    <ClCompile Include="Source\Render\UI\Widget\Light\Private\LightComponentWidget.cpp" />
+    <ClCompile Include="Source\Render\UI\Widget\Light\Private\SpotlightComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorDetailWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorTerminationWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\CameraControlWIdget.cpp" />

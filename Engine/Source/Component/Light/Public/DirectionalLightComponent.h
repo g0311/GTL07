@@ -6,4 +6,6 @@ class UDirectionalLightComponent : public ULightComponent
 {
 	GENERATED_BODY()
 	DECLARE_CLASS(UDirectionalLightComponent, ULightComponent)
+
+	FVector GetForwardVector() const;
 };

@@ -158,6 +158,39 @@ void FRenderResourceFactory::ReleaseRasterizerState()
 	RasterCache.clear();
 }
 
+ID3D11BlendState* FRenderResourceFactory::GetBlendState(const FRenderState& InRenderState)
+{
+	const D3D11_BLEND_DESC BlendDesc = ToD3D11(InRenderState.BlendMode);
+
+	FBlendKey Key = {};
+	Key.AlphaToCoverageEnable = BlendDesc.AlphaToCoverageEnable;
+	Key.IndependentBlendEnable = BlendDesc.IndependentBlendEnable;
+	memcpy(Key.RenderTarget, BlendDesc.RenderTarget, sizeof(Key.RenderTarget));
+
+	if (auto Iter = BlendCache.find(Key); Iter != BlendCache.end())
+	{
+		return Iter->second;
+	}
+
+	ID3D11BlendState* BlendState = nullptr;
+	if (FAILED(URenderer::GetInstance().GetDevice()->CreateBlendState(&BlendDesc, &BlendState)))
+	{
+		return nullptr;
+	}
+
+	BlendCache.emplace(Key, BlendState);
+	return BlendState;
+}
+
+void FRenderResourceFactory::ReleaseBlendState()
+{
+	for (auto& Cache : BlendCache)
+	{
+		SafeRelease(Cache.second);
+	}
+	BlendCache.clear();
+}
+
 D3D11_CULL_MODE FRenderResourceFactory::ToD3D11(ECullMode InCull)
 {
 	switch (InCull)
@@ -179,4 +212,31 @@ D3D11_FILL_MODE FRenderResourceFactory::ToD3D11(EFillMode InFill)
 	}
 }
 
+D3D11_BLEND_DESC FRenderResourceFactory::ToD3D11(EBlendMode InBlend)
+{
+	D3D11_BLEND_DESC BlendDesc = {};
+	BlendDesc.AlphaToCoverageEnable = FALSE;
+	BlendDesc.IndependentBlendEnable = FALSE;
+	BlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	switch (InBlend)
+	{
+	case EBlendMode::Opaque:
+		BlendDesc.RenderTarget[0].BlendEnable = FALSE;
+		break;
+
+	case EBlendMode::Transparent:
+		BlendDesc.RenderTarget[0].BlendEnable = TRUE;
+		BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+		BlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+		BlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		break;
+	}
+	return BlendDesc;
+}
+
 TMap<FRenderResourceFactory::FRasterKey, ID3D11RasterizerState*, FRenderResourceFactory::FRasterKeyHasher> FRenderResourceFactory::RasterCache;
+TMap<FRenderResourceFactory::FBlendKey, ID3D11BlendState*, FRenderResourceFactory::FBlendKeyHasher> FRenderResourceFactory::BlendCache;
