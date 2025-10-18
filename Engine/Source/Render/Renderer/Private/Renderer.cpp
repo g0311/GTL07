@@ -27,6 +27,8 @@
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/RenderPass/Public/FXAAPass.h"
 #include "Render/RenderPass/Public/LightCullingPass.h"
+#include "Render/RenderPass/Public/LightCullingDebugPass.h"
+#include "Render/RenderPass/Public/LightCullingPass.h"
 
 #include "Render/RenderPass/Public/SceneDepthPass.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
@@ -99,6 +101,9 @@ void URenderer::Init(HWND InWindowHandle)
 	
 		FXAAPass = new FFXAAPass(Pipeline, DeviceResources, FXAAVertexShader, FXAAPixelShader, FXAAInputLayout, FXAASamplerState);
 		RenderPasses.push_back(FXAAPass);
+
+		FLightCullingDebugPass* LightCullingDebugPass = new FLightCullingDebugPass(Pipeline, DeviceResources);
+		RenderPasses.push_back(LightCullingDebugPass);
 	}
 }
 
@@ -389,8 +394,11 @@ void URenderer::RenderBegin() const
 
 	auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
 	GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
-	
 
+    // Clear UAVs
+    const UINT clearValues[4] = { 0, 0, 0, 0 };
+    GetDeviceContext()->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
+    GetDeviceContext()->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
 
     DeviceResources->UpdateViewport();
 }
@@ -594,7 +602,7 @@ void URenderer::CreateLightCullBuffers()
 	const uint32 MAX_TILES = numTilesX * numTilesY;
 	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 32;
         
-	// LightIndexBuffer 재생성
+	// LightIndexBuffer 생성
 	D3D11_BUFFER_DESC lightIndexBufferDesc = {};
 	lightIndexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	lightIndexBufferDesc.ByteWidth = sizeof(uint32) * (MAX_TOTAL_LIGHT_INDICES + 1);
