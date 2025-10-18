@@ -170,43 +170,12 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
     
-    // Base diffuse color
-    float4 DiffuseColor = Kd;
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        DiffuseColor *= DiffuseTexture.Sample(SamplerWrap, UV);
-    }
     // Ambient contribution
     float3 AmbientColor = CalculateAmbientFactor(UV).rgb;
     
     // Spotlight contribution
     float3 SpotlightColor = CalculateSpotlightFactors(Input.WorldPosition, Norm, ViewDir, kD, kS, Ns);
     
-    float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
-    FinalColor.rgb = AmbientColor + SpotlightColor;
-    
-    // Alpha handling
-    // /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
-    // if (MaterialFlags & HAS_DIFFUSE_MAP)
-    // {
-    //     float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
-    //     FinalColor.a = D * alpha;
-    // }
-
-    // Ambient contribution
-    float4 AmbientColor = Ka;
-    if (MaterialFlags & HAS_AMBIENT_MAP)
-    {
-        AmbientColor *= AmbientTexture.Sample(SamplerWrap, UV);
-    }
-    // Add Ambient Light from cbuffer
-    float4 AccumulatedAmbientColor = 0;
-    for (int i = 0; i < AmbientCount; i++)
-    {
-        AccumulatedAmbientColor += Ambient[i].AmbientColor * Ambient[i].Intensity;
-    }
-    AmbientColor *= AccumulatedAmbientColor;
-
     // Directional Light
     float3 DirectLighting = float3(0.f, 0.f, 0.f);
     if (HasDirectionalLight > 0)
@@ -218,6 +187,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     }
     
     // Point Lights
+    float3 PointLighting = float3(0.f, 0.f, 0.f);
     for (int i = 0; i < NumPointLights; i++)
     {
         float3 toLight = PointLights[i].Position - Input.WorldPosition;
@@ -230,24 +200,23 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
             float NdotL = saturate(dot(normal, lightDir));
             float auttenuation = pow(1.0f - (dist / PointLights[i].Radius), PointLights[i].FalloffExtent);
             
-            DirectLighting += PointLights[i].Color * PointLights[i].Intensity * NdotL * auttenuation;
+            PointLighting += PointLights[i].Color * PointLights[i].Intensity * NdotL * auttenuation;
         }
     }
-    
-    // Final Color 
+    // Final Color
     float4 FinalColor;
-    FinalColor.rgb = DiffuseColor.rgb * (DirectLighting + AmbientColor.rgb);
-    FinalColor.a = DiffuseColor.a;
+    FinalColor.rgb = AmbientColor + SpotlightColor + DirectLighting + PointLighting;
+    FinalColor.a = 1.0f;
+    Output.SceneColor = FinalColor;
     
     // Alpha handling
-    if (MaterialFlags & HAS_ALPHA_MAP)
-    {
-        float alpha = AlphaTexture.Sample(SamplerWrap, UV).r;
-        FinalColor.a = D;
-        FinalColor.a *= alpha;
-    }
+    // /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
+    // if (MaterialFlags & HAS_DIFFUSE_MAP)
+    // {
+    //     float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
+    //     FinalColor.a = D * alpha;
+    // }
 
-    Output.SceneColor = FinalColor;
 
     // Calculate World Normal for Normal Buffer
     float3 WorldNormal = Input.WorldNormal;
@@ -288,8 +257,6 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 
     // Encode world normal to [0,1] range for storage
     float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
-    Output.SceneColor.a = 1.0;
-    float3 EncodedNormal = normalize(Norm) * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
 
     return Output;
