@@ -4,6 +4,7 @@
 class UClass;
 class USpotLightComponent;
 
+UCLASS()
 class USpotlightComponentWidget : public ULightComponentWidget
 {
     GENERATED_BODY()
@@ -18,5 +19,5 @@ public:
     virtual void RenderWidget() override;
 
 private:
-    
+    USpotLightComponent* SpotlightComponent;
 };

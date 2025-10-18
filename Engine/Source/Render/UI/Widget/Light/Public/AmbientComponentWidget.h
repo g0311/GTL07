@@ -4,6 +4,7 @@
 class UClass;
 class UAmbientLightComponent;
 
+UCLASS()
 class UAmbientComponentWidget : public ULightComponentWidget
 {
     GENERATED_BODY()

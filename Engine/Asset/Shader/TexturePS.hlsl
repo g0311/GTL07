@@ -140,22 +140,24 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     
     // Ambient contribution
     float3 AmbientColor = CalculateAmbientFactor(UV).rgb;
+    //
+    // // Spotlight contribution
+    // float3 SpotlightColor = CalculateSpotlightFactors(Input.WorldPosition, Norm, ViewDir, kD, kS, Ns);
+    //
+    // float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
+    // FinalColor.rgb = AmbientColor + SpotlightColor;
+    //
+    // // Alpha handling
+    // /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
+    // if (MaterialFlags & HAS_DIFFUSE_MAP)
+    // {
+    //     float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
+    //     FinalColor.a = D * alpha;
+    // }
 
-    // Spotlight contribution
-    float3 SpotlightColor = CalculateSpotlightFactors(Input.WorldPosition, Norm, ViewDir, kD, kS, Ns);
-    
-    float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
-    FinalColor.rgb = AmbientColor + SpotlightColor;
-
-    // Alpha handling
-    /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
-        FinalColor.a = D * alpha;
-    }
-
-    Output.SceneColor = FinalColor;
+    // Output.SceneColor = FinalColor;
+    Output.SceneColor.rgb = AmbientColor;
+    Output.SceneColor.a = 1.0;
     float3 EncodedNormal = normalize(Norm) * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
 	
