@@ -11,6 +11,7 @@ FBillboardPass::FBillboardPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBu
     ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
     BillboardMaterialConstants.MaterialFlags |= HAS_DIFFUSE_MAP;
     BillboardMaterialConstants.Kd = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+    BillboardMaterialConstants.Ka = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 void FBillboardPass::PreExecute(FRenderingContext& Context)
@@ -33,7 +34,7 @@ void FBillboardPass::Execute(FRenderingContext& Context)
     }
     FPipelineInfo PipelineInfo = { InputLayout, VS, FRenderResourceFactory::GetRasterizerState(RenderState), DS, PS, BS, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
     Pipeline->UpdatePipeline(PipelineInfo);
-
+    
     if (!(Context.ShowFlags & EEngineShowFlags::SF_Billboard)) { return; }
 
     FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, BillboardMaterialConstants);
