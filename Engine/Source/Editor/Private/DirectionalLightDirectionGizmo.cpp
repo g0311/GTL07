@@ -11,8 +11,8 @@
 namespace
 {
 	constexpr float GizmoScaleFactor = 1.0f / 3.0f;
-	constexpr float BaseArrowLength = 150.0f;
-	constexpr float BaseArrowThickness = 30.0f;
+	constexpr float BaseArrowLength = 20.0f;
+	constexpr float BaseArrowThickness = 15.0f;
 }
 
 UDirectionalLightDirectionGizmo::UDirectionalLightDirectionGizmo()

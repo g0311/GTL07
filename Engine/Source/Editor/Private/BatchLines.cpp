@@ -166,8 +166,7 @@ void UBatchLines::UpdateVertexBuffer()
 			SpotLightOBBLines.MergeVerticesAt(Vertices, CurrentOffset);
 			CurrentOffset += SpotLightOBBLines.GetNumVertices();
 		}
-
-		// SpotLightCone vertices (FVertex -> FVector conversion)
+		
 		if (bRenderSpotLightCone)
 		{
 			const TArray<FVertex>& ConeVertices = SpotLightConeLines.GetVertices();
@@ -177,8 +176,7 @@ void UBatchLines::UpdateVertexBuffer()
 			}
 			CurrentOffset += NumSpotLightConeVertices;
 		}
-
-		// PointLightRange vertices (FVertex -> FVector conversion)
+		
 		if (bRenderPointLightRange)
 		{
 			const TArray<FVertex>& RangeVertices = PointLightRangeLines.GetVertices();
