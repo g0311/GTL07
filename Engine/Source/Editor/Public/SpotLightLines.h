@@ -1,6 +1,7 @@
 #pragma once
 #include "Global/Types.h"
-#include "Component/Public/DecalSpotLightComponent.h"
+
+class USpotLightComponent;
 
 class USpotLightLines
 {
@@ -8,7 +9,7 @@ public:
 	USpotLightLines();
 	~USpotLightLines();
 
-	void UpdateVertices(UDecalSpotLightComponent* InSpotLightComponent);
+	void UpdateVertices(USpotLightComponent* InSpotLightComponent);
 
 	const TArray<FVertex>& GetVertices() const { return Vertices; }
 

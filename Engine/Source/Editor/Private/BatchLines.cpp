@@ -6,6 +6,7 @@
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Global/Octree.h"
 #include "Component/Public/DecalSpotLightComponent.h"
+#include "Component/Light/Public/SpotLightComponent.h"
 #include "Physics/Public/OBB.h"
 
 IMPLEMENT_CLASS(UBatchLines, UObject)
@@ -89,9 +90,22 @@ void UBatchLines::UpdateSpotLightVertices(UDecalSpotLightComponent* SpotLightCom
 		bRenderSpotLight = false;
 		return;
 	}
-	
+
 	SpotLightOBBLines.UpdateVertices(SpotLightBounding);
 	bRenderSpotLight = true;
+	bChangedVertices = true;
+}
+
+void UBatchLines::UpdateSpotLightConeVertices(USpotLightComponent* SpotLightComponent)
+{
+	if (!SpotLightComponent)
+	{
+		bRenderSpotLightCone = false;
+		return;
+	}
+
+	SpotLightConeLines.UpdateVertices(SpotLightComponent);
+	bRenderSpotLightCone = true;
 	bChangedVertices = true;
 }
 
@@ -119,13 +133,14 @@ void UBatchLines::UpdateVertexBuffer()
 		uint32 NumGridVertices = Grid.GetNumVertices();
 		uint32 NumBoxVertices = BoundingBoxLines.GetNumVertices();
 		uint32 NumSpotLightVertices = bRenderSpotLight ? SpotLightOBBLines.GetNumVertices() : 0;
+		uint32 NumSpotLightConeVertices = bRenderSpotLightCone ? static_cast<uint32>(SpotLightConeLines.GetVertices().size()) : 0;
 		uint32 NumOctreeVertices = 0;
 		for (const auto& Line : OctreeLines)
 		{
 			NumOctreeVertices += Line.GetNumVertices();
 		}
 
-		Vertices.resize(NumGridVertices + NumBoxVertices + NumSpotLightVertices + NumOctreeVertices);
+		Vertices.resize(NumGridVertices + NumBoxVertices + NumSpotLightVertices + NumSpotLightConeVertices + NumOctreeVertices);
 
 		Grid.MergeVerticesAt(Vertices, 0);
 		BoundingBoxLines.MergeVerticesAt(Vertices, NumGridVertices);
@@ -135,6 +150,17 @@ void UBatchLines::UpdateVertexBuffer()
 		{
 			SpotLightOBBLines.MergeVerticesAt(Vertices, CurrentOffset);
 			CurrentOffset += SpotLightOBBLines.GetNumVertices();
+		}
+
+		// SpotLightCone vertices (FVertex -> FVector conversion)
+		if (bRenderSpotLightCone)
+		{
+			const TArray<FVertex>& ConeVertices = SpotLightConeLines.GetVertices();
+			for (uint32 i = 0; i < NumSpotLightConeVertices; ++i)
+			{
+				Vertices[CurrentOffset + i] = ConeVertices[i].Position;
+			}
+			CurrentOffset += NumSpotLightConeVertices;
 		}
 
 		for (auto& Line : OctreeLines)
@@ -207,6 +233,17 @@ void UBatchLines::SetIndices()
 		}
 
 		BaseVertexOffset += SpotLightOBBLines.GetNumVertices();
+	}
+
+	// SpotLightCone indices (직접 인덱스 추가, LineList이므로 순차적으로)
+	if (bRenderSpotLightCone)
+	{
+		const uint32 NumSpotLightConeVertices = static_cast<uint32>(SpotLightConeLines.GetVertices().size());
+		for (uint32 Idx = 0; Idx < NumSpotLightConeVertices; ++Idx)
+		{
+			Indices.push_back(BaseVertexOffset + Idx);
+		}
+		BaseVertexOffset += NumSpotLightConeVertices;
 	}
 
 	for (auto& OctreeLine : OctreeLines)

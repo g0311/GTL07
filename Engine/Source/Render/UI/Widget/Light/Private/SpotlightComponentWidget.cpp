@@ -62,8 +62,8 @@ void USpotlightComponentWidget::RenderWidget()
     if (ImGui::DragFloatRange2("Cone Angle (deg)", &InnerRad, &OuterRad, 0.1f, 0.0f, 179.9f, "Inner: %.1f", "Outer: %.1f"))
     {
         // 강제 제약: 0 <= Inner < Outer <= 179.9
-        InnerRad = std::max(0.0f, std::min(InnerRad, 4.0f));
-        OuterRad = std::max(InnerRad + 0.1f, std::min(OuterRad, 4.0f));
+        InnerRad = std::max(0.0f, std::min(InnerRad, 179.0f));
+        OuterRad = std::max(InnerRad + 0.1f, std::min(OuterRad, 179.0f));
 
         SpotlightComponent->SetInnerAngle(InnerRad);
         SpotlightComponent->SetOuterAngle(OuterRad);

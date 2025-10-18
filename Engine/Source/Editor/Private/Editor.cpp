@@ -13,6 +13,7 @@
 #include "Utility/Public/ScopeCycleCounter.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
 #include "Component/Public/DecalSpotLightComponent.h"
+#include "Component/Light/Public/SpotLightComponent.h"
 
 UEditor::UEditor()
 {
@@ -182,9 +183,9 @@ void UEditor::UpdateBatchLines()
 					FAABB AABB(WorldMin, WorldMax);
 					BatchLines.UpdateBoundingBoxVertices(&AABB);
 				}
-				else 
-				{ 
-					BatchLines.UpdateBoundingBoxVertices(PrimitiveComponent->GetBoundingBox()); 
+				else
+				{
+					BatchLines.UpdateBoundingBoxVertices(PrimitiveComponent->GetBoundingBox());
 
 					// 만약 선택된 타입이 decalspotlightcomponent라면
 					if (Component->IsA(UDecalSpotLightComponent::StaticClass()))
@@ -192,7 +193,16 @@ void UEditor::UpdateBatchLines()
 						BatchLines.UpdateSpotLightVertices(Cast<UDecalSpotLightComponent>(Component));
 					}
 				}
-				return; 
+				return;
+			}
+		}
+		// SpotLightComponent는 PrimitiveComponent가 아니므로 따로 처리
+		else if (USpotLightComponent* SpotLightComp = Cast<USpotLightComponent>(Component))
+		{
+			if (ShowFlags & EEngineShowFlags::SF_Bounds)
+			{
+				BatchLines.UpdateSpotLightConeVertices(SpotLightComp);
+				return;
 			}
 		}
 	}
