@@ -19,6 +19,6 @@ public:
 
 	
 private:
-	float Intensity;
-	FVector4 Color;
+	float Intensity =  1.0f;
+	FVector4 Color = FVector4(1,1,1,1);
 };

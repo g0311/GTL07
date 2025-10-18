@@ -55,14 +55,29 @@ struct FMaterialConstants
 
 struct FLight
 {
-	unsigned long long Count;
-	float Intensity[8];
-	FVector4 Light[8];
+	FVector4 Light;
+	float Intensity;
 };
 
 struct FLightConstants
 {
-	FLight AmbientLight;
+	int AmbientCount;
+	FLight AmbientLight[8];
+};
+
+struct FDirectionalLightConstants
+{
+	FVector Direction;
+	float _Padding;
+	FVector Color;
+	float Intensity;
+};
+
+struct FDirectionalLightCBuffer
+{
+	FDirectionalLightConstants DirectionalLight;
+	int HasDirectionalLight;
+	float _Padding[3];
 };
 
 struct FVertex
