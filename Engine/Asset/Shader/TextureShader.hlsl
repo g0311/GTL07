@@ -44,6 +44,8 @@ struct VS_INPUT
 	float3 normal : NORMAL;
 	float4 color : COLOR;
 	float2 tex : TEXCOORD0;
+	float3 tangent : TANGENT;
+	float3 bitangent : BINORMAL;
 };
 
 struct PS_INPUT
@@ -51,7 +53,28 @@ struct PS_INPUT
 	float4 position : SV_POSITION;	// Transformed position to pass to the pixel shader
 	float3 normal : TEXCOORD0;
 	float2 tex : TEXCOORD1;
+	float3 tangent : TEXCOORD2;
+	float3 bitangent : TEXCOORD3;
 };
+
+// GetNormalFromMap: Transform normal from tangent space to world space
+float3 GetNormalFromMap(float3 worldNormal, float3 worldTangent, float3 worldBitangent, float2 uv)
+{
+	// Sample normal map and transform from [0,1] to [-1,1]
+	float3 tangentNormal = NormalTexture.Sample(SamplerWrap, uv).xyz;
+	tangentNormal = tangentNormal * 2.0f - 1.0f;
+
+	// Construct TBN matrix (Tangent, Bitangent, Normal)
+	float3x3 TBN = float3x3(
+		normalize(worldTangent),
+		normalize(worldBitangent),
+		normalize(worldNormal)
+	);
+
+	// Transform normal from tangent space to world space
+	float3 worldSpaceNormal = mul(tangentNormal, TBN);
+	return normalize(worldSpaceNormal);
+}
 
 PS_INPUT mainVS(VS_INPUT input)
 {
@@ -63,6 +86,8 @@ PS_INPUT mainVS(VS_INPUT input)
 	tmp = mul(tmp, Projection);
 	output.position = tmp;
 	output.normal = normalize(mul(float4(input.normal, 0.0f), world).xyz);
+	output.tangent = normalize(mul(float4(input.tangent, 0.0f), world).xyz);
+	output.bitangent = normalize(mul(float4(input.bitangent, 0.0f), world).xyz);
 	output.tex = input.tex;
 
 	return output;
@@ -106,8 +131,16 @@ PS_OUTPUT mainPS(PS_INPUT input) : SV_TARGET
 	}
 
 	output.SceneColor = finalColor;
-	float3 encodedNormal = normalize(input.normal) * 0.5f + 0.5f; // [-1,1] → [0,1]
+
+	// Normal data output with optional normal mapping
+#if HAS_NORMAL_MAP
+	float3 finalNormal = GetNormalFromMap(input.normal, input.tangent, input.bitangent, UV);
+#else
+	float3 finalNormal = normalize(input.normal);
+#endif
+
+	float3 encodedNormal = finalNormal * 0.5f + 0.5f; // [-1,1] → [0,1]
 	output.NormalData = float4(encodedNormal, 1.0f);
-	
+
 	return output;
 }

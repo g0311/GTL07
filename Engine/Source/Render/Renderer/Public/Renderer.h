@@ -120,6 +120,7 @@ private:
 	// Texture Shaders
 	ID3D11VertexShader* TextureVertexShader = nullptr;
 	ID3D11PixelShader* TexturePixelShader = nullptr;
+	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
 	ID3D11InputLayout* TextureInputLayout = nullptr;
 
 	// Decal Shaders

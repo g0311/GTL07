@@ -62,7 +62,7 @@ void URenderer::Init(HWND InWindowHandle)
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
 	FStaticMeshPass* StaticMeshPass = new FStaticMeshPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
-		TextureVertexShader, TexturePixelShader, TextureInputLayout, DefaultDepthStencilState);
+		TextureVertexShader, TexturePixelShader, TexturePixelShaderWithNormalMap, TextureInputLayout, DefaultDepthStencilState);
 	RenderPasses.push_back(StaticMeshPass);
 
 	FDecalPass* DecalPass = new FDecalPass(Pipeline, ConstantBufferViewProj,
@@ -210,7 +210,17 @@ void URenderer::CreateTextureShader()
 		{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Bitangent), D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/TextureVS.hlsl", TextureLayout, &TextureVertexShader, &TextureInputLayout);
-	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShader);
+
+	// Compile pixel shader without normal map (nullptr = no defines)
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShader, nullptr);
+
+	// Compile pixel shader with normal map
+	D3D_SHADER_MACRO NormalMapDefines[] =
+	{
+		{ "HAS_NORMAL_MAP", "1" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShaderWithNormalMap, NormalMapDefines);
 }
 
 void URenderer::CreateDecalShader()
@@ -286,6 +296,7 @@ void URenderer::ReleaseDefaultShader()
 	
 	SafeRelease(TextureInputLayout);
 	SafeRelease(TexturePixelShader);
+	SafeRelease(TexturePixelShaderWithNormalMap);
 	SafeRelease(TextureVertexShader);
 	
 	SafeRelease(DecalVertexShader);
