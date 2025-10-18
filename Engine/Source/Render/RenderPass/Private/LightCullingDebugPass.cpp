@@ -166,7 +166,10 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
             uint32 globalTileY = startTileY + y;
             uint32_t lightCount = tileInfo[globalTileY * globalNumTilesX + globalTileX].LightCount;
             
-            D2D1_RECT_F rect = D2D1::RectF(globalTileX * TILE_SIZE, globalTileY * TILE_SIZE, (globalTileX + 1) * TILE_SIZE, (globalTileY + 1) * TILE_SIZE);
+            // 뷰포트 내 상대 좌표로 렌더링 (뷰포트 오프셋 적용)
+            float tileScreenX = Context.Viewport.TopLeftX + x * TILE_SIZE;
+            float tileScreenY = Context.Viewport.TopLeftY + y * TILE_SIZE;
+            D2D1_RECT_F rect = D2D1::RectF(tileScreenX, tileScreenY, tileScreenX + TILE_SIZE, tileScreenY + TILE_SIZE);
             
             // Draw grid
             TextBrush->SetColor(D2D1::ColorF(0.3f, 0.3f, 0.3f, 0.5f));

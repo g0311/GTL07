@@ -59,24 +59,7 @@ groupshared uint numVisibleLights;          // 현재 타일에서 찾은 광원
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : SV_GroupIndex)
 {
-    // --- 초기화 및 타일 유효성 검사 ---
-    
-    // 현재 스레드 그룹이 처리할 타일의 좌표 (뷰포트 기준)
-    uint2 tilePos = Gid.xy;
-    // 타일의 뷰포트 내 픽셀 좌표 경계 계산
-    uint2 tileMinBound = tilePos * TILE_SIZE;
-    uint2 tileMaxBound = tileMinBound + TILE_SIZE;
-    
-    // 타일이 뷰포트 영역을 벗어났는지 검사 (뷰포트 좌표계에서 비교)
-    if (tileMinBound.x >= ViewportSize.x || 
-        tileMinBound.y >= ViewportSize.y ||
-        tileMaxBound.x <= 0 ||
-        tileMaxBound.y <= 0)
-    {
-        return;
-    }
-
-    // 그룹의 첫 스레드(GI == 0)가 공유 메모리의 카운터를 0으로 초기화
+    // --- 초기화  ---
     if (GI == 0)
     {
         numVisibleLights = 0;
@@ -122,12 +105,25 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     float4 c3 = float4(view_L, view_T, 1.0f, 0.0f);
     float4 c4 = float4(view_R, view_T, 1.0f, 0.0f);
     
-    // 4개의 모서리 벡터를 이용해 타일 프러스텀을 구성하는 4개의 평면(왼쪽, 오른쪽, 위, 아래)을 계산
+    // 타일 프러스텀을 구성하는 4개의 평면 계산 (카메라 원점에서 시작하는 방향 벡터 기반)
+    // 각 평면은 원점(0,0,0)과 두 방향 벡터로 정의됨
     float4 frustumPlanes[4];
-    frustumPlanes[0] = float4(normalize(cross(c1.xyz, c3.xyz)), 0.0f); // Left
-    frustumPlanes[1] = float4(normalize(cross(c4.xyz, c2.xyz)), 0.0f); // Right  
-    frustumPlanes[2] = float4(normalize(cross(c2.xyz, c1.xyz)), 0.0f); // Top
-    frustumPlanes[3] = float4(normalize(cross(c3.xyz, c4.xyz)), 0.0f); // Bottom
+    
+    // Left 평면: 원점, c1, c3로 정의되는 평면
+    float3 leftNormal = normalize(cross(c3.xyz, c1.xyz));
+    frustumPlanes[0] = float4(leftNormal, 0.0f);
+    
+    // Right 평면: 원점, c2, c4로 정의되는 평면  
+    float3 rightNormal = normalize(cross(c2.xyz, c4.xyz));
+    frustumPlanes[1] = float4(rightNormal, 0.0f);
+    
+    // Top 평면: 원점, c3, c4로 정의되는 평면
+    float3 topNormal = normalize(cross(c4.xyz, c3.xyz));
+    frustumPlanes[2] = float4(topNormal, 0.0f);
+    
+    // Bottom 평면: 원점, c1, c2로 정의되는 평면
+    float3 bottomNormal = normalize(cross(c1.xyz, c2.xyz));
+    frustumPlanes[3] = float4(bottomNormal, 0.0f);
     
     // --- 2단계: 프러스텀과 광원 교차 검사 ---
     
