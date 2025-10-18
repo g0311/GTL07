@@ -46,27 +46,39 @@ void USpotlightComponentWidget::RenderWidget()
 
     FSpotLight Spot = SpotlightComponent->GetSpotInfo();
     
-    // Recover current values
     float Range   = SpotlightComponent->GetRange();
-    float InnerRad   = SpotlightComponent->GetInnerConeAngle();
-    float OuterRad   = SpotlightComponent->GetOuterConeAngle();
+    float InnerRad   = SpotlightComponent->GetInnerConeAngleRad();
+    float OuterRad   = SpotlightComponent->GetOuterConeAngleRad();
     float Falloff  = Spot.Falloff;
     
+    const float RAD_TO_DEG = 180.0f / 3.14159265359f;
+    const float DEG_TO_RAD = 3.14159265359f / 180.0f;
+    float InnerDeg = InnerRad * RAD_TO_DEG;
+    float OuterDeg = OuterRad * RAD_TO_DEG;
+
     if (ImGui::DragFloat("Range", &Range, 0.1f, 0.01f, 100000.0f, "%.3f"))
     {
         Range = std::max(Range, 0.01f);
         SpotlightComponent->SetRange(Range);
     }
-
-    // Inner/Outer를 함께 편집 (항상 Inner < Outer)
-    if (ImGui::DragFloatRange2("Cone Angle (deg)", &InnerRad, &OuterRad, 0.1f, 0.0f, 179.9f, "Inner: %.1f", "Outer: %.1f"))
+    
+    if (ImGui::DragFloatRange2("Cone Angle (deg)", &InnerDeg, &OuterDeg, 0.5f, 0.0f, FLT_MAX, "Inner: %.1f", "Outer: %.1f"))
     {
-        // 강제 제약: 0 <= Inner < Outer <= 179.9
-        InnerRad = std::max(0.0f, std::min(InnerRad, 179.0f));
-        OuterRad = std::max(InnerRad + 0.1f, std::min(OuterRad, 179.0f));
+        // Clamp to valid spotlight range [0, 179.9] degrees
+        InnerDeg = std::max(0.0f, std::min(InnerDeg, 179.9f));
+        OuterDeg = std::max(0.0f, std::min(OuterDeg, 179.9f));
 
-        SpotlightComponent->SetInnerAngle(InnerRad);
-        SpotlightComponent->SetOuterAngle(OuterRad);
+        // Ensure Inner < Outer
+        if (OuterDeg <= InnerDeg)
+        {
+            OuterDeg = std::min(InnerDeg + 0.1f, 179.9f);
+        }
+        
+        InnerRad = InnerDeg * DEG_TO_RAD;
+        OuterRad = OuterDeg * DEG_TO_RAD;
+
+        SpotlightComponent->SetInnerAngleRad(InnerRad);
+        SpotlightComponent->SetOuterAngleRad(OuterRad);
     }
 
     if (ImGui::DragFloat("Falloff", &Falloff, 0.1f, 0.0f, 128.0f, "%.2f"))
@@ -80,7 +92,8 @@ void USpotlightComponentWidget::RenderWidget()
     {
         ImGui::Text("Dir: (%.3f, %.3f, %.3f)", Spot.Direction.X, Spot.Direction.Y, Spot.Direction.Z);
         ImGui::Text("CosInner: %.6f  CosOuter: %.6f", Spot.CosInner, Spot.CosOuter);
-        ImGui::Text("Inner: %.2f deg  Outer: %.2f deg", InnerRad, OuterRad);
+        ImGui::Text("Inner: %.2f deg (%.4f rad)", InnerDeg, InnerRad);
+        ImGui::Text("Outer: %.2f deg (%.4f rad)", OuterDeg, OuterRad);
         ImGui::Text("InvRange2: %.6e  Range: %.3f", Spot.InvRange2, Range);
         ImGui::TreePop();
     }

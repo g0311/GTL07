@@ -33,7 +33,7 @@ void USpotLightLines::UpdateVertices(USpotLightComponent* InSpotLightComponent)
 	FVector Position = InSpotLightComponent->GetWorldLocation();
 	FQuaternion Rotation = InSpotLightComponent->GetWorldRotationAsQuaternion();
 	float Range = InSpotLightComponent->GetRange();
-	float OuterAngle = InSpotLightComponent->GetOuterConeAngle();
+	float OuterAngle = InSpotLightComponent->GetOuterConeAngleRad();
 
 	// Spotlight는 로컬 X축 방향으로 빛을 쏜다
 	FVector Direction = Rotation.RotateVector(FVector(1.0f, 0.0f, 0.0f));
