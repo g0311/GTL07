@@ -7,7 +7,6 @@ IMPLEMENT_CLASS(ULightComponentWidget, UWidget)
 
 void ULightComponentWidget::Initialize()
 {
-    
 }
 
 void ULightComponentWidget::Update()

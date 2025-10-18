@@ -1,7 +1,8 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Render/RenderPass/Public/StaticMeshPass.h"
 
 #include "Component/Light/Public/AmbientLightComponent.h"
+#include "Component/Light/Public/SpotLightComponent.h"
 #include "Component/Light/Public/DirectionalLightComponent.h"
 #include "Component/Light/Public/PointLightComponent.h"
 #include "Component/Mesh/Public/StaticMeshComponent.h"
@@ -118,13 +119,20 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 
 				// Ambient Light
 				FLightConstants LightConstants = {};
-				LightConstants.AmbientCount = Context.Lights.size();
-				for (size_t i=0; i < LightConstants.AmbientCount; i++)
+				for (size_t i=0; i < Context.Lights.size(); i++)
 				{
 					if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Context.Lights[i]))
 					{
-						LightConstants.AmbientLight[i].Intensity = Ambient->GetIntensity(); 
-						LightConstants.AmbientLight[i].Light = Ambient->GetColor(); 
+						int Idx = LightConstants.AmbientCount;
+						LightConstants.AmbientLight[Idx].Intensity = Ambient->GetIntensity(); 
+						LightConstants.AmbientLight[Idx].Color = Ambient->GetColor();
+						LightConstants.AmbientCount++;
+					}
+					else if (USpotLightComponent* Spotlight = Cast<USpotLightComponent>(Context.Lights[i]))
+					{
+						int Idx = LightConstants.SpotlightCount;
+						LightConstants.SpotLight[Idx] = Spotlight->GetSpotInfo();
+						LightConstants.SpotlightCount++;
 					}
 				}
 				

@@ -23,6 +23,16 @@ public:
     virtual void Update() override;
     virtual void RenderWidget() override;
 
+protected:
+    ULightComponent* GetLightComponent() const { return LightComponent; }
+    template<typename T> T* GetLightComponentAs() const { return Cast<T>(LightComponent); }
+
 private:
     ULightComponent* LightComponent = nullptr;
 };
+
+
+
+
+
+
