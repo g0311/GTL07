@@ -23,7 +23,7 @@ void FSceneDepthPass::PreExecute(FRenderingContext& Context)
     const auto& DeviceResources = Renderer.GetDeviceResources();
     ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
     ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() }; // Bind both
-    Pipeline->SetRenderTargets(2, RTVs, nullptr); // Set NumViews to 2, and pass DSV
+    Pipeline->SetRenderTargets(2, RTVs, nullptr); // Set NumViews to 2
 }
 
 void FSceneDepthPass::Execute(FRenderingContext& Context)

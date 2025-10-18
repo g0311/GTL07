@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
-#include "Actor/Public/PointLightActor.h"
+#include "Actor/Light/Public/PointLightActor.h"
+#include "Component/Light/Public/PointLightComponent.h"
 #include "Component/Public/BillBoardComponent.h"
-#include "Component/Public/FakePointLightComponent.h"
 #include "Manager/Asset/Public/AssetManager.h"
 
 IMPLEMENT_CLASS(APointLightActor, AActor)
@@ -12,7 +12,7 @@ APointLightActor::APointLightActor()
 
 UClass* APointLightActor::GetDefaultRootComponent()
 {
-    return UFakePointLightComponent::StaticClass();
+    return UPointLightComponent::StaticClass();
 }
 
 void APointLightActor::InitializeComponents()

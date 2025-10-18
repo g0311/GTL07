@@ -209,6 +209,7 @@ void UMainBarWidget::RenderViewMenu()
 		bool bIsUnlit = (CurrentMode == EViewModeIndex::VMI_Unlit);
 		bool bIsWireframe = (CurrentMode == EViewModeIndex::VMI_Wireframe);
 		bool bIsSceneDepth = (CurrentMode == EViewModeIndex::VMI_SceneDepth);
+		bool bIsWorldNormal = (CurrentMode == EViewModeIndex::VMI_WorldNormal);
 
 		if (ImGui::MenuItem("조명 적용(Lit)", nullptr, bIsLit) && !bIsLit)
 		{
@@ -232,6 +233,12 @@ void UMainBarWidget::RenderViewMenu()
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_SceneDepth);
 			UE_LOG("MainBarWidget: ViewMode를 SceneDepth으로 변경");
+		}
+
+		if (ImGui::MenuItem("월드 노멀(WorldNormal)", nullptr, bIsWorldNormal) && !bIsWorldNormal)
+		{
+			EditorInstance->SetViewMode(EViewModeIndex::VMI_WorldNormal);
+			UE_LOG("MainBarWidget: ViewMode를 WorldNormal으로 변경");
 		}
 
 		ImGui::EndMenu();
@@ -390,6 +397,40 @@ void UMainBarWidget::RenderShowFlagsMenu()
 			{
 				ShowFlags |= static_cast<uint64>(EEngineShowFlags::SF_FXAA);
 				UE_LOG("MainBarWidget: FXAA 활성화");
+			}
+			CurrentLevel->SetShowFlags(ShowFlags);
+		}
+
+		// Light Culling 표시 옵션
+		bool bShowLightCulling = (ShowFlags & EEngineShowFlags::SF_LightCulling) != 0;
+		if (ImGui::MenuItem("라이트 컬링 표시", nullptr, bShowLightCulling))
+		{
+			if (bShowLightCulling)
+			{
+				ShowFlags &= ~static_cast<uint64>(EEngineShowFlags::SF_LightCulling);
+				UE_LOG("MainBarWidget: 라이트 컬링 비표시");
+			}
+			else
+			{
+				ShowFlags |= static_cast<uint64>(EEngineShowFlags::SF_LightCulling);
+				UE_LOG("MainBarWidget: 라이트 컬링 표시");
+			}
+			CurrentLevel->SetShowFlags(ShowFlags);
+		}
+
+		// Light Culling Debug 표시 옵션
+		bool bShowLightCullingDebug = (ShowFlags & EEngineShowFlags::SF_LightCullingDebug) != 0;
+		if (ImGui::MenuItem("라이트 컬링 디버그 표시", nullptr, bShowLightCullingDebug))
+		{
+			if (bShowLightCullingDebug)
+			{
+				ShowFlags &= ~static_cast<uint64>(EEngineShowFlags::SF_LightCullingDebug);
+				UE_LOG("MainBarWidget: 라이트 컬링 디버그 비표시");
+			}
+			else
+			{
+				ShowFlags |= static_cast<uint64>(EEngineShowFlags::SF_LightCullingDebug);
+				UE_LOG("MainBarWidget: 라이트 컬링 디버그 표시");
 			}
 			CurrentLevel->SetShowFlags(ShowFlags);
 		}

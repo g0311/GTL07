@@ -11,6 +11,7 @@ FBillboardPass::FBillboardPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBu
     ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
     BillboardMaterialConstants.MaterialFlags |= HAS_DIFFUSE_MAP;
     BillboardMaterialConstants.Kd = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+    BillboardMaterialConstants.Ka = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 void FBillboardPass::PreExecute(FRenderingContext& Context)
@@ -33,7 +34,7 @@ void FBillboardPass::Execute(FRenderingContext& Context)
     }
     FPipelineInfo PipelineInfo = { InputLayout, VS, FRenderResourceFactory::GetRasterizerState(RenderState), DS, PS, BS, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
     Pipeline->UpdatePipeline(PipelineInfo);
-
+    
     if (!(Context.ShowFlags & EEngineShowFlags::SF_Billboard)) { return; }
 
     FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, BillboardMaterialConstants);
@@ -67,20 +68,28 @@ void FBillboardPass::Execute(FRenderingContext& Context)
         UBillBoardComponent* BillBoardComp = SortedItem.BillBoard;
         
         FMatrix WorldMatrix;
+        FMatrix WorldInverseTranspose;
+
         if (BillBoardComp->IsScreenSizeScaled())
         {
-            FVector FixedWorldScale = BillBoardComp->GetRelativeScale3D(); 
+            FVector FixedWorldScale = BillBoardComp->GetRelativeScale3D();
             FVector BillboardLocation = BillBoardComp->GetWorldLocation();
             FQuaternion BillboardRotation = BillBoardComp->GetWorldRotationAsQuaternion();
 
             WorldMatrix = FMatrix::GetModelMatrix(BillboardLocation, BillboardRotation, FixedWorldScale);
+            WorldInverseTranspose = FMatrix::GetModelMatrixInverse(BillboardLocation, BillboardRotation, FixedWorldScale).Transpose();
         }
-        else { WorldMatrix = BillBoardComp->GetWorldTransformMatrix(); }
+        else
+        {
+            WorldMatrix = BillBoardComp->GetWorldTransformMatrix();
+            WorldInverseTranspose = BillBoardComp->GetWorldTransformMatrixInverse().Transpose();
+        }
 
         Pipeline->SetVertexBuffer(BillBoardComp->GetVertexBuffer(), sizeof(FNormalVertex));
         Pipeline->SetIndexBuffer(BillBoardComp->GetIndexBuffer(), 0);
-       
-        FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, WorldMatrix);
+
+        FModelConstants ModelConstants{ WorldMatrix, WorldInverseTranspose };
+        FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, ModelConstants);
         Pipeline->SetConstantBuffer(0, true, ConstantBufferModel);
 
         Pipeline->SetTexture(0, false, BillBoardComp->GetSprite()->GetTextureSRV());

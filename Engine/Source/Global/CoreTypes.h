@@ -13,6 +13,12 @@
 //	uint32 BoundingBoxStartIndex; // 인덱스 버퍼에서, 바운딩박스가 시작되는 인덱스
 //};
 
+struct FModelConstants
+{
+	FMatrix World;
+	FMatrix WorldInverseTranspose;
+};
+
 struct FCameraConstants
 {
 	FCameraConstants() : NearClip(0), FarClip(0)
@@ -23,7 +29,7 @@ struct FCameraConstants
 
 	FMatrix View;
 	FMatrix Projection;
-	FVector ViewWorldLocation;    
+	FVector ViewWorldLocation;
 	float NearClip;
 	float FarClip;
 };
@@ -81,6 +87,38 @@ struct FLightConstants
 	FSpotLight SpotLight[8];
 };
 
+struct FDirectionalLightConstants
+{
+	FVector Direction;
+	float _Padding;
+	FVector Color;
+	float Intensity;
+};
+
+struct FDirectionalLightCBuffer
+{
+	FDirectionalLightConstants DirectionalLight;
+	int HasDirectionalLight;
+	float _Padding[3];
+};
+
+struct FPointLightData2
+{
+	FVector Position;
+	float Radius;
+	FVector Color;
+	float Intensity;
+	float FalloffExtent;
+	float _padding[3];
+};
+
+struct FPointLightCBuffer
+{
+	FPointLightData2 PointLights[8];
+	int NumPointLights;
+	float _padding[3];
+};
+
 struct FVertex
 {
 	FVector Position;
@@ -93,6 +131,8 @@ struct FNormalVertex
 	FVector Normal;
 	FVector4 Color;
 	FVector2 TexCoord;
+	FVector Tangent;
+	FVector Bitangent;
 };
 
 struct FRay

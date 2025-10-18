@@ -34,14 +34,17 @@ public:
 	void CreateDecalShader();
 	void CreatePointLightShader();
 	void CreateFogShader();
-	void CreateConstantBuffers();
 	void CreateCopyShader();
 	void CreateFXAAShader();
-	void CreateUberShader();
-	
+
+	void CreateConstantBuffers();
+	void CreateLightBuffers();
+	void CreateLightCullBuffers();
 	
 	// Release
 	void ReleaseConstantBuffers();
+	void ReleaseLightBuffers();
+	void ReleaseLightCullBuffers();
 	void ReleaseDefaultShader();
 	void ReleaseDepthStencilState();
 	void ReleaseBlendState();
@@ -54,7 +57,7 @@ public:
 	void RenderEnd() const;
 	void RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride = 0, uint32 InIndexBufferStride = 0);
 
-	void OnResize(uint32 Inwidth = 0, uint32 InHeight = 0) const;
+	void OnResize(uint32 Inwidth = 0, uint32 InHeight = 0);
 
 	// Getter & Setter
 	ID3D11Device* GetDevice() const { return DeviceResources->GetDevice(); }
@@ -78,6 +81,15 @@ public:
 	ID3D11Buffer* GetConstantBufferModels() const { return ConstantBufferModels; }
 	ID3D11Buffer* GetConstantBufferViewProj() const { return ConstantBufferViewProj; }
 
+	ID3D11Buffer* GetLightIndexBuffer() const { return LightIndexBuffer; }
+	ID3D11UnorderedAccessView* GetLightIndexBufferUAV() const { return LightIndexBufferUAV; }
+	ID3D11ShaderResourceView* GetLightIndexBufferSRV() const { return LightIndexBufferSRV; }
+	ID3D11Buffer* GetTileLightInfoBuffer() const { return TileLightInfoBuffer; }
+	ID3D11UnorderedAccessView* GetTileLightInfoUAV() const { return TileLightInfoUAV; }
+	ID3D11ShaderResourceView* GetTileLightInfoSRV() const { return TileLightInfoSRV; }
+	ID3D11Buffer* GetAllLightsBuffer() const { return AllLightsBuffer; }
+	ID3D11ShaderResourceView* GetAllLightsSRV() const { return AllLightsSRV; }
+	
 	void SetIsResizing(bool isResizing) { bIsResizing = isResizing; }
 
 private:
@@ -96,8 +108,25 @@ private:
 	ID3D11Buffer* ConstantBufferModels = nullptr;
 	ID3D11Buffer* ConstantBufferViewProj = nullptr;
 	ID3D11Buffer* ConstantBufferColor = nullptr;
+
+	// Light Structured Buffers
 	
-	FLOAT ClearColor[4] = {0.025f, 0.025f, 0.025f, 1.0f};
+	// UAV Buffers for light lists
+	ID3D11Buffer* LightIndexBuffer = nullptr;
+	ID3D11UnorderedAccessView* LightIndexBufferUAV = nullptr;
+	ID3D11ShaderResourceView* LightIndexBufferSRV = nullptr;
+
+	ID3D11Buffer* TileLightInfoBuffer = nullptr;
+	ID3D11UnorderedAccessView* TileLightInfoUAV = nullptr;
+	ID3D11ShaderResourceView* TileLightInfoSRV = nullptr;
+    
+	// 라이트 데이터 버퍼 (고정 크기)
+	ID3D11Buffer* AllLightsBuffer = nullptr;
+	ID3D11ShaderResourceView* AllLightsSRV = nullptr;
+	static constexpr uint32 MAX_LIGHTS = 1024; // 최대 라이트 개수
+
+	
+	FLOAT ClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 	// Default Shaders
 	ID3D11VertexShader* DefaultVertexShader = nullptr;
@@ -119,6 +148,7 @@ private:
 	// Texture Shaders
 	ID3D11VertexShader* TextureVertexShader = nullptr;
 	ID3D11PixelShader* TexturePixelShader = nullptr;
+	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
 	ID3D11InputLayout* TextureInputLayout = nullptr;
 
 	// Decal Shaders
@@ -153,4 +183,5 @@ private:
 
 	FCopyPass* CopyPass = nullptr;
 	FFXAAPass* FXAAPass = nullptr;
+	class FLightCullingDebugPass* LightCullingDebugPass = nullptr;
 };

@@ -7,6 +7,24 @@ struct FAmbientLightInfo
     float3 _pad0;
 };
 
+struct FDirectionalLightInfo
+{
+    float3 Direction;
+    float _Padding;
+    float3 Color;
+    float Intensity;
+};
+
+struct FPointLightInfo
+{
+    float3 Position;
+    float Radius;
+    float3 Color;
+    float Intensity;
+    float FalloffExtent;
+    float3 _padding;
+};
+
 struct FSpotLightInfo
 {
     float4 Color;
@@ -45,6 +63,18 @@ cbuffer Lighting : register(b3)
     float3 _pad1;
     FSpotLightInfo Spotlight[8];
 };
+
+cbuffer DirectionalLighting : register(b4)
+{
+    FDirectionalLightInfo Directional;
+    int HasDirectionalLight;
+}
+
+cbuffer PointLighting : register(b5)
+{
+    FPointLightInfo PointLights[8];
+    int NumPointLights;
+}
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
 Texture2D AmbientTexture : register(t1);	// map_Ka
@@ -133,7 +163,6 @@ struct PS_OUTPUT
 PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
-    
     float2 UV = Input.Tex;
     float3 Norm  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
@@ -141,6 +170,12 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
     
+    // Base diffuse color
+    float4 DiffuseColor = Kd;
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        DiffuseColor *= DiffuseTexture.Sample(SamplerWrap, UV);
+    }
     // Ambient contribution
     float3 AmbientColor = CalculateAmbientFactor(UV).rgb;
     
@@ -158,10 +193,104 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     //     FinalColor.a = D * alpha;
     // }
 
+    // Ambient contribution
+    float4 AmbientColor = Ka;
+    if (MaterialFlags & HAS_AMBIENT_MAP)
+    {
+        AmbientColor *= AmbientTexture.Sample(SamplerWrap, UV);
+    }
+    // Add Ambient Light from cbuffer
+    float4 AccumulatedAmbientColor = 0;
+    for (int i = 0; i < AmbientCount; i++)
+    {
+        AccumulatedAmbientColor += Ambient[i].AmbientColor * Ambient[i].Intensity;
+    }
+    AmbientColor *= AccumulatedAmbientColor;
+
+    // Directional Light
+    float3 DirectLighting = float3(0.f, 0.f, 0.f);
+    if (HasDirectionalLight > 0)
+    {
+        float3 normal = normalize(Input.WorldNormal);
+        float3 lightDir = normalize(-Directional.Direction);
+        float NdotL = saturate(dot(normal, lightDir));
+        DirectLighting += Directional.Color * Directional.Intensity * NdotL;
+    }
+    
+    // Point Lights
+    for (int i = 0; i < NumPointLights; i++)
+    {
+        float3 toLight = PointLights[i].Position - Input.WorldPosition;
+        float dist = length(toLight);
+        
+        if (dist < PointLights[i].Radius)
+        {
+            float3 lightDir = toLight / dist;
+            float3 normal = normalize(Input.WorldNormal);
+            float NdotL = saturate(dot(normal, lightDir));
+            float auttenuation = pow(1.0f - (dist / PointLights[i].Radius), PointLights[i].FalloffExtent);
+            
+            DirectLighting += PointLights[i].Color * PointLights[i].Intensity * NdotL * auttenuation;
+        }
+    }
+    
+    // Final Color 
+    float4 FinalColor;
+    FinalColor.rgb = DiffuseColor.rgb * (DirectLighting + AmbientColor.rgb);
+    FinalColor.a = DiffuseColor.a;
+    
+    // Alpha handling
+    if (MaterialFlags & HAS_ALPHA_MAP)
+    {
+        float alpha = AlphaTexture.Sample(SamplerWrap, UV).r;
+        FinalColor.a = D;
+        FinalColor.a *= alpha;
+    }
+
     Output.SceneColor = FinalColor;
+
+    // Calculate World Normal for Normal Buffer
+    float3 WorldNormal = Input.WorldNormal;
+
+    // Safety check: if normal is zero, use a default up vector
+    if (length(WorldNormal) < 0.001f)
+    {
+        WorldNormal = float3(0.0f, 0.0f, 1.0f);
+    }
+    else
+    {
+        WorldNormal = normalize(WorldNormal);
+    }
+
+    if (MaterialFlags & HAS_NORMAL_MAP)
+    {
+        // Sample normal map (tangent space)
+        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
+
+        // Decode from [0,1] to [-1,1]
+        TangentNormal = TangentNormal * 2.0f - 1.0f;
+
+        // Construct TBN matrix (Tangent, Bitangent, Normal)
+        float3 N = WorldNormal;
+        float3 T = Input.WorldTangent;
+        float3 B = Input.WorldBitangent;
+
+        // Safety check for tangent and bitangent
+        if (length(T) > 0.001f && length(B) > 0.001f)
+        {
+            T = normalize(T);
+            B = normalize(B);
+
+            // Transform tangent space normal to world space
+            WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
+        }
+    }
+
+    // Encode world normal to [0,1] range for storage
+    float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
     Output.SceneColor.a = 1.0;
     float3 EncodedNormal = normalize(Norm) * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
-	
+
     return Output;
-}
+};

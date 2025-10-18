@@ -1,19 +1,23 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Render/RenderPass/Public/StaticMeshPass.h"
 
 #include "Component/Light/Public/AmbientLightComponent.h"
 #include "Component/Light/Public/SpotLightComponent.h"
+#include "Component/Light/Public/DirectionalLightComponent.h"
+#include "Component/Light/Public/PointLightComponent.h"
 #include "Component/Mesh/Public/StaticMeshComponent.h"
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Texture/Public/Texture.h"
 
 FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCamera, ID3D11Buffer* InConstantBufferModel,
-	ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS)
-	: FRenderPass(InPipeline, InConstantBufferCamera, InConstantBufferModel), VS(InVS), PS(InPS), InputLayout(InLayout), DS(InDS)
+	ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11PixelShader* InPSWithNormalMap, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS)
+	: FRenderPass(InPipeline, InConstantBufferCamera, InConstantBufferModel), VS(InVS), PS(InPS), PSWithNormalMap(InPSWithNormalMap), InputLayout(InLayout), DS(InDS)
 {
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
 	ConstantBufferLight = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
+	ConstantBufferDirectionalLight = FRenderResourceFactory::CreateConstantBuffer<FDirectionalLightCBuffer>();
+	ConstantBufferPointLight = FRenderResourceFactory::CreateConstantBuffer<FPointLightCBuffer>();
 }
 
 void FStaticMeshPass::PreExecute(FRenderingContext& Context)
@@ -35,8 +39,6 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 		RenderState.CullMode = ECullMode::None; RenderState.FillMode = EFillMode::WireFrame;
 	}
 	ID3D11RasterizerState* RS = FRenderResourceFactory::GetRasterizerState(RenderState);
-	FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, PS, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
-	Pipeline->UpdatePipeline(PipelineInfo);
 
 	// Set a default sampler to slot 0 to ensure one is always bound
 	Pipeline->SetSamplerState(0, false, URenderer::GetInstance().GetDefaultSampler());
@@ -72,7 +74,8 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 			CurrentMeshAsset = MeshAsset;
 		}
 		
-		FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, MeshComp->GetWorldTransformMatrix());
+		FModelConstants ModelConstants{ MeshComp->GetWorldTransformMatrix(), MeshComp->GetWorldTransformMatrixInverse().Transpose() };
+		FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, ModelConstants);
 		Pipeline->SetConstantBuffer(0, true, ConstantBufferModel);
 
 		if (MeshAsset->MaterialInfo.empty() || MeshComp->GetStaticMesh()->GetNumMaterials() == 0) 
@@ -106,9 +109,15 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				if (Material->GetBumpTexture())     { MaterialConstants.MaterialFlags |= HAS_BUMP_MAP; }
 				MaterialConstants.Time = MeshComp->GetElapsedTime();
 
+				// Select appropriate pixel shader based on normal map presence
+				ID3D11PixelShader* SelectedPS = (Material->GetNormalTexture()) ? PSWithNormalMap : PS;
+				FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, SelectedPS, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
+				Pipeline->UpdatePipeline(PipelineInfo);
+
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
 
+				// Ambient Light
 				FLightConstants LightConstants = {};
 				for (size_t i=0; i < Context.Lights.size(); i++)
 				{
@@ -130,6 +139,44 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLight, LightConstants);
 				Pipeline->SetConstantBuffer(3, false, ConstantBufferLight);
 
+				// Directional Light
+				FDirectionalLightCBuffer DirectionalLightCBuffer = {};
+				DirectionalLightCBuffer.HasDirectionalLight = 0;
+				for (ULightComponent* Light : Context.Lights)
+				{
+					if (auto DirectionalLight = Cast<UDirectionalLightComponent>(Light))
+					{
+						DirectionalLightCBuffer.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
+						DirectionalLightCBuffer.DirectionalLight.Color = DirectionalLight->GetColor();
+						DirectionalLightCBuffer.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
+						DirectionalLightCBuffer.HasDirectionalLight = 1;
+						break; // Currently support only one directional light
+					}
+				}
+
+				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferDirectionalLight, DirectionalLightCBuffer);
+				Pipeline->SetConstantBuffer(4, false, ConstantBufferDirectionalLight);
+
+				// Point Light
+				FPointLightCBuffer PointLightCBuffer = {};
+				PointLightCBuffer.NumPointLights = 0;
+				for (ULightComponent* Light : Context.Lights)
+				{
+					if (auto PointLight = Cast<UPointLightComponent>(Light))
+					{
+						if (PointLightCBuffer.NumPointLights >= 8) { break; } // Max 8 point lights supported
+						PointLightCBuffer.PointLights[0].Position = PointLight->GetWorldLocation();
+						PointLightCBuffer.PointLights[0].Radius = PointLight->GetAttenuationRadius();
+						PointLightCBuffer.PointLights[0].Color = PointLight->GetColor();
+						PointLightCBuffer.PointLights[0].Intensity = PointLight->GetIntensity();
+						PointLightCBuffer.PointLights[0].FalloffExtent = PointLight->GetLightFalloffExponent();
+						PointLightCBuffer.NumPointLights++;
+					}
+				}
+
+				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPointLight, PointLightCBuffer);
+				Pipeline->SetConstantBuffer(5, false, ConstantBufferPointLight);
+
 				if (UTexture* DiffuseTexture = Material->GetDiffuseTexture())
 				{
 					Pipeline->SetTexture(0, false, DiffuseTexture->GetTextureSRV());
@@ -143,11 +190,15 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				{
 					Pipeline->SetTexture(2, false, SpecularTexture->GetTextureSRV());
 				}
+				if (UTexture* NormalTexture = Material->GetNormalTexture())
+				{
+					Pipeline->SetTexture(3, false, NormalTexture->GetTextureSRV());
+				}
 				if (UTexture* AlphaTexture = Material->GetAlphaTexture())
 				{
 					Pipeline->SetTexture(4, false, AlphaTexture->GetTextureSRV());
 				}
-				
+
 				CurrentMaterial = Material;
 			}
 			Pipeline->DrawIndexed(Section.IndexCount, Section.StartIndex, 0);
@@ -163,11 +214,12 @@ void FStaticMeshPass::PostExecute(FRenderingContext& Context)
 	Pipeline->SetTexture(3, false, nullptr);
 	Pipeline->SetTexture(4, false, nullptr);
 	Pipeline->SetTexture(5, false, nullptr);
-	// --- RTVs Reset End ---
 }
 
 void FStaticMeshPass::Release()
 {
 	SafeRelease(ConstantBufferMaterial);
 	SafeRelease(ConstantBufferLight);
+	SafeRelease(ConstantBufferDirectionalLight);
+	SafeRelease(ConstantBufferPointLight);
 }

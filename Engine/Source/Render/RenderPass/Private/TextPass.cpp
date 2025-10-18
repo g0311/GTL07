@@ -74,7 +74,7 @@ void FTextPass::Execute(FRenderingContext& Context)
 
     for (UTextComponent* Text : Context.Texts)
     {
-        RenderTextInternal(Text->GetText(), Text->GetWorldTransformMatrix());
+        RenderTextInternal(Text->GetText(), Text->GetWorldTransformMatrix(), Text->GetWorldTransformMatrixInverse());
     }
 
     // Render UUID
@@ -85,7 +85,9 @@ void FTextPass::Execute(FRenderingContext& Context)
         if (PickedBillboard->GetOwner() != GEditor->GetEditorModule()->GetSelectedActor()) { continue; }
         PickedBillboard->UpdateRotationMatrix(Context.CurrentCamera->GetForward());
         FString UUIDString = "UID: " + std::to_string(PickedBillboard->GetUUID());
-        RenderTextInternal(UUIDString, PickedBillboard->GetRTMatrix());
+        FMatrix RTMatrix = PickedBillboard->GetRTMatrix();
+        FMatrix RTMatrixInverse = PickedBillboard->GetWorldTransformMatrixInverse();
+        RenderTextInternal(UUIDString, RTMatrix, RTMatrixInverse);
     }
 }
 
@@ -93,7 +95,7 @@ void FTextPass::PostExecute(FRenderingContext& Context)
 {
 }
 
-void FTextPass::RenderTextInternal(const FString& Text, const FMatrix& WorldMatrix)
+void FTextPass::RenderTextInternal(const FString& Text, const FMatrix& WorldMatrix, const FMatrix& WorldMatrixInverse)
 {
     if (Text.empty()) return;
 
@@ -141,7 +143,8 @@ void FTextPass::RenderTextInternal(const FString& Text, const FMatrix& WorldMatr
     }
 
     // Update model constant buffer
-    FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, WorldMatrix);
+    FModelConstants ModelConstants{ WorldMatrix, WorldMatrixInverse.Transpose() };
+    FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, ModelConstants);
     Pipeline->SetConstantBuffer(0, true, ConstantBufferModel);
 
     // Set vertex buffer
