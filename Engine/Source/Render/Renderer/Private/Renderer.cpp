@@ -550,7 +550,7 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight)
 	DeviceResources->CreateFrameBuffer();
 	DeviceResources->CreateDepthBuffer();
 	DeviceResources->CreateNormalBuffer();
-	CreateLightBuffers();
+	CreateLightCullBuffers();
 
     ID3D11RenderTargetView* targetView = DeviceResources->GetSceneColorRenderTargetView();
     ID3D11RenderTargetView* targetViews[] = { targetView };

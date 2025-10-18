@@ -119,7 +119,7 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
     const uint32 numTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
     const uint32 numTilesY = (DeviceResources->GetHeight() + TILE_SIZE - 1) / TILE_SIZE;
 
-    struct TileInfo { uint32_t LightCount; uint32_t LightOffset; };
+    struct TileInfo { uint32_t LightOffset; uint32_t LightCount; };
     const TileInfo* tileInfo = static_cast<const TileInfo*>(mappedResource.pData);
 
     IDXGISurface* surface = nullptr;

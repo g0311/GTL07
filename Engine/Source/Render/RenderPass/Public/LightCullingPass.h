@@ -20,8 +20,10 @@ struct FCullingParams
 // 라이트 타입 상수
 enum class ELightType : uint32
 {
-    Point = 0,
-    Spot = 1
+    Ambient = 0,
+    Directional = 1,
+    Point = 2,
+    Spot = 3
 };
 
 // 셰이더와 일치하는 라이트 구조체

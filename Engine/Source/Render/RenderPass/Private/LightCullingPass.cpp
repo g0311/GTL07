@@ -106,8 +106,8 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     {
         FLightParams lightData;
         FVector worldPos = pointLight->GetWorldLocation();
-        lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 100.0f); // 기본 반지름
-        lightData.Color = FVector4(1.0f, 1.0f, 1.0f, 1.0f); // 기본 색상
+        lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, pointLight->GetSourceRadius());
+        lightData.Color = FVector4(pointLight->GetLightColor().X, pointLight->GetLightColor().Y, pointLight->GetLightColor().Z, 1.f);
         lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Point));
         lightData.Angles = FVector4(0, 0, 0, 0);
         allLights.push_back(lightData);

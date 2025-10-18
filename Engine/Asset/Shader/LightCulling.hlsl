@@ -101,8 +101,8 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     //     프로젝션 행렬은 뷰포트 기준으로 적용되므로, NDC 계산 또한 뷰포트 크기와 위치에 맞춤
     float2 uv_LT = float2(tileMinPixelPos.x - ViewportOffset.x, tileMinPixelPos.y - ViewportOffset.y) / ViewportSize;
     float2 uv_RB = float2(tileMaxPixelPos.x - ViewportOffset.x, tileMaxPixelPos.y - ViewportOffset.y) / ViewportSize;
-    float2 ndc_LT = (uv_LT * 2) - 1;
-    float2 ndc_RB = (uv_RB * 2) - 1;
+    float2 ndc_LT = float2(uv_LT.x * 2.0f - 1.0f, 1.0f - uv_LT.y * 2.0f);
+    float2 ndc_RB = float2(uv_RB.x * 2.0f - 1.0f, 1.0f - uv_RB.y * 2.0f);
 
     // (4) NDC 좌표를 뷰 공간의 방향 벡터로 변환
     //     z=1 평면에 투영된 지점의 좌표를 계산하는 것과 동일
