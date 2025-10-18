@@ -49,14 +49,31 @@ struct FMaterialConstants
 
 struct FLight
 {
-	FVector4 Light;
+	FVector4 Color;
 	float Intensity;
+};
+
+struct FSpotLight
+{
+	FVector4 Color;
+	float Intensity;
+
+	FVector Position;
+	float InvRange2;// 1/(Range*Range) : Spotlight Range
+    
+	FVector Direction;
+	float CosOuter;   // Spotlight의 바깥 Cone
+	float CosInner; // Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
+	float Falloff;  // Inner Cone부터 Outer Cone까지 범위의 감쇠율
 };
 
 struct FLightConstants
 {
 	int AmbientCount;
 	FLight AmbientLight[8];
+
+	int SpotlightCount;
+	FSpotLight SpotLight[8];
 };
 
 struct FVertex

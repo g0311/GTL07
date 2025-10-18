@@ -445,8 +445,8 @@
     <ClInclude Include="Source\Render\UI\ImGui\Public\ImGuiHelper.h" />
     <ClInclude Include="Source\Render\UI\Overlay\Public\StatOverlay.h" />
     <ClInclude Include="Source\Render\UI\Widget\Light\Public\AmbientComponentWidget.h" />
-    <ClInclude Include="Source\Render\UI\Widget\Light\Public\AmbientLightComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Light\Public\LightComponentWidget.h" />
+    <ClInclude Include="Source\Render\UI\Widget\Light\Public\SpotlightComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorDetailWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorTerminationWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\CameraControlWidget.h" />
@@ -626,8 +626,8 @@
     <ClCompile Include="Source\Render\UI\ImGui\Private\ImGuiHelper.cpp" />
     <ClCompile Include="Source\Render\UI\Overlay\Private\StatOverlay.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Light\Private\AmbientComponentWidget.cpp" />
-    <ClCompile Include="Source\Render\UI\Widget\Light\Private\AmbientLightComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Light\Private\LightComponentWidget.cpp" />
+    <ClCompile Include="Source\Render\UI\Widget\Light\Private\SpotlightComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorDetailWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorTerminationWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\CameraControlWIdget.cpp" />

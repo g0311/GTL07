@@ -2,6 +2,7 @@
 #include "Render/RenderPass/Public/StaticMeshPass.h"
 
 #include "Component/Light/Public/AmbientLightComponent.h"
+#include "Component/Light/Public/SpotLightComponent.h"
 #include "Component/Mesh/Public/StaticMeshComponent.h"
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"
@@ -109,13 +110,18 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
 
 				FLightConstants LightConstants = {};
-				LightConstants.AmbientCount = Context.Lights.size();
-				for (size_t i=0; i < LightConstants.AmbientCount; i++)
+				for (size_t i=0; i < Context.Lights.size(); i++)
 				{
 					if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Context.Lights[i]))
 					{
+						LightConstants.AmbientCount++;
 						LightConstants.AmbientLight[i].Intensity = Ambient->GetIntensity(); 
-						LightConstants.AmbientLight[i].Light = Ambient->GetColor(); 
+						LightConstants.AmbientLight[i].Color = Ambient->GetColor(); 
+					}
+					else if (USpotLightComponent* Spotlight = Cast<USpotLightComponent>(Context.Lights[i]))
+					{
+						LightConstants.SpotlightCount++;
+						LightConstants.SpotLight[i] = Spotlight->GetSpotInfo(); 
 					}
 				}
 				

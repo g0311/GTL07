@@ -18,7 +18,7 @@ struct FSpotLightInfo
     float InvRange2;// 1/(Range*Range) : Spotlight Range
     
     float3 Direction;
-    float CosOut;   // Spotlight의 바깥 Cone
+    float CosOuter;   // Spotlight의 바깥 Cone
 
     float CosInner; // Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
     float Falloff;  // Inner Cone부터 Outer Cone까지 범위의 감쇠율
@@ -98,8 +98,8 @@ float3 CalculateSpotlightFactors(float3 Position, float3 Norm, float3 ViewDir, f
         float RangeAttenuation = saturate(1.0 - length(LightDir) * Spotlight[i].InvRange2);
         
         float SpotLightCos = dot(LightDir, normalize(Spotlight[i].Direction));
-        float ConeWidth = max(Spotlight[i].CosInner - Spotlight[i].CosOut, 1e-5);
-        float SpotRatio = saturate((SpotLightCos - Spotlight[i].CosOut) / ConeWidth);
+        float ConeWidth = max(Spotlight[i].CosInner - Spotlight[i].CosOuter, 1e-5);
+        float SpotRatio = saturate((SpotLightCos - Spotlight[i].CosOuter) / ConeWidth);
         SpotRatio = pow(SpotRatio, max(Spotlight[i].Falloff, 0.0));
 
         /* TODO : Blinn Phong for Now */
@@ -138,7 +138,6 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
     
-    
     // Ambient contribution
     float3 AmbientColor = CalculateAmbientFactor(UV).rgb;
 
@@ -157,7 +156,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     }
 
     Output.SceneColor = FinalColor;
-    float3 EncodedNormal = normalize(Input.WorldNormal) * 0.5f + 0.5f;
+    float3 EncodedNormal = normalize(Norm) * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
 	
     return Output;
