@@ -85,9 +85,9 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     FCullingParams cullingParams;
     cullingParams.View = Context.CurrentCamera->GetFViewProjConstants().View;
     cullingParams.Projection = Context.CurrentCamera->GetFViewProjConstants().Projection;
-    // 전체 화면 크기는 리소스 버퍼 크기와 일치
-    cullingParams.ScreenDimensions[0] = DeviceResources->GetWidth();
-    cullingParams.ScreenDimensions[1] = DeviceResources->GetHeight();
+    // 전체 렌더 타겟 크기는 리소스 버퍼 크기와 일치
+    cullingParams.RenderTargetSize[0] = DeviceResources->GetWidth();
+    cullingParams.RenderTargetSize[1] = DeviceResources->GetHeight();
     // 뷰포트 오프셋 및 크기 전달
     cullingParams.ViewportOffset[0] = static_cast<uint32>(Context.Viewport.TopLeftX);
     cullingParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);

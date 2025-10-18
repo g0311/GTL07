@@ -106,7 +106,7 @@ void URenderer::Init(HWND InWindowHandle)
 		FXAAPass = new FFXAAPass(Pipeline, DeviceResources, FXAAVertexShader, FXAAPixelShader, FXAAInputLayout, FXAASamplerState);
 		RenderPasses.push_back(FXAAPass);
 
-		FLightCullingDebugPass* LightCullingDebugPass = new FLightCullingDebugPass(Pipeline, DeviceResources);
+		LightCullingDebugPass = new FLightCullingDebugPass(Pipeline, DeviceResources);
 		RenderPasses.push_back(LightCullingDebugPass);
 	}
 }

@@ -10,7 +10,7 @@ struct FCullingParams
 {
     FMatrix View;                // 64 bytes
     FMatrix Projection;          // 64 bytes
-    uint32 ScreenDimensions[2];  // 8 bytes
+    uint32 RenderTargetSize[2];  // 8 bytes - HLSL과 일치시킴
     uint32 ViewportOffset[2];    // 8 bytes
     uint32 ViewportSize[2];      // 8 bytes
     uint32 NumLights;            // 4 bytes

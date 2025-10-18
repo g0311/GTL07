@@ -116,8 +116,7 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
     }
 
     const uint32 TILE_SIZE = 32;
-    const uint32 numTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
-    const uint32 numTilesY = (DeviceResources->GetHeight() + TILE_SIZE - 1) / TILE_SIZE;
+    const uint32 globalNumTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
 
     struct TileInfo { uint32_t LightOffset; uint32_t LightCount; };
     const TileInfo* tileInfo = static_cast<const TileInfo*>(mappedResource.pData);
@@ -150,13 +149,24 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
     D2DContext->SetTarget(targetBmp);
     D2DContext->BeginDraw();
 
+    // Set clipping rectangle to the viewport
+    const D2D1_RECT_F viewportRect = { Context.Viewport.TopLeftX, Context.Viewport.TopLeftY, Context.Viewport.TopLeftX + Context.Viewport.Width, Context.Viewport.TopLeftY + Context.Viewport.Height };
+    D2DContext->PushAxisAlignedClip(viewportRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+
+    const uint32 numTilesX = (Context.Viewport.Width + TILE_SIZE - 1) / TILE_SIZE;
+    const uint32 numTilesY = (Context.Viewport.Height + TILE_SIZE - 1) / TILE_SIZE;
+    const uint32 startTileX = (UINT)Context.Viewport.TopLeftX / TILE_SIZE;
+    const uint32 startTileY = (UINT)Context.Viewport.TopLeftY / TILE_SIZE;
+
     for (uint32 y = 0; y < numTilesY; ++y)
     {
         for (uint32 x = 0; x < numTilesX; ++x)
         {
-            uint32_t lightCount = tileInfo[y * numTilesX + x].LightCount;
+            uint32 globalTileX = startTileX + x;
+            uint32 globalTileY = startTileY + y;
+            uint32_t lightCount = tileInfo[globalTileY * globalNumTilesX + globalTileX].LightCount;
             
-            D2D1_RECT_F rect = D2D1::RectF(x * TILE_SIZE, y * TILE_SIZE, (x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE);
+            D2D1_RECT_F rect = D2D1::RectF(globalTileX * TILE_SIZE, globalTileY * TILE_SIZE, (globalTileX + 1) * TILE_SIZE, (globalTileY + 1) * TILE_SIZE);
             
             // Draw grid
             TextBrush->SetColor(D2D1::ColorF(0.3f, 0.3f, 0.3f, 0.5f));
@@ -175,6 +185,7 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
         }
     }
 
+    D2DContext->PopAxisAlignedClip();
     D2DContext->EndDraw();
     D2DContext->SetTarget(nullptr);
     SafeRelease(targetBmp);

@@ -61,17 +61,17 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
 {
     // --- 초기화 및 타일 유효성 검사 ---
     
-    // 현재 스레드 그룹이 처리할 타일의 좌표
+    // 현재 스레드 그룹이 처리할 타일의 좌표 (뷰포트 기준)
     uint2 tilePos = Gid.xy;
-    // 타일의 스크린 좌표 경계 계산
+    // 타일의 뷰포트 내 픽셀 좌표 경계 계산
     uint2 tileMinBound = tilePos * TILE_SIZE;
     uint2 tileMaxBound = tileMinBound + TILE_SIZE;
     
-    // 타일이 뷰포트 영역을 완전히 벗어났으면 더 이상 처리하지 않고 종료
-    if (tileMinBound.x >= ViewportOffset.x + ViewportSize.x || 
-        tileMinBound.y >= ViewportOffset.y + ViewportSize.y ||
-        tileMaxBound.x <= ViewportOffset.x ||
-        tileMaxBound.y <= ViewportOffset.y)
+    // 타일이 뷰포트 영역을 벗어났는지 검사 (뷰포트 좌표계에서 비교)
+    if (tileMinBound.x >= ViewportSize.x || 
+        tileMinBound.y >= ViewportSize.y ||
+        tileMaxBound.x <= 0 ||
+        tileMaxBound.y <= 0)
     {
         return;
     }
@@ -93,14 +93,14 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     float tanHalfFovX = 1.0f / Projection[0][0];
     float tanHalfFovY = 1.0f / Projection[1][1];
 
-    // (2) 타일의 화면상 픽셀 좌표 범위를 계산함. (min: 좌상단, max: 우하단)
+    // (2) 타일의 뷰포트 내 상대 픽셀 좌표 범위를 계산 (뷰포트 기준)
+    // Gid.xy는 뷰포트 내에서의 타일 인덱스이므로 직접 사용
     float2 tileMinPixelPos = Gid.xy * TILE_SIZE;
     float2 tileMaxPixelPos = (Gid.xy + 1) * TILE_SIZE;
 
-    // (3) 네 꼭짓점의 '절대 픽셀 좌표'를 '현재 뷰포트 기준의 상대 좌표'로 변환 후, NDC(-1 ~ 1 범위)로 변환
-    //     프로젝션 행렬은 뷰포트 기준으로 적용되므로, NDC 계산 또한 뷰포트 크기와 위치에 맞춤
-    float2 uv_LT = float2(tileMinPixelPos.x - ViewportOffset.x, tileMinPixelPos.y - ViewportOffset.y) / ViewportSize;
-    float2 uv_RB = float2(tileMaxPixelPos.x - ViewportOffset.x, tileMaxPixelPos.y - ViewportOffset.y) / ViewportSize;
+    // (3) 뷰포트 내 상대 좌표를 UV(0~1)로 변환 후 NDC(-1 ~ 1 범위)로 변환
+    float2 uv_LT = tileMinPixelPos / ViewportSize;
+    float2 uv_RB = tileMaxPixelPos / ViewportSize;
     float2 ndc_LT = float2(uv_LT.x * 2.0f - 1.0f, 1.0f - uv_LT.y * 2.0f);
     float2 ndc_RB = float2(uv_RB.x * 2.0f - 1.0f, 1.0f - uv_RB.y * 2.0f);
 
@@ -284,15 +284,22 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         InterlockedAdd(LightIndexBuffer[0], numVisibleLights, globalOffset);
         globalOffset += 1; // 0번 인덱스는 카운터이므로 1부터 실제 데이터 저장
         
-        // TileLightInfo 버퍼에 현재 타일의 정보를 기록 (시작 오프셋, 광원 개수)
-        uint tileIndex = Gid.y * ((RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE) + Gid.x;
+        uint globalTileX = (ViewportOffset.x / TILE_SIZE) + Gid.x;
+        uint globalTileY = (ViewportOffset.y / TILE_SIZE) + Gid.y;
+        uint globalWindowTileWidth = (RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE;
+        uint tileIndex = globalTileY * globalWindowTileWidth + globalTileX;
+
         TileLightInfo[tileIndex] = uint2(globalOffset, min(numVisibleLights, 1024u));
     }
     
     // 그룹 내 모든 스레드가 협력하여 공유 메모리의 내용을 전역 버퍼(LightIndexBuffer)에 복사
     if (numVisibleLights > 0)
     {
-        uint tileIndex = Gid.y * ((RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE) + Gid.x;
+        uint globalTileX = (ViewportOffset.x / TILE_SIZE) + Gid.x;
+        uint globalTileY = (ViewportOffset.y / TILE_SIZE) + Gid.y;
+        uint globalWindowTileWidth = (RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE;
+        uint tileIndex = globalTileY * globalWindowTileWidth + globalTileX;
+
         uint globalOffset = TileLightInfo[tileIndex].x;
         uint actualCount = min(numVisibleLights, 1024u);
         

@@ -177,4 +177,5 @@ private:
 
 	FCopyPass* CopyPass = nullptr;
 	FFXAAPass* FXAAPass = nullptr;
+	class FLightCullingDebugPass* LightCullingDebugPass = nullptr;
 };
