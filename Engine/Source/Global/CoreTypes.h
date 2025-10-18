@@ -76,7 +76,7 @@ struct FSpotLight
 	float   _pad0;
 };
 
-struct FLightConstants
+struct FLightConstantss
 {
 	int AmbientCount;
 	FVector _pad0;
@@ -87,7 +87,7 @@ struct FLightConstants
 	FSpotLight SpotLight[8];
 };
 
-struct FDirectionalLightConstants
+struct FDirectionalLightData
 {
 	FVector Direction;
 	float _Padding;
@@ -95,14 +95,7 @@ struct FDirectionalLightConstants
 	float Intensity;
 };
 
-struct FDirectionalLightCBuffer
-{
-	FDirectionalLightConstants DirectionalLight;
-	int HasDirectionalLight;
-	float _Padding[3];
-};
-
-struct FPointLightData2
+struct FPointLightData
 {
 	FVector Position;
 	float Radius;
@@ -112,11 +105,17 @@ struct FPointLightData2
 	float _padding[3];
 };
 
-struct FPointLightCBuffer
+struct FLightConstants
 {
-	FPointLightData2 PointLights[8];
+	/* Directional Light */
+	int HasDirectionalLight;
+	float _padding0[3];
+	FDirectionalLightData DirectionalLight;
+
+	/* Point Light */
 	int NumPointLights;
-	float _padding[3];
+	float _padding1[3];
+	FPointLightData PointLights[8];
 };
 
 struct FVertex

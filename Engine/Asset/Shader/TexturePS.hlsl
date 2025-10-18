@@ -64,16 +64,15 @@ cbuffer Lighting : register(b3)
     FSpotLightInfo Spotlight[8];
 };
 
-cbuffer DirectionalLighting : register(b4)
+cbuffer Lighting : register(b4)
 {
-    FDirectionalLightInfo Directional;
     int HasDirectionalLight;
-}
-
-cbuffer PointLighting : register(b5)
-{
-    FPointLightInfo PointLights[8];
+    float3 _pad2;
+    FDirectionalLightInfo Directional;
+    
     int NumPointLights;
+    float3 _pad3;
+    FPointLightInfo PointLights[8];
 }
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
