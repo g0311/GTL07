@@ -5,7 +5,7 @@ class FStaticMeshPass : public FRenderPass
 {
 public:
     FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferViewProj, ID3D11Buffer* InConstantBufferModel,
-        ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11PixelShader* InPSWithNormalMap, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS);
+        ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11PixelShader* InPSWithNormalMap, ID3D11PixelShader* InPSWithNormalAndHeightMap, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS);
     void PreExecute(FRenderingContext& Context) override;
     void Execute(FRenderingContext& Context) override;
     void PostExecute(FRenderingContext& Context) override;
@@ -13,8 +13,9 @@ public:
 
 private:
     ID3D11VertexShader* VS = nullptr;
-    ID3D11PixelShader* PS = nullptr;
-    ID3D11PixelShader* PSWithNormalMap = nullptr;
+    ID3D11PixelShader* PS = nullptr;							// Variant 0: Base
+    ID3D11PixelShader* PSWithNormalMap = nullptr;				// Variant 1: Normal only
+    ID3D11PixelShader* PSWithNormalAndHeightMap = nullptr;		// Variant 2: Normal + Height
     ID3D11InputLayout* InputLayout = nullptr;
     ID3D11DepthStencilState* DS = nullptr;
 

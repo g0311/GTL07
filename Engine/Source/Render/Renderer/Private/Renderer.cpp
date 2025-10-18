@@ -62,7 +62,7 @@ void URenderer::Init(HWND InWindowHandle)
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
 	FStaticMeshPass* StaticMeshPass = new FStaticMeshPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
-		TextureVertexShader, TexturePixelShader, TexturePixelShaderWithNormalMap, TextureInputLayout, DefaultDepthStencilState);
+		TextureVertexShader, TexturePixelShader, TexturePixelShaderWithNormalMap, TexturePixelShaderWithNormalAndHeightMap, TextureInputLayout, DefaultDepthStencilState);
 	RenderPasses.push_back(StaticMeshPass);
 
 	FDecalPass* DecalPass = new FDecalPass(Pipeline, ConstantBufferViewProj,
@@ -211,16 +211,25 @@ void URenderer::CreateTextureShader()
 	};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/TextureVS.hlsl", TextureLayout, &TextureVertexShader, &TextureInputLayout);
 
-	// Compile pixel shader without normal map (nullptr = no defines)
+	// Variant 0: Base shader (no normal map, no height map)
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShader, nullptr);
 
-	// Compile pixel shader with normal map
+	// Variant 1: Normal map only
 	D3D_SHADER_MACRO NormalMapDefines[] =
 	{
 		{ "HAS_NORMAL_MAP", "1" },
 		{ nullptr, nullptr }
 	};
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShaderWithNormalMap, NormalMapDefines);
+
+	// Variant 2: Normal map + Height map (for Parallax Occlusion Mapping)
+	D3D_SHADER_MACRO NormalAndHeightMapDefines[] =
+	{
+		{ "HAS_NORMAL_MAP", "1" },
+		{ "HAS_HEIGHT_MAP", "1" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShaderWithNormalAndHeightMap, NormalAndHeightMapDefines);
 }
 
 void URenderer::CreateDecalShader()
@@ -297,6 +306,7 @@ void URenderer::ReleaseDefaultShader()
 	SafeRelease(TextureInputLayout);
 	SafeRelease(TexturePixelShader);
 	SafeRelease(TexturePixelShaderWithNormalMap);
+	SafeRelease(TexturePixelShaderWithNormalAndHeightMap);
 	SafeRelease(TextureVertexShader);
 	
 	SafeRelease(DecalVertexShader);

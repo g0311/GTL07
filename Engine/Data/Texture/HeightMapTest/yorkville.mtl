@@ -1,0 +1,30 @@
+# Material file for Yorkville brick texture
+# Generated for Parallax Occlusion Mapping test
+
+newmtl yorkville
+
+# Ambient color
+Ka 1.000 1.000 1.000
+map_Ka Data/Texture/HeightMapTest/yorkville_ambient.png
+
+# Diffuse color (using ambient as diffuse since no separate diffuse texture exists)
+Kd 1.000 1.000 1.000
+map_Kd Data/Texture/HeightMapTest/yorkville_ambient.png
+
+# Specular color
+Ks 0.500 0.500 0.500
+Ns 96.078431
+map_Ks Data/Texture/HeightMapTest/yorkville_specular.png
+
+# Normal map (for surface detail)
+map_Bump Data/Texture/HeightMapTest/yorkville_normal.png
+
+# Height map (for Parallax Occlusion Mapping)
+# Note: yorkville_height.png is the proper height map
+# yorkville_displacement.png is also available but height is recommended
+disp Data/Texture/HeightMapTest/yorkville_height.png
+
+# Material properties
+Ni 1.450
+d 1.0
+illum 2

@@ -34,12 +34,13 @@ struct FCameraConstants
 	float FarClip;
 };
 
+// Material flags - must match shader defines in TexturePS.hlsl
 #define HAS_DIFFUSE_MAP	 (1 << 0)
 #define HAS_AMBIENT_MAP	 (1 << 1)
 #define HAS_SPECULAR_MAP (1 << 2)
 #define HAS_NORMAL_MAP	 (1 << 3)
 #define HAS_ALPHA_MAP	 (1 << 4)
-#define HAS_BUMP_MAP	 (1 << 5)
+#define HAS_HEIGHT_MAP	 (1 << 5)
 
 struct FMaterialConstants
 {
@@ -50,7 +51,9 @@ struct FMaterialConstants
 	float Ni;
 	float D;
 	uint32 MaterialFlags;
-	float Time; // Time in seconds
+	float Time;        // Time in seconds
+	float HeightScale; // Parallax height scale
+	float Padding[3];  // 16-byte alignment
 };
 
 struct FVertex

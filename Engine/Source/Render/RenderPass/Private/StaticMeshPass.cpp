@@ -6,8 +6,8 @@
 #include "Texture/Public/Texture.h"
 
 FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCamera, ID3D11Buffer* InConstantBufferModel,
-	ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11PixelShader* InPSWithNormalMap, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS)
-	: FRenderPass(InPipeline, InConstantBufferCamera, InConstantBufferModel), VS(InVS), PS(InPS), PSWithNormalMap(InPSWithNormalMap), InputLayout(InLayout), DS(InDS)
+	ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11PixelShader* InPSWithNormalMap, ID3D11PixelShader* InPSWithNormalAndHeightMap, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS)
+	: FRenderPass(InPipeline, InConstantBufferCamera, InConstantBufferModel), VS(InVS), PS(InPS), PSWithNormalMap(InPSWithNormalMap), PSWithNormalAndHeightMap(InPSWithNormalAndHeightMap), InputLayout(InLayout), DS(InDS)
 {
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
 }
@@ -85,6 +85,11 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 		{
 			UMaterial* Material = MeshComp->GetMaterial(Section.MaterialSlot);
 			if (CurrentMaterial != Material) {
+				// Check which texture maps are available
+				bool bHasNormalMap = Material->GetNormalTexture() != nullptr;
+				bool bHasHeightMap = Material->GetBumpTexture() != nullptr;
+
+				// Initialize material constants
 				FMaterialConstants MaterialConstants = {};
 				FVector AmbientColor = Material->GetAmbientColor(); MaterialConstants.Ka = FVector4(AmbientColor.X, AmbientColor.Y, AmbientColor.Z, 1.0f);
 				FVector DiffuseColor = Material->GetDiffuseColor(); MaterialConstants.Kd = FVector4(DiffuseColor.X, DiffuseColor.Y, DiffuseColor.Z, 1.0f);
@@ -96,13 +101,34 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				if (Material->GetDiffuseTexture())  { MaterialConstants.MaterialFlags |= HAS_DIFFUSE_MAP; }
 				if (Material->GetAmbientTexture())  { MaterialConstants.MaterialFlags |= HAS_AMBIENT_MAP; }
 				if (Material->GetSpecularTexture()) { MaterialConstants.MaterialFlags |= HAS_SPECULAR_MAP; }
-				if (Material->GetNormalTexture())   { MaterialConstants.MaterialFlags |= HAS_NORMAL_MAP; }
 				if (Material->GetAlphaTexture())    { MaterialConstants.MaterialFlags |= HAS_ALPHA_MAP; }
-				if (Material->GetBumpTexture())     { MaterialConstants.MaterialFlags |= HAS_BUMP_MAP; }
-				MaterialConstants.Time = MeshComp->GetElapsedTime();
 
-				// Select appropriate pixel shader based on normal map presence
-				ID3D11PixelShader* SelectedPS = (Material->GetNormalTexture()) ? PSWithNormalMap : PS;
+				// Set normal map and height map flags
+				// The appropriate shader variant will be selected based on these flags
+				if (bHasNormalMap)
+				{
+					MaterialConstants.MaterialFlags |= HAS_NORMAL_MAP;
+				}
+				if (bHasHeightMap)
+				{
+					MaterialConstants.MaterialFlags |= HAS_HEIGHT_MAP;
+				}
+				MaterialConstants.Time = MeshComp->GetElapsedTime();
+				MaterialConstants.HeightScale = 0.1f;  // Default Parallax scale
+
+				// Select appropriate pixel shader variant based on texture maps
+				ID3D11PixelShader* SelectedPS = PS;  // Variant 0: Base (default)
+
+				if (bHasNormalMap && bHasHeightMap)
+				{
+					SelectedPS = PSWithNormalAndHeightMap;  // Variant 2: Normal + Height
+				}
+				else if (bHasNormalMap)
+				{
+					SelectedPS = PSWithNormalMap;  // Variant 1: Normal only
+				}
+				// else: Use base PS (Variant 0)
+
 				FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, SelectedPS, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
 				Pipeline->UpdatePipeline(PipelineInfo);
 
@@ -129,6 +155,10 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				if (UTexture* AlphaTexture = Material->GetAlphaTexture())
 				{
 					Pipeline->SetTexture(4, false, AlphaTexture->GetTextureSRV());
+				}
+				if (UTexture* BumpTexture = Material->GetBumpTexture())
+				{
+					Pipeline->SetTexture(5, false, BumpTexture->GetTextureSRV());
 				}
 
 				CurrentMaterial = Material;

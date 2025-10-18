@@ -119,8 +119,9 @@ private:
 	
 	// Texture Shaders
 	ID3D11VertexShader* TextureVertexShader = nullptr;
-	ID3D11PixelShader* TexturePixelShader = nullptr;
-	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
+	ID3D11PixelShader* TexturePixelShader = nullptr;							// Variant 0: Base (no normal, no height)
+	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;				// Variant 1: Normal only
+	ID3D11PixelShader* TexturePixelShaderWithNormalAndHeightMap = nullptr;		// Variant 2: Normal + Height
 	ID3D11InputLayout* TextureInputLayout = nullptr;
 
 	// Decal Shaders
