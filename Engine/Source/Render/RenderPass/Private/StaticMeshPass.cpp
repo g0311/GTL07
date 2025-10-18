@@ -109,13 +109,13 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
 
 				FLightConstants LightConstants = {};
-				LightConstants.AmbientLight.Count = Context.Lights.size();
-				for (size_t i=0; i < LightConstants.AmbientLight.Count; i++)
+				LightConstants.AmbientCount = Context.Lights.size();
+				for (size_t i=0; i < LightConstants.AmbientCount; i++)
 				{
 					if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Context.Lights[i]))
 					{
-						LightConstants.AmbientLight.Intensity[i] = Ambient->GetIntensity(); 
-						LightConstants.AmbientLight.Light[i] = Ambient->GetColor(); 
+						LightConstants.AmbientLight[i].Intensity = Ambient->GetIntensity(); 
+						LightConstants.AmbientLight[i].Light = Ambient->GetColor(); 
 					}
 				}
 				

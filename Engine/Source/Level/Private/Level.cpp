@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Actor/Public/Actor.h"
-#include "Component/Public/FakeLightComponent.h"
 #include "Component/Public/PrimitiveComponent.h"
 #include "Component/Public/FakePointLightComponent.h"
+#include "Component/Light/Public/LightComponent.h"
 #include "Core/Public/Object.h"
 #include "Editor/Public/Editor.h"
 #include "Editor/Public/Viewport.h"
@@ -153,6 +153,10 @@ void ULevel::RegisterComponent(UActorComponent* InComponent)
 	{
 		PointLights.push_back(PointLightComponent);
 	}
+	else if (auto LightComponent = Cast<ULightComponent>(InComponent))
+	{
+		Lights.push_back(LightComponent);
+	}
 
 	UE_LOG("Level: '%s' 컴포넌트를 씬에 등록했습니다.", InComponent->GetName().ToString().data());
 }
@@ -183,6 +187,13 @@ void ULevel::UnregisterComponent(UActorComponent* InComponent)
 			PointLights.erase(It);
 		}	
 	}
+	else if (auto LightComponent = Cast<ULightComponent>(InComponent))
+	{
+		if (auto It = std::find(Lights.begin(), Lights.end(), LightComponent); It != Lights.end())
+		{
+			Lights.erase(It);
+		}	
+	}
 	
 }
 
@@ -202,6 +213,10 @@ void ULevel::AddLevelComponent(AActor* Actor)
 		else if (auto PointLightComponent = Cast<UFakePointLightComponent>(Component))
 		{
 			PointLights.push_back(PointLightComponent);
+		}
+		else if (auto LightComponent = Cast<ULightComponent>(Component))
+		{
+			Lights.push_back(LightComponent);
 		}
 	}
 }

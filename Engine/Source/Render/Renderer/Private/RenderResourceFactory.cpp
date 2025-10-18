@@ -57,10 +57,16 @@ ID3D11Buffer* FRenderResourceFactory::CreateIndexBuffer(const void* InIndices, u
 
 void FRenderResourceFactory::CreatePixelShader(const wstring& InFilePath, ID3D11PixelShader** OutPixelShader)
 {
+	
+	UINT CompileFlags = 0;
+#if defined(_DEBUG)
+	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+	
 	ID3DBlob* PixelShaderBlob = nullptr;
 	ID3DBlob* ErrorBlob = nullptr;
 
-	HRESULT Result = D3DCompileFromFile(InFilePath.data(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, &PixelShaderBlob, &ErrorBlob);
+	HRESULT Result = D3DCompileFromFile(InFilePath.data(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", CompileFlags, 0, &PixelShaderBlob, &ErrorBlob);
 	if (FAILED(Result))
 	{
 		if (ErrorBlob) { OutputDebugStringA(static_cast<char*>(ErrorBlob->GetBufferPointer())); SafeRelease(ErrorBlob); }

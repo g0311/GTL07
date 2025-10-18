@@ -53,7 +53,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     
     float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
     float2 UV = Input.Tex;
-
+    
     // Base diffuse color
     float4 DiffuseColor = Kd;
     if (MaterialFlags & HAS_DIFFUSE_MAP)
@@ -67,7 +67,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     if (MaterialFlags & HAS_AMBIENT_MAP)
     {
         // Material Ambient Reflection
-        AmbientColor *= AmbientTexture.Sample(SamplerWrap, UV); 
+        AmbientColor *= AmbientTexture.Sample(SamplerWrap, UV);
     }
     // Add Ambient Light  from cbuffer
     float4 AccumulatedAmbientColor = 0;
@@ -75,7 +75,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     {
         AccumulatedAmbientColor+= Ambient[i].AmbientColor*Ambient[i].Intensity;
     }
-    AmbientColor *= AccumulatedAmbientColor;   
+    AmbientColor *= AccumulatedAmbientColor;
 
     // Add Final Color 
     FinalColor.rgb = DiffuseColor.rgb + AmbientColor.rgb;
