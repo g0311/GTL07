@@ -436,7 +436,6 @@
     <ClInclude Include="Source\Render\RenderPass\Public\DecalPass.h" />
     <ClInclude Include="Source\Render\RenderPass\Public\LightCullingDebugPass.h" />
     <ClInclude Include="Source\Render\RenderPass\Public\LightCullingPass.h" />
-    <ClInclude Include="Source\Render\RenderPass\Public\PointLightPass.h" />
     <ClInclude Include="Source\Render\RenderPass\Public\FogPass.h" />
     <ClInclude Include="Source\Render\RenderPass\Public\FXAAPass.h" />
     <ClInclude Include="Source\Render\RenderPass\Public\RenderingContext.h" />
@@ -622,7 +621,6 @@
     <ClCompile Include="Source\Render\RenderPass\Private\DecalPass.cpp" />
     <ClCompile Include="Source\Render\RenderPass\Private\LightCullingDebugPass.cpp" />
     <ClCompile Include="Source\Render\RenderPass\Private\LightCullingPass.cpp" />
-    <ClCompile Include="Source\Render\RenderPass\Private\PointLightPass.cpp" />
     <ClCompile Include="Source\Render\RenderPass\Private\FXAAPass.cpp" />
     <ClCompile Include="Source\Render\RenderPass\Private\FogPass.cpp" />
     <ClCompile Include="Source\Render\RenderPass\Private\RenderPass.cpp" />
