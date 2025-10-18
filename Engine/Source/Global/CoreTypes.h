@@ -49,14 +49,14 @@ struct FMaterialConstants
 
 struct FLight
 {
-	unsigned long long Count;
-	float Intensity[8];
-	FVector4 Light[8];
+	FVector4 Light;
+	float Intensity;
 };
 
 struct FLightConstants
 {
-	FLight AmbientLight;
+	int AmbientCount;
+	FLight AmbientLight[8];
 };
 
 struct FVertex
@@ -86,6 +86,7 @@ struct FRenderState
 {
 	ECullMode CullMode = ECullMode::None;
 	EFillMode FillMode = EFillMode::Solid;
+	EBlendMode BlendMode = EBlendMode::Opaque;
 };
 
 /**
