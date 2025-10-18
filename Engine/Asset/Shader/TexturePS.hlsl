@@ -1,7 +1,4 @@
 #include "TextureVS.hlsl"
-#include "Editor/Public/SplitterWindow.h"
-#include "Global/Enum.h"
-#include "Physics/Public/BoundingVolume.h"
 
 struct FAmbientLightInfo
 {
