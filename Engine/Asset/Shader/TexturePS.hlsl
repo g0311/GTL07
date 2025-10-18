@@ -31,13 +31,13 @@ struct FSpotLightInfo
 
     float Intensity;
     float3 Position;
-    
-    float InvRange2;// 1/(Range*Range) : Spotlight Range
+
     float3 Direction;
-    
-    float CosOuter;   // Spotlight의 바깥 Cone
-    float CosInner; // Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
+    float InvRange2;// 1/(Range*Range) : Spotlight Range
+
     float Falloff;  // Inner Cone부터 Outer Cone까지 범위의 감쇠율
+    float CosOuter;   // cos(OuterAngle)
+    float CosInner; // cos(InnerAngle) - (InnerAngle < OuterAngle)
     float _pad0;
 };
 
@@ -49,7 +49,7 @@ cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
     float Ns;		// Specular exponent
     float Ni;		// Index of refraction
     float D;		// Dissolve factor
-    uint MaterialFlags;	// Which textures are available (bitfield)
+    uint MaterialFlags;
     float Time;
 };
 
@@ -128,9 +128,15 @@ float3 CalculateSpotlightFactors(float3 Position, float3 Norm, float3 ViewDir, f
 
         // Attenuation : Range & Cone(Cos)
         float RangeAttenuation = saturate(1.0 - Distance * Distance * Spotlight[i].InvRange2);
-        
+
+        // SpotLight Cone Attenuation
+        // SpotLightCos: angle between light direction and pixel direction
         float SpotLightCos = dot(-LightDir, normalize(Spotlight[i].Direction));
+
+        // ConeWidth: CosInner > CosOuter (because InnerAngle < OuterAngle, cos is decreasing)
         float ConeWidth = max(Spotlight[i].CosInner - Spotlight[i].CosOuter, 1e-5);
+
+        // SpotRatio: 0 when outside CosOuter, 1 when inside CosInner
         float SpotRatio = saturate((SpotLightCos - Spotlight[i].CosOuter) / ConeWidth);
         SpotRatio = pow(SpotRatio, max(Spotlight[i].Falloff, 0.0));
 

@@ -308,8 +308,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Source\Actor\Light\Public\AmbientLightActor.h" />
     <ClInclude Include="Source\Actor\Light\Public\DirectionalLightActor.h" />
     <ClInclude Include="Source\Actor\Light\Public\PointLightActor.h" />
+    <ClInclude Include="Source\Actor\Light\Public\SpotLightActor.h" />
     <ClInclude Include="Source\Actor\Public\Actor.h" />
     <ClInclude Include="Source\Actor\Public\BillBoardActor.h" />
     <ClInclude Include="Source\Actor\Public\CubeActor.h" />
@@ -502,8 +504,10 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Source\Actor\Light\Private\AmbientLightActor.cpp" />
     <ClCompile Include="Source\Actor\Light\Private\DirectionalLightActor.cpp" />
     <ClCompile Include="Source\Actor\Light\Private\PointLightActor.cpp" />
+    <ClCompile Include="Source\Actor\Light\Private\SpotLightActor.cpp" />
     <ClCompile Include="Source\Actor\Private\Actor.cpp" />
     <ClCompile Include="Source\Actor\Private\BillBoardActor.cpp" />
     <ClCompile Include="Source\Actor\Private\CubeActor.cpp" />
