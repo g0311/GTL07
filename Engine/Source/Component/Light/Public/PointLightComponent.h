@@ -16,8 +16,6 @@ public:
     void SetAttenuationRadius(float InRadius) { AttenuationRadius = InRadius; }
     void SetLightFalloffExponent(float InExponent) { LightFalloffExponent = InExponent; }
 
-    // ... (if any)
-
 private:
 	float AttenuationRadius;
 	float LightFalloffExponent;
