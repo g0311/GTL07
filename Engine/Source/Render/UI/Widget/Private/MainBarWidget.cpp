@@ -394,6 +394,23 @@ void UMainBarWidget::RenderShowFlagsMenu()
 			CurrentLevel->SetShowFlags(ShowFlags);
 		}
 
+		// Light Culling 표시 옵션
+		bool bShowLightCulling = (ShowFlags & EEngineShowFlags::SF_LightCulling) != 0;
+		if (ImGui::MenuItem("라이트 컬링 표시", nullptr, bShowLightCulling))
+		{
+			if (bShowLightCulling)
+			{
+				ShowFlags &= ~static_cast<uint64>(EEngineShowFlags::SF_LightCulling);
+				UE_LOG("MainBarWidget: 라이트 컬링 비표시");
+			}
+			else
+			{
+				ShowFlags |= static_cast<uint64>(EEngineShowFlags::SF_LightCulling);
+				UE_LOG("MainBarWidget: 라이트 컬링 표시");
+			}
+			CurrentLevel->SetShowFlags(ShowFlags);
+		}
+
 		// Light Culling Debug 표시 옵션
 		bool bShowLightCullingDebug = (ShowFlags & EEngineShowFlags::SF_LightCullingDebug) != 0;
 		if (ImGui::MenuItem("라이트 컬링 디버그 표시", nullptr, bShowLightCullingDebug))

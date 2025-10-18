@@ -72,6 +72,11 @@ void FLightCullingPass::PreExecute(FRenderingContext& Context)
 
 void FLightCullingPass::Execute(FRenderingContext& Context)
 {
+    if (!(Context.ShowFlags & EEngineShowFlags::SF_LightCulling))
+    {
+        return;
+    }
+
     TIME_PROFILE(LightCullingPass)
     
     ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
