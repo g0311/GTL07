@@ -112,7 +112,7 @@ float3 CalculateSpotlightFactors(float3 Position, float3 Norm, float3 ViewDir, f
         float  NdotH = saturate(dot(Norm, H));
         float3 Specular = Ks * SpotlightColor * pow(NdotH, Shininess);
 
-        AccumulatedSpotlightColor += Diffuse * Specular;
+        AccumulatedSpotlightColor += Diffuse + Specular;
     }
 
     return AccumulatedSpotlightColor;
