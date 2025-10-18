@@ -59,6 +59,21 @@ struct FLightConstants
 	FLight AmbientLight[8];
 };
 
+struct FDirectionalLightConstants
+{
+	FVector Direction;
+	float _Padding;
+	FVector Color;
+	float Intensity;
+};
+
+struct FDirectionalLightCBuffer
+{
+	FDirectionalLightConstants DirectionalLight;
+	int HasDirectionalLight;
+	float _Padding[3];
+};
+
 struct FVertex
 {
 	FVector Position;

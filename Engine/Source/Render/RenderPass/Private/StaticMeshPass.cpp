@@ -2,6 +2,7 @@
 #include "Render/RenderPass/Public/StaticMeshPass.h"
 
 #include "Component/Light/Public/AmbientLightComponent.h"
+#include "Component/Light/Public/DirectionalLightComponent.h"
 #include "Component/Mesh/Public/StaticMeshComponent.h"
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"
@@ -13,6 +14,7 @@ FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstant
 {
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
 	ConstantBufferLight = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
+	ConstantBufferDirectionalLight = FRenderResourceFactory::CreateConstantBuffer<FDirectionalLightCBuffer>();
 }
 
 void FStaticMeshPass::PreExecute(FRenderingContext& Context)
@@ -108,6 +110,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
 
+				// Ambient Light
 				FLightConstants LightConstants = {};
 				LightConstants.AmbientCount = Context.Lights.size();
 				for (size_t i=0; i < LightConstants.AmbientCount; i++)
@@ -121,6 +124,24 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLight, LightConstants);
 				Pipeline->SetConstantBuffer(3, false, ConstantBufferLight);
+
+				// Directional Light
+				FDirectionalLightCBuffer DirectionalLightCBuffer = {};
+				DirectionalLightCBuffer.HasDirectionalLight = 0;
+				for (ULightComponent* Light : Context.Lights)
+				{
+					if (auto DirectionalLight = Cast<UDirectionalLightComponent>(Light))
+					{
+						DirectionalLightCBuffer.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
+						DirectionalLightCBuffer.DirectionalLight.Color = DirectionalLight->GetColor();
+						DirectionalLightCBuffer.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
+						DirectionalLightCBuffer.HasDirectionalLight = 1;
+						break; // Currently support only one directional light
+					}
+				}
+
+				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferDirectionalLight, DirectionalLightCBuffer);
+				Pipeline->SetConstantBuffer(4, false, ConstantBufferDirectionalLight);
 
 				if (UTexture* DiffuseTexture = Material->GetDiffuseTexture())
 				{
@@ -162,4 +183,5 @@ void FStaticMeshPass::Release()
 {
 	SafeRelease(ConstantBufferMaterial);
 	SafeRelease(ConstantBufferLight);
+	SafeRelease(ConstantBufferDirectionalLight);
 }

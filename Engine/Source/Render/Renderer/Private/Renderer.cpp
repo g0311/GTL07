@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Component/Mesh/Public/StaticMesh.h"
 #include "Component/Mesh/Public/StaticMeshComponent.h"
+#include "Component/Light/Public/DirectionalLightComponent.h"
 #include "Component/Public/DecalComponent.h"
 #include "Component/Public/HeightFogComponent.h"
 #include "Component/Public/FakePointLightComponent.h"
@@ -454,6 +455,10 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 			if (auto Fog = Cast<UHeightFogComponent>(Component))
 			{
 				RenderingContext.Fogs.push_back(Fog);
+			}
+			else if (auto Light = Cast<ULightComponent>(Component))
+			{
+				RenderingContext.Lights.push_back(Light);
 			}
 		}
 	}
