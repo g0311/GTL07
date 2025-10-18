@@ -209,6 +209,7 @@ void UMainBarWidget::RenderViewMenu()
 		bool bIsUnlit = (CurrentMode == EViewModeIndex::VMI_Unlit);
 		bool bIsWireframe = (CurrentMode == EViewModeIndex::VMI_Wireframe);
 		bool bIsSceneDepth = (CurrentMode == EViewModeIndex::VMI_SceneDepth);
+		bool bIsWorldNormal = (CurrentMode == EViewModeIndex::VMI_WorldNormal);
 
 		if (ImGui::MenuItem("조명 적용(Lit)", nullptr, bIsLit) && !bIsLit)
 		{
@@ -232,6 +233,12 @@ void UMainBarWidget::RenderViewMenu()
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_SceneDepth);
 			UE_LOG("MainBarWidget: ViewMode를 SceneDepth으로 변경");
+		}
+
+		if (ImGui::MenuItem("월드 노멀(WorldNormal)", nullptr, bIsWorldNormal) && !bIsWorldNormal)
+		{
+			EditorInstance->SetViewMode(EViewModeIndex::VMI_WorldNormal);
+			UE_LOG("MainBarWidget: ViewMode를 WorldNormal으로 변경");
 		}
 
 		ImGui::EndMenu();

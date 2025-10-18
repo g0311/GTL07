@@ -22,6 +22,8 @@ private:
 	void RenderStaticMeshSelector();
 	void RenderMaterialSections();
 	void RenderAvailableMaterials(int32 TargetSlotIndex);
+	void RenderMaterialTextureEditor(UMaterial* Material);
+	void RenderTextureSelector(const char* Label, UTexture* CurrentTexture, void (UMaterial::*Setter)(UTexture*), UMaterial* Material);
 	void RenderOptions();
 
 	// Material utility functions
