@@ -189,8 +189,8 @@ void UStaticMeshComponentWidget::RenderMaterialTextureEditor(UMaterial* Material
 	RenderTextureSelector("Ambient Texture", Material->GetAmbientTexture(), &UMaterial::SetAmbientTexture, Material);
 	RenderTextureSelector("Specular Texture", Material->GetSpecularTexture(), &UMaterial::SetSpecularTexture, Material);
 	RenderTextureSelector("Normal Texture", Material->GetNormalTexture(), &UMaterial::SetNormalTexture, Material);
+	RenderTextureSelector("Height Texture", Material->GetHeightTexture(), &UMaterial::SetHeightTexture, Material);
 	RenderTextureSelector("Alpha Texture", Material->GetAlphaTexture(), &UMaterial::SetAlphaTexture, Material);
-	RenderTextureSelector("Bump Texture", Material->GetBumpTexture(), &UMaterial::SetBumpTexture, Material);
 }
 
 void UStaticMeshComponentWidget::RenderTextureSelector(const char* Label, UTexture* CurrentTexture, void (UMaterial::*Setter)(UTexture*), UMaterial* Material)
@@ -295,7 +295,7 @@ FString UStaticMeshComponentWidget::GetMaterialDisplayName(UMaterial* Material) 
 		Material->GetSpecularTexture(),
 		Material->GetNormalTexture(),
 		Material->GetAlphaTexture(),
-		Material->GetBumpTexture()
+		Material->GetHeightTexture()
 	};
 
 	for (UTexture* Texture : Textures)

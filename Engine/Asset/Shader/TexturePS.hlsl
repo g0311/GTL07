@@ -46,14 +46,22 @@ struct PS_OUTPUT
 
 #if defined(HAS_HEIGHT_MAP)
 // World space vector를 Tangent space로 변환
+// 비균등 스케일을 올바르게 처리하기 위해 Gram-Schmidt 정규직교화 사용
 float3 WorldToTangentSpace(float3 worldVec, float3 worldNormal, float3 worldTangent, float3 worldBitangent)
 {
-    // TBN 행렬 구성 (Tangent, Bitangent, Normal)
-    float3 T = normalize(worldTangent);
-    float3 B = normalize(worldBitangent);
+    // Normal은 항상 정확하므로 먼저 normalize
     float3 N = normalize(worldNormal);
 
+    // Tangent를 Normal에 대해 직교화 (Gram-Schmidt)
+    float3 T = worldTangent - dot(worldTangent, N) * N;
+    T = normalize(T);
+
+    // Bitangent를 Normal과 Tangent에 대해 직교화
+    float3 B = worldBitangent - dot(worldBitangent, N) * N - dot(worldBitangent, T) * T;
+    B = normalize(B);
+
     // World space -> Tangent space 변환
+    // TBN의 역행렬은 전치행렬 (정규직교 행렬이므로)
     float3x3 TBN = float3x3(T, B, N);
     return mul(worldVec, TBN);
 }

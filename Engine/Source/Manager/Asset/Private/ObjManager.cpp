@@ -323,7 +323,8 @@ FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FName& PathFileName, cons
 				StaticMesh->MaterialInfo[CurrentMaterialSlot].KsMap = std::move(ObjInfo.ObjectMaterialInfoList[j].KsMap);
 				StaticMesh->MaterialInfo[CurrentMaterialSlot].NsMap = std::move(ObjInfo.ObjectMaterialInfoList[j].NsMap);
 				StaticMesh->MaterialInfo[CurrentMaterialSlot].DMap = std::move(ObjInfo.ObjectMaterialInfoList[j].DMap);
-				StaticMesh->MaterialInfo[CurrentMaterialSlot].BumpMap = std::move(ObjInfo.ObjectMaterialInfoList[j].BumpMap);
+				StaticMesh->MaterialInfo[CurrentMaterialSlot].NormalMap = std::move(ObjInfo.ObjectMaterialInfoList[j].NormalMap);
+				StaticMesh->MaterialInfo[CurrentMaterialSlot].HeightMap = std::move(ObjInfo.ObjectMaterialInfoList[j].HeightMap);
 
 				MaterialNameToSlot.emplace(MaterialName, CurrentMaterialSlot);
 				CurrentMaterialSlot++;

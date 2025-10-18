@@ -38,6 +38,11 @@ public:
 	UStaticMesh* GetStaticMeshFromCache(const FName& InObjPath);
 	void AddStaticMeshToCache(const FName& InObjPath, UStaticMesh* InStaticMesh);
 
+	// Material Library 관련 함수
+	void LoadAllMaterialLibraries();
+	const TArray<FObjectMaterialInfo>* GetMaterialLibrary(const FName& InMtlPath) const;
+	void AddMaterialLibrary(const FName& InMtlPath, const TArray<FObjectMaterialInfo>& InMaterialList);
+
 	// Bounding Box
 	FAABB& GetAABB(EPrimitiveType InType);
 	FAABB& GetStaticMeshAABB(FName InName);
@@ -59,6 +64,9 @@ private:
 	TMap<FName, std::unique_ptr<UStaticMesh>> StaticMeshCache;
 	TMap<FName, ID3D11Buffer*> StaticMeshVertexBuffers;
 	TMap<FName, ID3D11Buffer*> StaticMeshIndexBuffers;
+
+	// Material Library Resource
+	TMap<FName, TArray<FObjectMaterialInfo>> MaterialLibraryCache;
 
 	// Helper Functions
 	ID3D11Buffer* CreateVertexBuffer(TArray<FNormalVertex> InVertices);

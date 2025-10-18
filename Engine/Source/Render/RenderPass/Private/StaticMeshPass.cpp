@@ -87,7 +87,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 			if (CurrentMaterial != Material) {
 				// Check which texture maps are available
 				bool bHasNormalMap = Material->GetNormalTexture() != nullptr;
-				bool bHasHeightMap = Material->GetBumpTexture() != nullptr;
+				bool bHasHeightMap = Material->GetHeightTexture() != nullptr;
 
 				// Initialize material constants
 				FMaterialConstants MaterialConstants = {};
@@ -114,7 +114,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 					MaterialConstants.MaterialFlags |= HAS_HEIGHT_MAP;
 				}
 				MaterialConstants.Time = MeshComp->GetElapsedTime();
-				MaterialConstants.HeightScale = 0.1f;  // Default Parallax scale
+				MaterialConstants.HeightScale = 0.2f;  // Default Parallax scale
 
 				// Select appropriate pixel shader variant based on texture maps
 				ID3D11PixelShader* SelectedPS = PS;  // Variant 0: Base (default)
@@ -156,9 +156,9 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				{
 					Pipeline->SetTexture(4, false, AlphaTexture->GetTextureSRV());
 				}
-				if (UTexture* BumpTexture = Material->GetBumpTexture())
+				if (UTexture* HeightTexture = Material->GetHeightTexture())
 				{
-					Pipeline->SetTexture(5, false, BumpTexture->GetTextureSRV());
+					Pipeline->SetTexture(5, false, HeightTexture->GetTextureSRV());
 				}
 
 				CurrentMaterial = Material;

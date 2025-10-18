@@ -122,8 +122,11 @@ struct FObjectMaterialInfo
 	/** Alpha texture map (map_d). */
 	FString DMap;
 
-	/** Bump map (map_bump or bump). */
-	FString BumpMap;
+	/** Normal map (map_bump or bump). */
+	FString NormalMap;
+
+	/** Height/Displacement map (disp). */
+	FString HeightMap;
 };
 
 inline FArchive& operator<<(FArchive& Ar, FObjectMaterialInfo& ObjectMaterialInfo)
@@ -142,7 +145,8 @@ inline FArchive& operator<<(FArchive& Ar, FObjectMaterialInfo& ObjectMaterialInf
 	Ar << ObjectMaterialInfo.KsMap;
 	Ar << ObjectMaterialInfo.NsMap;
 	Ar << ObjectMaterialInfo.DMap;
-	Ar << ObjectMaterialInfo.BumpMap;
+	Ar << ObjectMaterialInfo.NormalMap;
+	Ar << ObjectMaterialInfo.HeightMap;
 	return Ar;
 }
 
@@ -177,6 +181,14 @@ struct FObjImporter
 	 * @return True if the material library was loaded successfully, false otherwise.
 	 */
 	static bool LoadMaterial(const std::filesystem::path& FilePath, FObjInfo* OutObjInfo);
+
+	/**
+	 * @brief Loads and parses a standalone .mtl material library file.
+	 * @param FilePath The path to the .mtl file.
+	 * @param OutMaterialList A pointer to the array where materials will be added.
+	 * @return True if the material library was loaded successfully, false otherwise.
+	 */
+	static bool LoadMaterialLibrary(const std::filesystem::path& FilePath, TArray<FObjectMaterialInfo>* OutMaterialList);
 
 private:
 	/**

@@ -18,8 +18,13 @@ UAssetManager::~UAssetManager() = default;
 
 void UAssetManager::Initialize()
 {
+	// 1. Data 폴더 속 모든 Texture 파일 로드 및 캐싱
 	TextureManager->LoadAllTexturesFromDirectory(UPathManager::GetInstance().GetDataPath());
-	// Data 폴더 속 모든 .obj 파일 로드 및 캐싱
+
+	// 2. Data 폴더 속 모든 .mtl 파일 로드 및 캐싱 (Texture와 연결)
+	LoadAllMaterialLibraries();
+
+	// 3. Data 폴더 속 모든 .obj 파일 로드 및 캐싱 (MTL과 연결)
 	LoadAllObjStaticMesh();
 
 	VertexDatas.emplace(EPrimitiveType::Torus, &VerticesTorus);
@@ -277,6 +282,191 @@ FAABB UAssetManager::CalculateAABB(const TArray<FNormalVertex>& Vertices)
 	}
 
 	return FAABB(MinPoint, MaxPoint);
+}
+
+/**
+ * @brief Data/ 경로 하위에 모든 .mtl 파일을 로드 후 캐싱한다
+ */
+void UAssetManager::LoadAllMaterialLibraries()
+{
+	TArray<FName> MtlList;
+	const std::filesystem::path DataDirectory = UPathManager::GetInstance().GetDataPath();
+
+	UE_LOG("LoadAllMaterialLibraries 시작: Data 경로 검색 중... (%s)", DataDirectory.string().c_str());
+
+	// 디렉토리가 실제로 존재하는지 먼저 확인합니다.
+	if (std::filesystem::exists(DataDirectory) && std::filesystem::is_directory(DataDirectory))
+	{
+		UE_LOG("Data 디렉토리 발견: %s", DataDirectory.string().c_str());
+
+		// recursive_directory_iterator를 사용하여 디렉토리와 모든 하위 디렉토리를 순회합니다.
+		for (const auto& Entry : std::filesystem::recursive_directory_iterator(DataDirectory))
+		{
+			// 현재 항목이 일반 파일이고, 확장자가 ".mtl"인지 확인합니다.
+			if (Entry.is_regular_file() && Entry.path().extension() == ".mtl")
+			{
+				// .generic_string()을 사용하여 OS에 상관없이 '/' 구분자를 사용하는 경로를 바로 얻습니다.
+				FString PathString = Entry.path().generic_string();
+
+				// 찾은 파일 경로를 FName으로 변환하여 MtlList에 추가합니다.
+				MtlList.push_back(FName(PathString));
+				UE_LOG("MTL 파일 발견: %s", PathString.c_str());
+			}
+		}
+	}
+	else
+	{
+		UE_LOG_ERROR("Data 디렉토리를 찾을 수 없습니다: %s", DataDirectory.string().c_str());
+	}
+
+	// MTL 파일 경로의 부모 디렉토리를 추적하기 위한 맵
+	std::filesystem::path MtlDirectory = DataDirectory;
+
+	// 범위 기반 for문을 사용하여 배열의 모든 요소를 순회합니다.
+	for (const FName& MtlPath : MtlList)
+	{
+		TArray<FObjectMaterialInfo> MaterialList;
+
+		// FObjImporter를 통해 .mtl 파일을 로드합니다.
+		if (FObjImporter::LoadMaterialLibrary(MtlPath.ToString(), &MaterialList))
+		{
+			size_t MaterialCount = MaterialList.size();
+			MaterialLibraryCache.emplace(MtlPath, MaterialList); // Move를 제거하여 MaterialList를 유지
+
+			// MTL 파일의 디렉토리 경로 추출
+			std::filesystem::path MtlFilePath(MtlPath.ToString());
+			std::filesystem::path MtlFileDir = MtlFilePath.parent_path();
+
+			// 각 머티리얼 정보를 UMaterial 객체로 변환하여 등록
+			for (const FObjectMaterialInfo& MatInfo : MaterialList)
+			{
+				auto* Material = NewObject<UMaterial>();
+				Material->SetName(MatInfo.Name);
+
+				// Diffuse 텍스처 로드 (map_Kd)
+				if (!MatInfo.KdMap.empty())
+				{
+					FString TexturePathStr = (MtlFileDir / MatInfo.KdMap).generic_string();
+					if (std::filesystem::exists(TexturePathStr))
+					{
+						UTexture* DiffuseTexture = LoadTexture(TexturePathStr);
+						if (DiffuseTexture)
+						{
+							Material->SetDiffuseTexture(DiffuseTexture);
+						}
+					}
+				}
+
+				// Ambient 텍스처 로드 (map_Ka)
+				if (!MatInfo.KaMap.empty())
+				{
+					FString TexturePathStr = (MtlFileDir / MatInfo.KaMap).generic_string();
+					if (std::filesystem::exists(TexturePathStr))
+					{
+						UTexture* AmbientTexture = LoadTexture(TexturePathStr);
+						if (AmbientTexture)
+						{
+							Material->SetAmbientTexture(AmbientTexture);
+						}
+					}
+				}
+
+				// Specular 텍스처 로드 (map_Ks)
+				if (!MatInfo.KsMap.empty())
+				{
+					FString TexturePathStr = (MtlFileDir / MatInfo.KsMap).generic_string();
+					if (std::filesystem::exists(TexturePathStr))
+					{
+						UTexture* SpecularTexture = LoadTexture(TexturePathStr);
+						if (SpecularTexture)
+						{
+							Material->SetSpecularTexture(SpecularTexture);
+						}
+					}
+				}
+
+				// Normal 텍스처 로드 (map_bump)
+				if (!MatInfo.NormalMap.empty())
+				{
+					FString TexturePathStr = (MtlFileDir / MatInfo.NormalMap).generic_string();
+					if (std::filesystem::exists(TexturePathStr))
+					{
+						UTexture* NormalTexture = LoadTexture(TexturePathStr);
+						if (NormalTexture)
+						{
+							Material->SetNormalTexture(NormalTexture);
+						}
+					}
+				}
+
+				// Height/Displacement 텍스처 로드 (disp)
+				if (!MatInfo.HeightMap.empty())
+				{
+					FString TexturePathStr = (MtlFileDir / MatInfo.HeightMap).generic_string();
+					if (std::filesystem::exists(TexturePathStr))
+					{
+						UTexture* HeightTexture = LoadTexture(TexturePathStr);
+						if (HeightTexture)
+						{
+							Material->SetHeightTexture(HeightTexture);
+						}
+					}
+				}
+
+				// Alpha 텍스처 로드 (map_d)
+				if (!MatInfo.DMap.empty())
+				{
+					FString TexturePathStr = (MtlFileDir / MatInfo.DMap).generic_string();
+					if (std::filesystem::exists(TexturePathStr))
+					{
+						UTexture* AlphaTexture = LoadTexture(TexturePathStr);
+						if (AlphaTexture)
+						{
+							Material->SetAlphaTexture(AlphaTexture);
+						}
+					}
+				}
+
+				UE_LOG("UMaterial 생성 완료: %s", MatInfo.Name.c_str());
+			}
+
+			UE_LOG("MaterialLibrary 로드 성공: %s (재질 개수: %zu)", MtlPath.ToString().c_str(), MaterialCount);
+		}
+		else
+		{
+			UE_LOG_ERROR("MaterialLibrary 로드 실패: %s", MtlPath.ToString().c_str());
+		}
+	}
+
+	UE_LOG("총 %zu개의 MTL 파일을 로드했습니다.", MaterialLibraryCache.size());
+}
+
+/**
+ * @brief 캐싱된 Material Library를 반환하는 함수
+ * @param InMtlPath .mtl 파일 경로
+ * @return 캐싱된 Material Library 배열의 포인터, 없으면 nullptr
+ */
+const TArray<FObjectMaterialInfo>* UAssetManager::GetMaterialLibrary(const FName& InMtlPath) const
+{
+	auto It = MaterialLibraryCache.find(InMtlPath);
+	if (It != MaterialLibraryCache.end())
+	{
+		return &It->second;
+	}
+	return nullptr;
+}
+
+/**
+ * @brief Material Library를 캐시에 추가하는 함수
+ * @param InMtlPath .mtl 파일 경로
+ * @param InMaterialList 추가할 Material 배열
+ */
+void UAssetManager::AddMaterialLibrary(const FName& InMtlPath, const TArray<FObjectMaterialInfo>& InMaterialList)
+{
+	if (MaterialLibraryCache.find(InMtlPath) == MaterialLibraryCache.end())
+	{
+		MaterialLibraryCache.emplace(InMtlPath, InMaterialList);
+	}
 }
 
 /**

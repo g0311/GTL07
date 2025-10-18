@@ -50,8 +50,11 @@ struct FMaterial
 	/** Alpha texture map (map_d). */
 	FString DMap;
 
-	/** Bump map (map_bump or bump). */
-	FString BumpMap;
+	/** Normal map (map_bump or bump). */
+	FString NormalMap;
+
+	/** Height/Displacement map (disp). */
+	FString HeightMap;
 };
 
 UCLASS()
@@ -77,14 +80,14 @@ public:
 	UTexture* GetSpecularTexture() const { return SpecularTexture; }
 	UTexture* GetNormalTexture() const { return NormalTexture; }
 	UTexture* GetAlphaTexture() const { return AlphaTexture; }
-	UTexture* GetBumpTexture() const { return BumpTexture; }
+	UTexture* GetHeightTexture() const { return HeightTexture; }
 
 	void SetDiffuseTexture(UTexture* InTexture) { DiffuseTexture = InTexture; }
 	void SetAmbientTexture(UTexture* InTexture) { AmbientTexture = InTexture; }
 	void SetSpecularTexture(UTexture* InTexture) { SpecularTexture = InTexture; }
 	void SetNormalTexture(UTexture* InTexture) { NormalTexture = InTexture; }
 	void SetAlphaTexture(UTexture* InTexture) { AlphaTexture = InTexture; }
-	void SetBumpTexture(UTexture* InTexture) { BumpTexture = InTexture; }
+	void SetHeightTexture(UTexture* InTexture) { HeightTexture = InTexture; }
 
 private:
 	UTexture* DiffuseTexture = nullptr;
@@ -92,7 +95,7 @@ private:
 	UTexture* SpecularTexture = nullptr;
 	UTexture* NormalTexture = nullptr;
 	UTexture* AlphaTexture = nullptr;
-	UTexture* BumpTexture = nullptr;
+	UTexture* HeightTexture = nullptr;
 
 	FMaterial MaterialData;
 };
