@@ -26,7 +26,7 @@ public:
     void Release() override;
 
 private:
-    void RenderTextInternal(const FString& Text, const FMatrix& WorldMatrix);
+    void RenderTextInternal(const FString& Text, const FMatrix& WorldMatrix, const FMatrix& WorldMatrixInverse);
     
     // Font rendering resources
     ID3D11VertexShader* FontVertexShader = nullptr;

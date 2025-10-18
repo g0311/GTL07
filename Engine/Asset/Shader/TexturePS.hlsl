@@ -50,7 +50,7 @@ struct PS_OUTPUT
 PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
-    
+
     float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
     float2 UV = Input.Tex;
 
@@ -89,8 +89,47 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     }
 
     Output.SceneColor = FinalColor;
-    float3 EncodedNormal = normalize(Input.WorldNormal) * 0.5f + 0.5f;
+
+    // Calculate World Normal for Normal Buffer
+    float3 WorldNormal = Input.WorldNormal;
+
+    // Safety check: if normal is zero, use a default up vector
+    if (length(WorldNormal) < 0.001f)
+    {
+        WorldNormal = float3(0.0f, 0.0f, 1.0f);
+    }
+    else
+    {
+        WorldNormal = normalize(WorldNormal);
+    }
+
+    if (MaterialFlags & HAS_NORMAL_MAP)
+    {
+        // Sample normal map (tangent space)
+        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
+
+        // Decode from [0,1] to [-1,1]
+        TangentNormal = TangentNormal * 2.0f - 1.0f;
+
+        // Construct TBN matrix (Tangent, Bitangent, Normal)
+        float3 N = WorldNormal;
+        float3 T = Input.WorldTangent;
+        float3 B = Input.WorldBitangent;
+
+        // Safety check for tangent and bitangent
+        if (length(T) > 0.001f && length(B) > 0.001f)
+        {
+            T = normalize(T);
+            B = normalize(B);
+
+            // Transform tangent space normal to world space
+            WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
+        }
+    }
+
+    // Encode world normal to [0,1] range for storage
+    float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
-	
+
     return Output;
 }

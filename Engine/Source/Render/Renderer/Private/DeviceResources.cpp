@@ -127,12 +127,17 @@ void UDeviceResources::CreateFrameBuffer()
 	// 스왑 체인으로부터 백 버퍼 텍스처 가져오기
 	SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&FrameBuffer);
 
-	// 렌더 타겟 뷰 생성
+	// 렌더 타겟 뷰 생성 - sRGB format for normal rendering
 	D3D11_RENDER_TARGET_VIEW_DESC framebufferRTVdesc = {};
 	framebufferRTVdesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // 색상 포맷
 	framebufferRTVdesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D; // 2D 텍스처
-
 	Device->CreateRenderTargetView(FrameBuffer, &framebufferRTVdesc, &FrameBufferRTV);
+
+	// 렌더 타겟 뷰 생성 - UNORM format for WorldNormal view (no sRGB conversion)
+	D3D11_RENDER_TARGET_VIEW_DESC framebufferLinearRTVdesc = {};
+	framebufferLinearRTVdesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // Linear 포맷
+	framebufferLinearRTVdesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+	Device->CreateRenderTargetView(FrameBuffer, &framebufferLinearRTVdesc, &FrameBufferLinearRTV);
 
 	// 셰이더 리소스 뷰 생성
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -159,6 +164,12 @@ void UDeviceResources::ReleaseFrameBuffer()
 	{
 		FrameBufferRTV->Release();
 		FrameBufferRTV = nullptr;
+	}
+
+	if (FrameBufferLinearRTV)
+	{
+		FrameBufferLinearRTV->Release();
+		FrameBufferLinearRTV = nullptr;
 	}
 
 	if (FrameBufferSRV)

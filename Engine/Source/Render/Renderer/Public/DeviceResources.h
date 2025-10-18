@@ -31,6 +31,7 @@ public:
 	IDXGISwapChain* GetSwapChain() const { return SwapChain; }
 	ID3D11Texture2D* GetFrameBufferTexture() const {return FrameBuffer;}
 	ID3D11RenderTargetView* GetFrameBufferRTV() const { return FrameBufferRTV; }
+	ID3D11RenderTargetView* GetFrameBufferLinearRTV() const { return FrameBufferLinearRTV; }
 	ID3D11RenderTargetView* GetNormalRenderTargetView() const { return NormalBufferRTV; }
 	ID3D11DepthStencilView* GetDepthStencilView() const { return DepthStencilView; }
 
@@ -56,7 +57,8 @@ private:
 	IDXGISwapChain* SwapChain = nullptr;
 
 	ID3D11Texture2D* FrameBuffer = nullptr;
-	ID3D11RenderTargetView* FrameBufferRTV = nullptr;
+	ID3D11RenderTargetView* FrameBufferRTV = nullptr; // sRGB format for normal rendering
+	ID3D11RenderTargetView* FrameBufferLinearRTV = nullptr; // UNORM format for WorldNormal view
 	ID3D11ShaderResourceView* FrameBufferSRV = nullptr;
 	
 	/** 

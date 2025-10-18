@@ -97,7 +97,7 @@ private:
 	ID3D11Buffer* ConstantBufferViewProj = nullptr;
 	ID3D11Buffer* ConstantBufferColor = nullptr;
 	
-	FLOAT ClearColor[4] = {0.025f, 0.025f, 0.025f, 1.0f};
+	FLOAT ClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 	// Default Shaders
 	ID3D11VertexShader* DefaultVertexShader = nullptr;
@@ -119,6 +119,7 @@ private:
 	// Texture Shaders
 	ID3D11VertexShader* TextureVertexShader = nullptr;
 	ID3D11PixelShader* TexturePixelShader = nullptr;
+	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
 	ID3D11InputLayout* TextureInputLayout = nullptr;
 
 	// Decal Shaders

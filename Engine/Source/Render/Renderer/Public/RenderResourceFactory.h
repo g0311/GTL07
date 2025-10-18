@@ -9,7 +9,7 @@ public:
 	static ID3D11Buffer* CreateVertexBuffer(FNormalVertex* InVertices, uint32 InByteWidth);
 	static ID3D11Buffer* CreateVertexBuffer(FVector* InVertices, uint32 InByteWidth, bool bCpuAccess);
 	static ID3D11Buffer* CreateIndexBuffer(const void* InIndices, uint32 InByteWidth);
-	static void CreatePixelShader(const wstring& InFilePath, ID3D11PixelShader** InPixelShader);
+	static void CreatePixelShader(const wstring& InFilePath, ID3D11PixelShader** InPixelShader, const D3D_SHADER_MACRO* InDefines = nullptr);
 	static ID3D11SamplerState* CreateSamplerState(D3D11_FILTER InFilter, D3D11_TEXTURE_ADDRESS_MODE InAddressMode);
 	static ID3D11SamplerState* CreateFXAASamplerState();
 	static ID3D11RasterizerState* GetRasterizerState(const FRenderState& InRenderState);

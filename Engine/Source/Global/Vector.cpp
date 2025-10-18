@@ -69,6 +69,16 @@ FVector FVector::operator*(const float InRatio) const
 	return { X * InRatio, Y * InRatio, Z * InRatio };
 }
 
+FVector FVector::operator/(float InRatio) const
+{
+	if (InRatio == 0)
+	{
+		UE_LOG_ERROR("0으로 나누기 오류 발생");
+		return *this;
+	}
+	return { X / InRatio, Y / InRatio, Z / InRatio };
+}
+
 /**
  * @brief 자신의 벡터에 다른 벡터를 가산하는 함수
  */
