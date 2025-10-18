@@ -47,7 +47,6 @@ public:
 private:
     void CreateResources();
     void ReleaseResources();
-    void RecreateResourcesIfNeeded();
 
 private:
     UDeviceResources* DeviceResources = nullptr;
@@ -59,20 +58,11 @@ private:
     ID3D11Buffer* CullingParamsCB = nullptr;
 
     // UAV Buffers for light lists
-    ID3D11Buffer* LightIndexBuffer = nullptr;
     ID3D11UnorderedAccessView* LightIndexBufferUAV = nullptr;
-    ID3D11ShaderResourceView* LightIndexBufferSRV = nullptr;
-
-    ID3D11Buffer* TileLightInfoBuffer = nullptr;
     ID3D11UnorderedAccessView* TileLightInfoUAV = nullptr;
-    ID3D11ShaderResourceView* TileLightInfoSRV = nullptr;
     
     // 라이트 데이터 버퍼 (고정 크기)
     ID3D11Buffer* AllLightsBuffer = nullptr;
     ID3D11ShaderResourceView* AllLightsSRV = nullptr;
     static constexpr uint32 MAX_LIGHTS = 1024; // 최대 라이트 개수
-
-    // 리소스가 생성된 화면 크기 추적
-    uint32 LastScreenWidth = 0;
-    uint32 LastScreenHeight = 0;
 };

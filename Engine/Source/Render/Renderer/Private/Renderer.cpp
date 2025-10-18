@@ -55,10 +55,13 @@ void URenderer::Init(HWND InWindowHandle)
 	CreateDecalShader();
 	CreatePointLightShader();
 	CreateFogShader();
-	CreateConstantBuffers();
 	CreateCopyShader();
 	CreateFXAAShader();
 
+	CreateConstantBuffers();
+	CreateLightBuffers();
+	CreateLightCullBuffers();
+	
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
 	FLightCullingPass* LightCullPass = new FLightCullingPass(Pipeline, DeviceResources);
@@ -102,6 +105,9 @@ void URenderer::Init(HWND InWindowHandle)
 void URenderer::Release()
 {
 	ReleaseConstantBuffers();
+	ReleaseLightBuffers();
+	ReleaseLightCullBuffers();
+	
 	ReleaseDefaultShader();
 	ReleaseDepthStencilState();
 	ReleaseBlendState();
@@ -274,8 +280,6 @@ void URenderer::CreateFXAAShader()
     FXAASamplerState = FRenderResourceFactory::CreateFXAASamplerState();
 }
 
-
-
 void URenderer::ReleaseDefaultShader()
 {
 	SafeRelease(DefaultInputLayout);
@@ -305,8 +309,6 @@ void URenderer::ReleaseDefaultShader()
 	SafeRelease(FXAAVertexShader);
 	SafeRelease(FXAAPixelShader);
 	SafeRelease(FXAAInputLayout);
-	
-
 }
 
 void URenderer::ReleaseDepthStencilState()
@@ -518,7 +520,7 @@ void URenderer::RenderEnd() const
 	TIME_PROFILE_END(DrawCall)
 }
 
-void URenderer::OnResize(uint32 InWidth, uint32 InHeight) const
+void URenderer::OnResize(uint32 InWidth, uint32 InHeight)
 {
     if (!DeviceResources || !GetDeviceContext() || !GetSwapChain()) return;
 
@@ -527,7 +529,8 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight) const
 	DeviceResources->ReleaseDepthBuffer();
 	DeviceResources->ReleaseNormalBuffer();
 	GetDeviceContext()->OMSetRenderTargets(0, nullptr, nullptr);
-
+	ReleaseLightCullBuffers();
+	
     if (FAILED(GetSwapChain()->ResizeBuffers(2, InWidth, InHeight, DXGI_FORMAT_UNKNOWN, 0)))
     {
         UE_LOG("OnResize Failed");
@@ -539,6 +542,7 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight) const
 	DeviceResources->CreateFrameBuffer();
 	DeviceResources->CreateDepthBuffer();
 	DeviceResources->CreateNormalBuffer();
+	CreateLightBuffers();
 
     ID3D11RenderTargetView* targetView = DeviceResources->GetSceneColorRenderTargetView();
     ID3D11RenderTargetView* targetViews[] = { targetView };
@@ -553,10 +557,122 @@ void URenderer::CreateConstantBuffers()
 	ConstantBufferViewProj = FRenderResourceFactory::CreateConstantBuffer<FCameraConstants>();
 }
 
+void URenderer::CreateLightBuffers()
+{
+	HRESULT hr;
+
+	// 고정 크기 라이트 버퍼 생성 (DYNAMIC 사용)
+	D3D11_BUFFER_DESC bufferDesc = {};
+	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.ByteWidth = sizeof(FLightParams) * MAX_LIGHTS;
+	bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bufferDesc.StructureByteStride = sizeof(FLightParams);
+	bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    
+	hr = DeviceResources->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &AllLightsBuffer);
+	assert(SUCCEEDED(hr) && "AllLightsBuffer 생성 실패");
+    
+	// SRV 생성 (최대 크기로)
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	srvDesc.Buffer.FirstElement = 0;
+	srvDesc.Buffer.NumElements = MAX_LIGHTS;
+    
+	hr = DeviceResources->GetDevice()->CreateShaderResourceView(AllLightsBuffer, &srvDesc, &AllLightsSRV);
+	assert(SUCCEEDED(hr) && "AllLightsSRV 생성 실패");
+}
+
+void URenderer::CreateLightCullBuffers()
+{
+	HRESULT hr;
+	const uint32 MAX_SCENE_LIGHTS = 1024;
+	const uint32 TILE_SIZE = 32;
+	const uint32 numTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
+	const uint32 numTilesY = (DeviceResources->GetHeight() + TILE_SIZE - 1) / TILE_SIZE;
+	const uint32 MAX_TILES = numTilesX * numTilesY;
+	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 32;
+        
+	// LightIndexBuffer 재생성
+	D3D11_BUFFER_DESC lightIndexBufferDesc = {};
+	lightIndexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	lightIndexBufferDesc.ByteWidth = sizeof(uint32) * (MAX_TOTAL_LIGHT_INDICES + 1);
+	lightIndexBufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	lightIndexBufferDesc.StructureByteStride = sizeof(uint32);
+	lightIndexBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+        
+	hr = DeviceResources->GetDevice()->CreateBuffer(&lightIndexBufferDesc, nullptr, &LightIndexBuffer);
+	assert(SUCCEEDED(hr) && "LightIndexBuffer 생성 실패");
+        
+	D3D11_UNORDERED_ACCESS_VIEW_DESC lightIndexUAVDesc = {};
+	lightIndexUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	lightIndexUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	lightIndexUAVDesc.Buffer.FirstElement = 0;
+	lightIndexUAVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES + 1;
+	lightIndexUAVDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
+        
+	hr = DeviceResources->GetDevice()->CreateUnorderedAccessView(LightIndexBuffer, &lightIndexUAVDesc, &LightIndexBufferUAV);
+	assert(SUCCEEDED(hr) && "LightIndexBufferUAV 생성 실패");
+        
+	D3D11_SHADER_RESOURCE_VIEW_DESC lightIndexSRVDesc = {};
+	lightIndexSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	lightIndexSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	lightIndexSRVDesc.Buffer.FirstElement = 1;
+	lightIndexSRVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES;
+        
+	hr = DeviceResources->GetDevice()->CreateShaderResourceView(LightIndexBuffer, &lightIndexSRVDesc, &LightIndexBufferSRV);
+	assert(SUCCEEDED(hr) && "LightIndexBufferSRV 생성 실패");
+        
+	// TileLightInfoBuffer 재생성
+	D3D11_BUFFER_DESC tileLightInfoBufferDesc = {};
+	tileLightInfoBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	tileLightInfoBufferDesc.ByteWidth = sizeof(uint32) * 2 * MAX_TILES;
+	tileLightInfoBufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	tileLightInfoBufferDesc.StructureByteStride = sizeof(uint32) * 2;
+	tileLightInfoBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+        
+	hr = DeviceResources->GetDevice()->CreateBuffer(&tileLightInfoBufferDesc, nullptr, &TileLightInfoBuffer);
+	assert(SUCCEEDED(hr) && "TileLightInfoBuffer 생성 실패");
+        
+	D3D11_UNORDERED_ACCESS_VIEW_DESC tileLightInfoUAVDesc = {};
+	tileLightInfoUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	tileLightInfoUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	tileLightInfoUAVDesc.Buffer.FirstElement = 0;
+	tileLightInfoUAVDesc.Buffer.NumElements = MAX_TILES;
+        
+	hr = DeviceResources->GetDevice()->CreateUnorderedAccessView(TileLightInfoBuffer, &tileLightInfoUAVDesc, &TileLightInfoUAV);
+	assert(SUCCEEDED(hr) && "TileLightInfoUAV 생성 실패");
+        
+	D3D11_SHADER_RESOURCE_VIEW_DESC tileLightInfoSRVDesc = {};
+	tileLightInfoSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	tileLightInfoSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	tileLightInfoSRVDesc.Buffer.FirstElement = 0;
+	tileLightInfoSRVDesc.Buffer.NumElements = MAX_TILES;
+        
+	hr = DeviceResources->GetDevice()->CreateShaderResourceView(TileLightInfoBuffer, &tileLightInfoSRVDesc, &TileLightInfoSRV);
+	assert(SUCCEEDED(hr) && "TileLightInfoSRV 생성 실패");
+}
 
 void URenderer::ReleaseConstantBuffers()
 {
 	SafeRelease(ConstantBufferModels);
 	SafeRelease(ConstantBufferColor);
 	SafeRelease(ConstantBufferViewProj);
+}
+
+void URenderer::ReleaseLightBuffers()
+{
+	SafeRelease(AllLightsBuffer);
+	SafeRelease(AllLightsSRV);
+}
+
+void URenderer::ReleaseLightCullBuffers()
+{
+	SafeRelease(LightIndexBuffer);
+	SafeRelease(LightIndexBufferUAV);
+	SafeRelease(LightIndexBufferSRV);
+	SafeRelease(TileLightInfoBuffer);
+	SafeRelease(TileLightInfoUAV);
+	SafeRelease(TileLightInfoSRV);
 }

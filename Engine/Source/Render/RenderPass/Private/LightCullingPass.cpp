@@ -51,144 +51,23 @@ void FLightCullingPass::CreateResources()
 
     // 컵링 파라미터 상수 버퍼 생성
     CullingParamsCB = FRenderResourceFactory::CreateConstantBuffer<FCullingParams>();
-
-    // 고정 크기 라이트 버퍼 생성 (DYNAMIC 사용)
-    D3D11_BUFFER_DESC bufferDesc = {};
-    bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    bufferDesc.ByteWidth = sizeof(FLightParams) * MAX_LIGHTS;
-    bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    bufferDesc.StructureByteStride = sizeof(FLightParams);
-    bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-    
-    hr = DeviceResources->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &AllLightsBuffer);
-    assert(SUCCEEDED(hr) && "AllLightsBuffer 생성 실패");
-    
-    // SRV 생성 (최대 크기로)
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-    srvDesc.Buffer.FirstElement = 0;
-    srvDesc.Buffer.NumElements = MAX_LIGHTS;
-    
-    hr = DeviceResources->GetDevice()->CreateShaderResourceView(AllLightsBuffer, &srvDesc, &AllLightsSRV);
-    assert(SUCCEEDED(hr) && "AllLightsSRV 생성 실패");
-
-    // 타일 기반 버퍼들 생성
-    RecreateResourcesIfNeeded();
 }
 
 void FLightCullingPass::ReleaseResources()
 {
     SafeRelease(CullingCS);
     SafeRelease(CullingParamsCB);
-    SafeRelease(LightIndexBuffer);
-    SafeRelease(LightIndexBufferUAV);
-    SafeRelease(LightIndexBufferSRV);
-    SafeRelease(TileLightInfoBuffer);
-    SafeRelease(TileLightInfoUAV);
-    SafeRelease(TileLightInfoSRV);
-    SafeRelease(AllLightsBuffer);
-    SafeRelease(AllLightsSRV);
-    
-    LastScreenWidth = 0;
-    LastScreenHeight = 0;
-}
-
-void FLightCullingPass::RecreateResourcesIfNeeded()
-{
-    const uint32 currentWidth = DeviceResources->GetWidth();
-    const uint32 currentHeight = DeviceResources->GetHeight();
-    
-    // 화면 크기가 변경되었는지 확인
-    if (currentWidth != LastScreenWidth || currentHeight != LastScreenHeight)
-    {
-        // 기존 리소스 해제 (상수버퍼와 셰이더 제외)
-        SafeRelease(LightIndexBuffer);
-        SafeRelease(LightIndexBufferUAV);
-        SafeRelease(LightIndexBufferSRV);
-        SafeRelease(TileLightInfoBuffer);
-        SafeRelease(TileLightInfoUAV);
-        SafeRelease(TileLightInfoSRV);
-        
-        // 새 크기로 리소스 재생성
-        HRESULT hr;
-        const uint32 MAX_SCENE_LIGHTS = 1024;
-        const uint32 TILE_SIZE = 32;
-        const uint32 numTilesX = (currentWidth + TILE_SIZE - 1) / TILE_SIZE;
-        const uint32 numTilesY = (currentHeight + TILE_SIZE - 1) / TILE_SIZE;
-        const uint32 MAX_TILES = numTilesX * numTilesY;
-        const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 32;
-        
-        // LightIndexBuffer 재생성
-        D3D11_BUFFER_DESC lightIndexBufferDesc = {};
-        lightIndexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-        lightIndexBufferDesc.ByteWidth = sizeof(uint32) * (MAX_TOTAL_LIGHT_INDICES + 1);
-        lightIndexBufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-        lightIndexBufferDesc.StructureByteStride = sizeof(uint32);
-        lightIndexBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-        
-        hr = DeviceResources->GetDevice()->CreateBuffer(&lightIndexBufferDesc, nullptr, &LightIndexBuffer);
-        assert(SUCCEEDED(hr) && "LightIndexBuffer 재생성 실패");
-        
-        D3D11_UNORDERED_ACCESS_VIEW_DESC lightIndexUAVDesc = {};
-        lightIndexUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
-        lightIndexUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-        lightIndexUAVDesc.Buffer.FirstElement = 0;
-        lightIndexUAVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES + 1;
-        lightIndexUAVDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
-        
-        hr = DeviceResources->GetDevice()->CreateUnorderedAccessView(LightIndexBuffer, &lightIndexUAVDesc, &LightIndexBufferUAV);
-        assert(SUCCEEDED(hr) && "LightIndexBufferUAV 재생성 실패");
-        
-        D3D11_SHADER_RESOURCE_VIEW_DESC lightIndexSRVDesc = {};
-        lightIndexSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
-        lightIndexSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-        lightIndexSRVDesc.Buffer.FirstElement = 1;
-        lightIndexSRVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES;
-        
-        hr = DeviceResources->GetDevice()->CreateShaderResourceView(LightIndexBuffer, &lightIndexSRVDesc, &LightIndexBufferSRV);
-        assert(SUCCEEDED(hr) && "LightIndexBufferSRV 재생성 실패");
-        
-        // TileLightInfoBuffer 재생성
-        D3D11_BUFFER_DESC tileLightInfoBufferDesc = {};
-        tileLightInfoBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-        tileLightInfoBufferDesc.ByteWidth = sizeof(uint32) * 2 * MAX_TILES;
-        tileLightInfoBufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-        tileLightInfoBufferDesc.StructureByteStride = sizeof(uint32) * 2;
-        tileLightInfoBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-        
-        hr = DeviceResources->GetDevice()->CreateBuffer(&tileLightInfoBufferDesc, nullptr, &TileLightInfoBuffer);
-        assert(SUCCEEDED(hr) && "TileLightInfoBuffer 재생성 실패");
-        
-        D3D11_UNORDERED_ACCESS_VIEW_DESC tileLightInfoUAVDesc = {};
-        tileLightInfoUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
-        tileLightInfoUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-        tileLightInfoUAVDesc.Buffer.FirstElement = 0;
-        tileLightInfoUAVDesc.Buffer.NumElements = MAX_TILES;
-        
-        hr = DeviceResources->GetDevice()->CreateUnorderedAccessView(TileLightInfoBuffer, &tileLightInfoUAVDesc, &TileLightInfoUAV);
-        assert(SUCCEEDED(hr) && "TileLightInfoUAV 재생성 실패");
-        
-        D3D11_SHADER_RESOURCE_VIEW_DESC tileLightInfoSRVDesc = {};
-        tileLightInfoSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
-        tileLightInfoSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-        tileLightInfoSRVDesc.Buffer.FirstElement = 0;
-        tileLightInfoSRVDesc.Buffer.NumElements = MAX_TILES;
-        
-        hr = DeviceResources->GetDevice()->CreateShaderResourceView(TileLightInfoBuffer, &tileLightInfoSRVDesc, &TileLightInfoSRV);
-        assert(SUCCEEDED(hr) && "TileLightInfoSRV 재생성 실패");
-        
-        // 현재 크기 업데이트
-        LastScreenWidth = currentWidth;
-        LastScreenHeight = currentHeight;
-    }
 }
 
 void FLightCullingPass::PreExecute(FRenderingContext& Context)
 {
-    // 리사이즈 시 리소스 재생성 확인
-    RecreateResourcesIfNeeded();
+    URenderer& Renderer = URenderer::GetInstance();
+    
+    LightIndexBufferUAV = Renderer.GetLightIndexBufferUAV();
+    TileLightInfoUAV = Renderer.GetTileLightInfoUAV();
+    
+    AllLightsBuffer = Renderer.GetAllLightsBuffer();
+    AllLightsSRV = Renderer.GetAllLightsSRV();
 }
 
 void FLightCullingPass::Execute(FRenderingContext& Context)
@@ -315,6 +194,5 @@ void FLightCullingPass::PostExecute(FRenderingContext& Context)
 
 void FLightCullingPass::Release()
 {
-
-    
+    ReleaseResources();
 }
