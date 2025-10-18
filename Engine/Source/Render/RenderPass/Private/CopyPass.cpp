@@ -43,6 +43,9 @@ void FCopyPass::Execute(FRenderingContext& Context)
 {
     if (Context.ShowFlags & EEngineShowFlags::SF_FXAA) return;
 
+    // Skip copy pass in WorldNormal mode - WorldNormalPass renders directly to FrameBuffer
+    if (Context.ViewMode == EViewModeIndex::VMI_WorldNormal) return;
+
     ID3D11ShaderResourceView* SceneSRV = DeviceResources->GetSceneColorShaderResourceView();
     if (!SceneSRV) return;
 
