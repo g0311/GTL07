@@ -146,6 +146,9 @@
     <ClCompile Include="Source\Editor\Private\SpotLightLines.cpp">
       <Filter>Source\Editor\Private</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Private\SpotLightDirectionGizmo.cpp">
+      <Filter>Source\\Editor\\Private</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Private\ViewportClient.cpp">
       <Filter>Source\Editor\Private</Filter>
     </ClCompile>
@@ -574,6 +577,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Public\SpotLightLines.h">
       <Filter>Source\Editor\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Public\SpotLightDirectionGizmo.h">
+      <Filter>Source\\Editor\\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Public\ViewportClient.h">
       <Filter>Source\Editor\Public</Filter>

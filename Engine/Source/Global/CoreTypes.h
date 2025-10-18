@@ -40,6 +40,7 @@ struct FCameraConstants
 #define HAS_NORMAL_MAP	 (1 << 3)
 #define HAS_ALPHA_MAP	 (1 << 4)
 #define HAS_BUMP_MAP	 (1 << 5)
+#define UNLIT			 (1 << 6)
 
 struct FMaterialConstants
 {

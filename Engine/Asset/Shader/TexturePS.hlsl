@@ -92,6 +92,7 @@ SamplerState SamplerWrap : register(s0);
 #define HAS_NORMAL_MAP	 (1 << 3)
 #define HAS_ALPHA_MAP	 (1 << 4)
 #define HAS_BUMP_MAP	 (1 << 5)
+#define UNLIT			 (1 << 6)
 
 float4 CalculateAmbientFactor(float2 UV)
 {
@@ -176,6 +177,16 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
 
+    float4 FinalColor;
+    if (MaterialFlags & UNLIT)
+    {
+        FinalColor.rgb = kD;
+        FinalColor.a = 1.0;
+        Output.SceneColor = FinalColor;
+        Output.NormalData = 1.0;
+        return Output;
+    }
+    
     float3 Diffuse;
     if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
@@ -217,7 +228,6 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         }
     }
     // Final Color
-    float4 FinalColor;
     FinalColor.rgb = AmbientColor + Diffuse * (SpotlightColor + DirectLighting + PointLighting);
     FinalColor.a = 1.0f;
     Output.SceneColor = FinalColor;
@@ -229,8 +239,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     //     float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
     //     FinalColor.a = D * alpha;
     // }
-
-
+    
     // Calculate World Normal for Normal Buffer
     float3 WorldNormal = Input.WorldNormal;
 

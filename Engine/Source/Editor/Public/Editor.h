@@ -5,6 +5,7 @@
 #include "Editor/public/Axis.h"
 #include "Editor/Public/ObjectPicker.h"
 #include "Editor/Public/BatchLines.h"
+#include "Editor/Public/SpotLightDirectionGizmo.h"
 #include "Editor/Public/SplitterWindow.h"
 
 class UPrimitiveComponent;
@@ -79,6 +80,7 @@ private:
 	UGizmo Gizmo;
 	UAxis Axis;
 	UBatchLines BatchLines;
+	USpotLightDirectionGizmo SpotLightDirectionGizmo;
 
 	SSplitterV RootSplitter;
 	SSplitterH LeftSplitter;
