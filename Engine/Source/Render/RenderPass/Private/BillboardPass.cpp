@@ -67,20 +67,28 @@ void FBillboardPass::Execute(FRenderingContext& Context)
         UBillBoardComponent* BillBoardComp = SortedItem.BillBoard;
         
         FMatrix WorldMatrix;
+        FMatrix WorldInverseTranspose;
+
         if (BillBoardComp->IsScreenSizeScaled())
         {
-            FVector FixedWorldScale = BillBoardComp->GetRelativeScale3D(); 
+            FVector FixedWorldScale = BillBoardComp->GetRelativeScale3D();
             FVector BillboardLocation = BillBoardComp->GetWorldLocation();
             FQuaternion BillboardRotation = BillBoardComp->GetWorldRotationAsQuaternion();
 
             WorldMatrix = FMatrix::GetModelMatrix(BillboardLocation, BillboardRotation, FixedWorldScale);
+            WorldInverseTranspose = FMatrix::GetModelMatrixInverse(BillboardLocation, BillboardRotation, FixedWorldScale).Transpose();
         }
-        else { WorldMatrix = BillBoardComp->GetWorldTransformMatrix(); }
+        else
+        {
+            WorldMatrix = BillBoardComp->GetWorldTransformMatrix();
+            WorldInverseTranspose = BillBoardComp->GetWorldTransformMatrixInverse().Transpose();
+        }
 
         Pipeline->SetVertexBuffer(BillBoardComp->GetVertexBuffer(), sizeof(FNormalVertex));
         Pipeline->SetIndexBuffer(BillBoardComp->GetIndexBuffer(), 0);
-       
-        FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, WorldMatrix);
+
+        FModelConstants ModelConstants{ WorldMatrix, WorldInverseTranspose };
+        FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, ModelConstants);
         Pipeline->SetConstantBuffer(0, true, ConstantBufferModel);
 
         Pipeline->SetTexture(0, false, BillBoardComp->GetSprite()->GetTextureSRV());

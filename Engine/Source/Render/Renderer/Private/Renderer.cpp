@@ -31,6 +31,7 @@
 #include "Render/RenderPass/Public/LightCullingPass.h"
 
 #include "Render/RenderPass/Public/SceneDepthPass.h"
+#include "Render/RenderPass/Public/WorldNormalPass.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
 
 IMPLEMENT_SINGLETON_CLASS(URenderer, UObject)
@@ -70,7 +71,7 @@ void URenderer::Init(HWND InWindowHandle)
 	RenderPasses.push_back(LightCullPass);
 	
 	FStaticMeshPass* StaticMeshPass = new FStaticMeshPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
-		TextureVertexShader, TexturePixelShader, TextureInputLayout, DefaultDepthStencilState);
+		TextureVertexShader, TexturePixelShader, TexturePixelShaderWithNormalMap, TextureInputLayout, DefaultDepthStencilState);
 	RenderPasses.push_back(StaticMeshPass);
 
 	FDecalPass* DecalPass = new FDecalPass(Pipeline, ConstantBufferViewProj,
@@ -93,7 +94,10 @@ void URenderer::Init(HWND InWindowHandle)
 
 	FSceneDepthPass* SceneDepthPass = new FSceneDepthPass(Pipeline, ConstantBufferViewProj, DisabledDepthStencilState);
 	RenderPasses.push_back(SceneDepthPass);
-	
+
+	FWorldNormalPass* WorldNormalPass = new FWorldNormalPass(Pipeline, ConstantBufferViewProj, DisabledDepthStencilState);
+	RenderPasses.push_back(WorldNormalPass);
+
 	// Create final passes
 	{
 		CopyPass = new FCopyPass(Pipeline, DeviceResources, CopyVertexShader, CopyPixelShader, CopyInputLayout, CopySamplerState);
@@ -216,10 +220,22 @@ void URenderer::CreateTextureShader()
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Normal), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(FNormalVertex, Color), D3D11_INPUT_PER_VERTEX_DATA, 0	},
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(FNormalVertex, TexCoord), D3D11_INPUT_PER_VERTEX_DATA, 0	}
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(FNormalVertex, TexCoord), D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Tangent), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Bitangent), D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/TextureVS.hlsl", TextureLayout, &TextureVertexShader, &TextureInputLayout);
-	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShader);
+
+	// Compile pixel shader without normal map (nullptr = no defines)
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShader, nullptr);
+
+	// Compile pixel shader with normal map
+	D3D_SHADER_MACRO NormalMapDefines[] =
+	{
+		{ "HAS_NORMAL_MAP", "1" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/TexturePS.hlsl", &TexturePixelShaderWithNormalMap, NormalMapDefines);
 }
 
 void URenderer::CreateDecalShader()
@@ -293,6 +309,7 @@ void URenderer::ReleaseDefaultShader()
 	
 	SafeRelease(TextureInputLayout);
 	SafeRelease(TexturePixelShader);
+	SafeRelease(TexturePixelShaderWithNormalMap);
 	SafeRelease(TextureVertexShader);
 	
 	SafeRelease(DecalVertexShader);
@@ -382,18 +399,27 @@ void URenderer::Update()
 
 void URenderer::RenderBegin() const
 {
+	// Clear sRGB RTV (for normal rendering and UI)
 	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
 	GetDeviceContext()->ClearRenderTargetView(RenderTargetView, ClearColor);
 
-	// @TODO: The clear color for the normal buffer should be a specific value (e.g., {0.5, 0.5, 1.0, 1.0})
+	// Clear Linear RTV (for WorldNormal mode)
+	// Both RTVs point to the same backbuffer but with different format interpretations
+	auto* LinearRenderTargetView = DeviceResources->GetFrameBufferLinearRTV();
+	GetDeviceContext()->ClearRenderTargetView(LinearRenderTargetView, ClearColor);
+
+	// Clear Normal buffer to (0.5, 0.5, 0.5, 0) - when decoded becomes (0,0,0) which represents invalid/no normals
+	// Alpha = 0 to indicate no geometry rendered here
+	float NormalClearColor[4] = { 0.5f, 0.5f, 0.5f, 0.0f };
 	auto* NormalRenderTargetView = DeviceResources->GetNormalRenderTargetView();
-	GetDeviceContext()->ClearRenderTargetView(NormalRenderTargetView, ClearColor);
+	GetDeviceContext()->ClearRenderTargetView(NormalRenderTargetView, NormalClearColor);
 
 	auto* DepthStencilView = DeviceResources->GetDepthStencilView();
 	GetDeviceContext()->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 	auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
 	GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
+
 
     // Clear UAVs
     const UINT clearValues[4] = { 0, 0, 0, 0 };
@@ -497,8 +523,10 @@ void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const
     Pipeline->UpdatePipeline(PipelineInfo);
 
     // Update constant buffers
-	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModels,
-		FMatrix::GetModelMatrix(InPrimitive.Location, InPrimitive.Rotation, InPrimitive.Scale));
+	FMatrix WorldMatrix = FMatrix::GetModelMatrix(InPrimitive.Location, InPrimitive.Rotation, InPrimitive.Scale);
+	FMatrix WorldInverseTranspose = FMatrix::GetModelMatrixInverse(InPrimitive.Location, InPrimitive.Rotation, InPrimitive.Scale).Transpose();
+	FModelConstants ModelConstants{ WorldMatrix, WorldInverseTranspose };
+	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModels, ModelConstants);
 	Pipeline->SetConstantBuffer(0, true, ConstantBufferModels);
 	Pipeline->SetConstantBuffer(1, true, ConstantBufferViewProj);
 	
@@ -560,7 +588,7 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight)
 
 void URenderer::CreateConstantBuffers()
 {
-	ConstantBufferModels = FRenderResourceFactory::CreateConstantBuffer<FMatrix>();
+	ConstantBufferModels = FRenderResourceFactory::CreateConstantBuffer<FModelConstants>();
 	ConstantBufferColor = FRenderResourceFactory::CreateConstantBuffer<FVector4>();
 	ConstantBufferViewProj = FRenderResourceFactory::CreateConstantBuffer<FCameraConstants>();
 }

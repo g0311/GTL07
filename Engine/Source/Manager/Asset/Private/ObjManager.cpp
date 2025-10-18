@@ -30,6 +30,129 @@ struct VertexKeyHash
 	}
 };
 
+/**
+ * @brief Calculate tangent and bitangent vectors for normal mapping
+ * @param Vertices The vertex array to modify
+ * @param Indices The index array defining triangles
+ */
+static void CalculateTangentBitangent(TArray<FNormalVertex>& Vertices, const TArray<uint32>& Indices)
+{
+	// Initialize tangent and bitangent to zero
+	for (auto& Vertex : Vertices)
+	{
+		Vertex.Tangent = FVector(0.0f, 0.0f, 0.0f);
+		Vertex.Bitangent = FVector(0.0f, 0.0f, 0.0f);
+	}
+
+	// Calculate tangent and bitangent for each triangle
+	for (size_t i = 0; i < Indices.size(); i += 3)
+	{
+		uint32 Index0 = Indices[i];
+		uint32 Index1 = Indices[i + 1];
+		uint32 Index2 = Indices[i + 2];
+
+		FNormalVertex& V0 = Vertices[Index0];
+		FNormalVertex& V1 = Vertices[Index1];
+		FNormalVertex& V2 = Vertices[Index2];
+
+		// Position deltas
+		FVector Edge1 = V1.Position - V0.Position;
+		FVector Edge2 = V2.Position - V0.Position;
+
+		// UV deltas
+		FVector2 DeltaUV1 = V1.TexCoord - V0.TexCoord;
+		FVector2 DeltaUV2 = V2.TexCoord - V0.TexCoord;
+
+		// Calculate tangent and bitangent
+		float Denominator = DeltaUV1.X * DeltaUV2.Y - DeltaUV2.X * DeltaUV1.Y;
+
+		if (std::abs(Denominator) > 1e-6f)
+		{
+			float r = 1.0f / Denominator;
+
+			FVector Tangent = (Edge1 * DeltaUV2.Y - Edge2 * DeltaUV1.Y) * r;
+			FVector Bitangent = (Edge2 * DeltaUV1.X - Edge1 * DeltaUV2.X) * r;
+
+			// Accumulate tangent and bitangent for each vertex
+			V0.Tangent = V0.Tangent + Tangent;
+			V1.Tangent = V1.Tangent + Tangent;
+			V2.Tangent = V2.Tangent + Tangent;
+
+			V0.Bitangent = V0.Bitangent + Bitangent;
+			V1.Bitangent = V1.Bitangent + Bitangent;
+			V2.Bitangent = V2.Bitangent + Bitangent;
+		}
+	}
+
+	// Normalize and orthogonalize tangent and bitangent
+	for (auto& Vertex : Vertices)
+	{
+		FVector N = Vertex.Normal;
+		FVector T = Vertex.Tangent;
+
+		// Check if normal is valid
+		float NormalLength = std::sqrt(N.X * N.X + N.Y * N.Y + N.Z * N.Z);
+		if (NormalLength < 1e-6f)
+		{
+			// Invalid normal, use default up vector
+			N = FVector(0.0f, 0.0f, 1.0f);
+			Vertex.Normal = N;
+		}
+		else
+		{
+			N = N / NormalLength; // Normalize
+		}
+
+		// Check if tangent is valid
+		float TangentLength = std::sqrt(T.X * T.X + T.Y * T.Y + T.Z * T.Z);
+		if (TangentLength < 1e-6f)
+		{
+			// No tangent calculated, create arbitrary tangent perpendicular to normal
+			if (std::abs(N.Z) < 0.999f)
+			{
+				T = FVector(0.0f, 0.0f, 1.0f);
+			}
+			else
+			{
+				T = FVector(1.0f, 0.0f, 0.0f);
+			}
+		}
+
+		// Gram-Schmidt orthogonalize tangent with respect to normal
+		T = T - N * N.Dot(T);
+		float TOrthoLength = std::sqrt(T.X * T.X + T.Y * T.Y + T.Z * T.Z);
+		if (TOrthoLength > 1e-6f)
+		{
+			T = T / TOrthoLength;
+		}
+		else
+		{
+			// Fallback: create arbitrary tangent
+			if (std::abs(N.Z) < 0.999f)
+			{
+				T = FVector(0.0f, 0.0f, 1.0f);
+			}
+			else
+			{
+				T = FVector(1.0f, 0.0f, 0.0f);
+			}
+			T = T - N * N.Dot(T);
+			T = T / std::sqrt(T.X * T.X + T.Y * T.Y + T.Z * T.Z);
+		}
+
+		// Calculate bitangent
+		FVector B = N.Cross(T);
+		float BLength = std::sqrt(B.X * B.X + B.Y * B.Y + B.Z * B.Z);
+		if (BLength > 1e-6f)
+		{
+			B = B / BLength;
+		}
+
+		Vertex.Tangent = T;
+		Vertex.Bitangent = B;
+	}
+}
+
 /** @todo: std::filesystem으로 변경 */
 FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FName& PathFileName, const FObjImporter::Configuration& Config)
 {
@@ -106,6 +229,68 @@ FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FName& PathFileName, cons
 			StaticMesh->Indices.push_back(It->second);
 		}
 	}
+
+	/** #2.5. Normal이 없으면 Face Normal 계산 */
+	bool bHasNormals = false;
+	for (const auto& Vertex : StaticMesh->Vertices)
+	{
+		float NormalLength = std::sqrt(Vertex.Normal.X * Vertex.Normal.X + Vertex.Normal.Y * Vertex.Normal.Y + Vertex.Normal.Z * Vertex.Normal.Z);
+		if (NormalLength > 1e-6f)
+		{
+			bHasNormals = true;
+			break;
+		}
+	}
+
+	if (!bHasNormals)
+	{
+		UE_LOG("ObjManager: Normal 데이터가 없습니다. Face Normal을 계산합니다.");
+
+		// Calculate face normals for each triangle
+		for (size_t i = 0; i < StaticMesh->Indices.size(); i += 3)
+		{
+			uint32 Index0 = StaticMesh->Indices[i];
+			uint32 Index1 = StaticMesh->Indices[i + 1];
+			uint32 Index2 = StaticMesh->Indices[i + 2];
+
+			FVector P0 = StaticMesh->Vertices[Index0].Position;
+			FVector P1 = StaticMesh->Vertices[Index1].Position;
+			FVector P2 = StaticMesh->Vertices[Index2].Position;
+
+			// Calculate face normal using cross product
+			FVector Edge1 = P1 - P0;
+			FVector Edge2 = P2 - P0;
+			FVector FaceNormal = Edge1.Cross(Edge2);
+
+			float Length = std::sqrt(FaceNormal.X * FaceNormal.X + FaceNormal.Y * FaceNormal.Y + FaceNormal.Z * FaceNormal.Z);
+			if (Length > 1e-6f)
+			{
+				FaceNormal = FaceNormal / Length;
+			}
+
+			// Accumulate face normal to vertex normals
+			StaticMesh->Vertices[Index0].Normal = StaticMesh->Vertices[Index0].Normal + FaceNormal;
+			StaticMesh->Vertices[Index1].Normal = StaticMesh->Vertices[Index1].Normal + FaceNormal;
+			StaticMesh->Vertices[Index2].Normal = StaticMesh->Vertices[Index2].Normal + FaceNormal;
+		}
+
+		// Normalize all vertex normals
+		for (auto& Vertex : StaticMesh->Vertices)
+		{
+			float Length = std::sqrt(Vertex.Normal.X * Vertex.Normal.X + Vertex.Normal.Y * Vertex.Normal.Y + Vertex.Normal.Z * Vertex.Normal.Z);
+			if (Length > 1e-6f)
+			{
+				Vertex.Normal = Vertex.Normal / Length;
+			}
+			else
+			{
+				Vertex.Normal = FVector(0.0f, 0.0f, 1.0f);
+			}
+		}
+	}
+
+	/** #2.6. Tangent와 Bitangent를 계산 */
+	CalculateTangentBitangent(StaticMesh->Vertices, StaticMesh->Indices);
 
 	/** #3. 오브젝트가 사용하는 머티리얼의 목록을 저장 */
 	TSet<FName> UniqueMaterialNames;

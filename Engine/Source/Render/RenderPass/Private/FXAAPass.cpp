@@ -35,6 +35,9 @@ void FFXAAPass::Execute(FRenderingContext& Context)
     if (!SceneSRV ) return;
     if (!(Context.ShowFlags & EEngineShowFlags::SF_FXAA)) return;
 
+    // Skip FXAA in WorldNormal mode - WorldNormalPass renders directly to FrameBuffer
+    if (Context.ViewMode == EViewModeIndex::VMI_WorldNormal) return;
+
     UpdateConstants(Context);
 
     FPipelineInfo PipelineInfo = {};
