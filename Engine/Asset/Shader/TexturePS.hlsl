@@ -44,22 +44,46 @@ struct PS_OUTPUT
     float4 NormalData : SV_Target1;
 };
 
-#if defined(HAS_HEIGHT_MAP)
-// World space vector를 Tangent space로 변환
-// 비균등 스케일을 올바르게 처리하기 위해 Gram-Schmidt 정규직교화 사용
-float3 WorldToTangentSpace(float3 worldVec, float3 worldNormal, float3 worldTangent, float3 worldBitangent)
+// TBN 행렬을 Gram-Schmidt 정규직교화로 구성
+// 비균등 스케일과 회전을 올바르게 처리하기 위해 필수
+void BuildOrthonormalTBN(float3 worldNormal, float3 worldTangent, float3 worldBitangent,
+                         out float3 T, out float3 B, out float3 N)
 {
     // Normal은 항상 정확하므로 먼저 normalize
-    float3 N = normalize(worldNormal);
+    N = normalize(worldNormal);
 
     // Tangent를 Normal에 대해 직교화 (Gram-Schmidt)
-    float3 T = worldTangent - dot(worldTangent, N) * N;
-    T = normalize(T);
+    T = worldTangent - dot(worldTangent, N) * N;
+    float tLength = length(T);
+    if (tLength > 0.001f)
+    {
+        T = T / tLength;
+    }
+    else
+    {
+        // Tangent가 유효하지 않으면 임의의 직교 벡터 생성
+        T = abs(N.z) < 0.999f ? float3(0, 0, 1) : float3(1, 0, 0);
+        T = normalize(T - dot(T, N) * N);
+    }
 
     // Bitangent를 Normal과 Tangent에 대해 직교화
-    float3 B = worldBitangent - dot(worldBitangent, N) * N - dot(worldBitangent, T) * T;
-    B = normalize(B);
+    B = worldBitangent - dot(worldBitangent, N) * N - dot(worldBitangent, T) * T;
+    float bLength = length(B);
+    if (bLength > 0.001f)
+    {
+        B = B / bLength;
+    }
+    else
+    {
+        // Bitangent가 유효하지 않으면 외적으로 생성
+        B = normalize(cross(N, T));
+    }
+}
 
+#if defined(HAS_HEIGHT_MAP)
+// World space vector를 Tangent space로 변환
+float3 WorldToTangentSpace(float3 worldVec, float3 T, float3 B, float3 N)
+{
     // World space -> Tangent space 변환
     // TBN의 역행렬은 전치행렬 (정규직교 행렬이므로)
     float3x3 TBN = float3x3(T, B, N);
@@ -91,7 +115,8 @@ float2 ParallaxOcclusionMapping(float2 UV, float3 ViewDirTangent, float heightSc
     // 초기화
     float layerDepth = 1.0f / numLayers;
     float currentLayerDepth = 0.0f;
-    float2 deltaUV = ViewDirTangent.xy * heightScale / numLayers;
+    // X, Y 둘 다 반전
+    float2 deltaUV = float2(ViewDirTangent.x, -ViewDirTangent.y) * heightScale / numLayers;
     float2 currentUV = UV;
 
     float currentHeight = HeightTexture.Sample(SamplerWrap, currentUV).r;
@@ -100,14 +125,14 @@ float2 ParallaxOcclusionMapping(float2 UV, float3 ViewDirTangent, float heightSc
     [unroll(32)]
     for(int i = 0; i < 32 && currentLayerDepth < currentHeight; i++)
     {
-        // 다음 레이어로 이동
-        currentUV -= deltaUV;
+        // 다음 레이어로 이동 (방향 수정: += 대신 -=)
+        currentUV += deltaUV;
         currentHeight = HeightTexture.Sample(SamplerWrap, currentUV).r;
         currentLayerDepth += layerDepth;
     }
 
     // Relief Mapping: 선형 보간으로 부드럽게
-    float2 prevUV = currentUV + deltaUV;
+    float2 prevUV = currentUV - deltaUV;
     float afterDepth = currentHeight - currentLayerDepth;
     float beforeDepth = HeightTexture.Sample(SamplerWrap, prevUV).r - currentLayerDepth + layerDepth;
 
@@ -125,6 +150,10 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float4 FinalColor = float4(0.f, 0.f, 0.f, 1.f);
     float2 UV = Input.Tex;
 
+    // TBN 행렬을 정규직교화 (Normal Mapping과 Parallax Mapping 모두에서 사용)
+    float3 T, B, N;
+    BuildOrthonormalTBN(Input.WorldNormal, Input.WorldTangent, Input.WorldBitangent, T, B, N);
+
     // Parallax UV 계산 (Height Map이 있을 때만)
     #if defined(HAS_HEIGHT_MAP)
     if (MaterialFlags & HEIGHT_MAP_FLAG)
@@ -133,12 +162,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         float3 ViewDirWorld = normalize(ViewWorldLocation - Input.WorldPosition);
 
         // Tangent space로 변환
-        float3 ViewDirTangent = WorldToTangentSpace(
-            ViewDirWorld,
-            Input.WorldNormal,
-            Input.WorldTangent,
-            Input.WorldBitangent
-        );
+        float3 ViewDirTangent = WorldToTangentSpace(ViewDirWorld, T, B, N);
 
         // Parallax Occlusion Mapping 적용
         UV = ParallaxOcclusionMapping(UV, ViewDirTangent, HeightScale);
@@ -173,17 +197,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     Output.SceneColor = FinalColor;
 
     // Calculate World Normal for Normal Buffer
-    float3 WorldNormal = Input.WorldNormal;
-
-    // Safety check: if normal is zero, use a default up vector
-    if (length(WorldNormal) < 0.001f)
-    {
-        WorldNormal = float3(0.0f, 0.0f, 1.0f);
-    }
-    else
-    {
-        WorldNormal = normalize(WorldNormal);
-    }
+    float3 WorldNormal = N;  // 이미 정규직교화된 Normal 사용
 
     #if defined(HAS_NORMAL_MAP)
     if (MaterialFlags & NORMAL_MAP_FLAG)
@@ -194,20 +208,8 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         // Decode from [0,1] to [-1,1]
         TangentNormal = TangentNormal * 2.0f - 1.0f;
 
-        // Construct TBN matrix (Tangent, Bitangent, Normal)
-        float3 N = WorldNormal;
-        float3 T = Input.WorldTangent;
-        float3 B = Input.WorldBitangent;
-
-        // Safety check for tangent and bitangent
-        if (length(T) > 0.001f && length(B) > 0.001f)
-        {
-            T = normalize(T);
-            B = normalize(B);
-
-            // Transform tangent space normal to world space
-            WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
-        }
+        // Transform tangent space normal to world space using orthonormalized TBN
+        WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
     }
     #endif
 
