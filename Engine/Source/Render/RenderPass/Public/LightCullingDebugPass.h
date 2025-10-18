@@ -21,6 +21,7 @@ public:
 private:
     void CreateResources();
     void ReleaseResources();
+    void EnsureD2DResourcesCreated();
     void RenderDebugInfo(FRenderingContext& Context);
     std::wstring ToWString(const FString& InStr);
 
@@ -35,4 +36,5 @@ private:
     ID2D1Device* D2DDevice = nullptr;
     ID2D1DeviceContext* D2DContext = nullptr;
     ID2D1SolidColorBrush* TextBrush = nullptr;
+    bool bD2DResourcesCreated = false;
 };

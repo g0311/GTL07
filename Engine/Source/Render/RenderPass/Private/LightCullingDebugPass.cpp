@@ -28,6 +28,27 @@ void FLightCullingDebugPass::CreateResources()
     HRESULT hr = DeviceResources->GetDevice()->CreateBuffer(&desc, nullptr, &TileLightInfoStagingBuffer);
     assert(SUCCEEDED(hr));
 
+    // D2D/DWrite resources will be created lazily when needed
+}
+
+void FLightCullingDebugPass::ReleaseResources()
+{
+    SafeRelease(TileLightInfoStagingBuffer);
+    SafeRelease(TextFormat);
+    SafeRelease(D2DFactory);
+    SafeRelease(D2DDevice);
+    SafeRelease(D2DContext);
+    SafeRelease(TextBrush);
+    bD2DResourcesCreated = false;
+}
+
+void FLightCullingDebugPass::EnsureD2DResourcesCreated()
+{
+    if (bD2DResourcesCreated)
+    {
+        return;
+    }
+
     // Create D2D/DWrite resources
     DWriteFactory = DeviceResources->GetDWriteFactory();
     if (DWriteFactory)
@@ -48,32 +69,44 @@ void FLightCullingDebugPass::CreateResources()
 #ifdef _DEBUG
     opts.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
 #endif
-    hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), &opts, (void**)&D2DFactory);
-    assert(SUCCEEDED(hr));
+    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), &opts, (void**)&D2DFactory);
+    if (FAILED(hr))
+    {
+        OutputDebugStringA("Failed to create D2D Factory\n");
+        return;
+    }
 
     IDXGIDevice* dxgiDevice = nullptr;
     hr = DeviceResources->GetDevice()->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr))
+    {
+        OutputDebugStringA("Failed to query DXGI Device\n");
+        return;
+    }
 
     hr = D2DFactory->CreateDevice(dxgiDevice, &D2DDevice);
     SafeRelease(dxgiDevice);
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr))
+    {
+        OutputDebugStringA("Failed to create D2D Device (RenderDoc compatibility issue)\n");
+        return;
+    }
 
     hr = D2DDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &D2DContext);
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr))
+    {
+        OutputDebugStringA("Failed to create D2D DeviceContext\n");
+        return;
+    }
 
     hr = D2DContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &TextBrush);
-    assert(SUCCEEDED(hr));
-}
+    if (FAILED(hr))
+    {
+        OutputDebugStringA("Failed to create D2D SolidColorBrush\n");
+        return;
+    }
 
-void FLightCullingDebugPass::ReleaseResources()
-{
-    SafeRelease(TileLightInfoStagingBuffer);
-    SafeRelease(TextFormat);
-    SafeRelease(D2DFactory);
-    SafeRelease(D2DDevice);
-    SafeRelease(D2DContext);
-    SafeRelease(TextBrush);
+    bD2DResourcesCreated = true;
 }
 
 void FLightCullingDebugPass::PreExecute(FRenderingContext& Context)
@@ -103,6 +136,15 @@ void FLightCullingDebugPass::Release()
 
 void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
 {
+    // Ensure D2D resources are created (lazy initialization)
+    EnsureD2DResourcesCreated();
+
+    // If D2D resources failed to create (e.g., RenderDoc compatibility), skip rendering
+    if (!bD2DResourcesCreated || !D2DContext || !TextBrush || !TextFormat)
+    {
+        return;
+    }
+
     ID3D11DeviceContext* Ctx = DeviceResources->GetDeviceContext();
     URenderer& renderer = URenderer::GetInstance();
 
