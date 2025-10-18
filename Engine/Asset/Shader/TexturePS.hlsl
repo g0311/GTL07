@@ -14,6 +14,16 @@ struct FDirectionalLightInfo
     float Intensity;
 };
 
+struct FPointLightInfo
+{
+    float3 Position;
+    float Radius;
+    float3 Color;
+    float Intensity;
+    float FalloffExtent;
+    float3 _padding;
+};
+
 cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
 {
     float4 Ka;		// Ambient color
@@ -36,6 +46,12 @@ cbuffer DirectionalLighting : register(b4)
 {
     FDirectionalLightInfo Directional;
     int HasDirectionalLight;
+}
+
+cbuffer PointLighting : register(b5)
+{
+    FPointLightInfo PointLights[8];
+    int NumPointLights;
 }
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
@@ -95,6 +111,23 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         float3 lightDir = normalize(-Directional.Direction);
         float NdotL = saturate(dot(normal, lightDir));
         DirectLighting += Directional.Color * Directional.Intensity * NdotL;
+    }
+    
+    // Point Lights
+    for (int i = 0; i < NumPointLights; i++)
+    {
+        float3 toLight = PointLights[i].Position - Input.WorldPosition;
+        float dist = length(toLight);
+        
+        if (dist < PointLights[i].Radius)
+        {
+            float3 lightDir = toLight / dist;
+            float3 normal = normalize(Input.WorldNormal);
+            float NdotL = saturate(dot(normal, lightDir));
+            float auttenuation = pow(1.0f - (dist / PointLights[i].Radius), PointLights[i].FalloffExtent);
+            
+            DirectLighting += PointLights[i].Color * PointLights[i].Intensity * NdotL * auttenuation;
+        }
     }
     
     // Final Color 

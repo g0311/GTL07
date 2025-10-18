@@ -463,16 +463,6 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 		}
 	}
 
-	for (const auto& Light : CurrentLevel->GetLights())
-	{
-		RenderingContext.Lights.push_back(Light);
-	}
-	
-	for (const auto& PointLight : CurrentLevel->GetPointLights())
-	{
-		RenderingContext.PointLights.push_back(PointLight);
-	}
-
 	for (const auto& Actor : CurrentLevel->GetLevelActors())
 	{
 		for (const auto& Component : Actor->GetOwnedComponents())

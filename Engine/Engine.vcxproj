@@ -309,6 +309,7 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Source\Actor\Light\Public\DirectionalLightActor.h" />
+    <ClInclude Include="Source\Actor\Light\Public\PointLightActor.h" />
     <ClInclude Include="Source\Actor\Public\Actor.h" />
     <ClInclude Include="Source\Actor\Public\BillBoardActor.h" />
     <ClInclude Include="Source\Actor\Public\CubeActor.h" />
@@ -316,7 +317,6 @@
     <ClInclude Include="Source\Actor\Public\DecalSpotLightActor.h" />
     <ClInclude Include="Source\Actor\Public\HeightFogActor.h" />
     <ClInclude Include="Source\Actor\Public\MovingCubeActor.h" />
-    <ClInclude Include="Source\Actor\Public\PointLightActor.h" />
     <ClInclude Include="Source\Actor\Public\SphereActor.h" />
     <ClInclude Include="Source\Actor\Public\StaticMeshActor.h">
       <DeploymentContent>false</DeploymentContent>
@@ -502,6 +502,7 @@
     </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Source\Actor\Light\Private\DirectionalLightActor.cpp" />
+    <ClCompile Include="Source\Actor\Light\Private\PointLightActor.cpp" />
     <ClCompile Include="Source\Actor\Private\Actor.cpp" />
     <ClCompile Include="Source\Actor\Private\BillBoardActor.cpp" />
     <ClCompile Include="Source\Actor\Private\CubeActor.cpp" />
@@ -510,7 +511,6 @@
     <ClCompile Include="Source\Actor\Private\HeightFogActor.cpp" />
     <ClCompile Include="Source\Actor\Private\MovingCubeActor.cpp">
     </ClCompile>
-    <ClCompile Include="Source\Actor\Private\PointLightActor.cpp" />
     <ClCompile Include="Source\Actor\Private\SphereActor.cpp" />
     <ClCompile Include="Source\Actor\Private\StaticMeshActor.cpp">
       <DeploymentContent>false</DeploymentContent>

@@ -80,6 +80,23 @@ struct FDirectionalLightCBuffer
 	float _Padding[3];
 };
 
+struct FPointLightData2
+{
+	FVector Position;
+	float Radius;
+	FVector Color;
+	float Intensity;
+	float FalloffExtent;
+	float _padding[3];
+};
+
+struct FPointLightCBuffer
+{
+	FPointLightData2 PointLights[8];
+	int NumPointLights;
+	float _padding[3];
+};
+
 struct FVertex
 {
 	FVector Position;

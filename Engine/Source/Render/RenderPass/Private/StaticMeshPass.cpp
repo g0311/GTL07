@@ -3,6 +3,7 @@
 
 #include "Component/Light/Public/AmbientLightComponent.h"
 #include "Component/Light/Public/DirectionalLightComponent.h"
+#include "Component/Light/Public/PointLightComponent.h"
 #include "Component/Mesh/Public/StaticMeshComponent.h"
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"
@@ -15,6 +16,7 @@ FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstant
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
 	ConstantBufferLight = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
 	ConstantBufferDirectionalLight = FRenderResourceFactory::CreateConstantBuffer<FDirectionalLightCBuffer>();
+	ConstantBufferPointLight = FRenderResourceFactory::CreateConstantBuffer<FPointLightCBuffer>();
 }
 
 void FStaticMeshPass::PreExecute(FRenderingContext& Context)
@@ -147,6 +149,26 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferDirectionalLight, DirectionalLightCBuffer);
 				Pipeline->SetConstantBuffer(4, false, ConstantBufferDirectionalLight);
 
+				// Point Light
+				FPointLightCBuffer PointLightCBuffer = {};
+				PointLightCBuffer.NumPointLights = 0;
+				for (ULightComponent* Light : Context.Lights)
+				{
+					if (auto PointLight = Cast<UPointLightComponent>(Light))
+					{
+						if (PointLightCBuffer.NumPointLights >= 8) { break; } // Max 8 point lights supported
+						PointLightCBuffer.PointLights[0].Position = PointLight->GetWorldLocation();
+						PointLightCBuffer.PointLights[0].Radius = PointLight->GetAttenuationRadius();
+						PointLightCBuffer.PointLights[0].Color = PointLight->GetColor();
+						PointLightCBuffer.PointLights[0].Intensity = PointLight->GetIntensity();
+						PointLightCBuffer.PointLights[0].FalloffExtent = PointLight->GetLightFalloffExponent();
+						PointLightCBuffer.NumPointLights++;
+					}
+				}
+
+				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPointLight, PointLightCBuffer);
+				Pipeline->SetConstantBuffer(5, false, ConstantBufferPointLight);
+
 				if (UTexture* DiffuseTexture = Material->GetDiffuseTexture())
 				{
 					Pipeline->SetTexture(0, false, DiffuseTexture->GetTextureSRV());
@@ -191,4 +213,5 @@ void FStaticMeshPass::Release()
 	SafeRelease(ConstantBufferMaterial);
 	SafeRelease(ConstantBufferLight);
 	SafeRelease(ConstantBufferDirectionalLight);
+	SafeRelease(ConstantBufferPointLight);
 }
