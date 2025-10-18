@@ -4,21 +4,23 @@ struct FAmbientLightInfo
 {
     float4 AmbientColor;
     float Intensity;
+    float3 _pad0;
 };
 
 struct FSpotLightInfo
 {
     float4 Color;
+
     float Intensity;
-
     float3 Position;
-    float InvRange2;// 1/(Range*Range) : Spotlight Range
     
+    float InvRange2;// 1/(Range*Range) : Spotlight Range
     float3 Direction;
+    
     float CosOuter;   // Spotlight의 바깥 Cone
-
     float CosInner; // Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
     float Falloff;  // Inner Cone부터 Outer Cone까지 범위의 감쇠율
+    float _pad0;
 };
 
 cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
@@ -36,9 +38,11 @@ cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
 cbuffer Lighting : register(b3)
 {
     int AmbientCount;
+    float3 _pad0;
     FAmbientLightInfo Ambient[8];
     
     int SpotlightCount;
+    float3 _pad1;
     FSpotLightInfo Spotlight[8];
 };
 
