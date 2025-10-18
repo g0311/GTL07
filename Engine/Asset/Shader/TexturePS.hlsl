@@ -59,13 +59,6 @@ cbuffer Lighting : register(b3)
     float3 _pad0;
     FAmbientLightInfo AmbientLights[8];
     
-    int NumSpotLights;
-    float3 _pad1;
-    FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
-};
-
-cbuffer Lighting : register(b4)
-{
     int HasDirectionalLight;
     float3 _pad2;
     FDirectionalLightInfo DirectionalLight;
@@ -73,7 +66,11 @@ cbuffer Lighting : register(b4)
     int NumPointLights;
     float3 _pad3;
     FPointLightInfo PointLights[NUM_POINT_LIGHT];
-}
+    
+    int NumSpotLights;
+    float3 _pad1;
+    FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
+};
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
 Texture2D AmbientTexture : register(t1);	// map_Ka

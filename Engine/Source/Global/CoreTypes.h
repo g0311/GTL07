@@ -94,19 +94,13 @@ struct FPointLightData
 	float _padding[3];
 };
 
-struct FLightConstantss
+struct FLightConstants
 {
+	/* Ambient Light */
 	int NumAmbientLights;
 	FVector _pad0;
 	FAmbientLightData AmbientLights[8];
 
-	int NumSpotLights;
-	FVector _pad1;
-	FSpotLightData SpotLights[MAX_SPOT_LIGHTS];
-};
-
-struct FLightConstants
-{
 	/* Directional Light */
 	int HasDirectionalLight;
 	float _padding0[3];
@@ -116,6 +110,11 @@ struct FLightConstants
 	int NumPointLights;
 	float _padding1[3];
 	FPointLightData PointLights[MAX_POINT_LIGHTS];
+
+	/* Spot Light */
+	int NumSpotLights;
+	FVector _pad1;
+	FSpotLightData SpotLights[MAX_SPOT_LIGHTS];
 };
 
 struct FVertex
