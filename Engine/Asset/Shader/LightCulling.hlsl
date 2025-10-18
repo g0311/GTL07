@@ -6,6 +6,100 @@
 // 타일 한 변의 크기 정의. TILE_SIZE x TILE_SIZE 스레드가 하나의 타일을 처리
 #define TILE_SIZE 32
 
+// =================================================================
+// 픽셀 셰이더용 타일 유틸리티 함수들
+// =================================================================
+
+// 스크린 픽셀 좌표에서 타일 인덱스 계산 (전역 화면 기준)
+uint2 GetTileIndexFromPixel(float2 screenPos)
+{
+    return uint2(floor(screenPos.x / TILE_SIZE), floor(screenPos.y / TILE_SIZE));
+}
+
+// 스크린 픽셀 좌표에서 타일 인덱스 계산 (뷰포트 기준)
+uint2 GetTileIndexFromPixelViewport(float2 screenPos, uint2 viewportOffset)
+{
+    float2 viewportRelativePos = screenPos - viewportOffset;
+    return uint2(floor(viewportRelativePos.x / TILE_SIZE), floor(viewportRelativePos.y / TILE_SIZE));
+}
+
+// 타일 인덱스를 1D 배열 인덱스로 변환 (전역 화면 기준)
+uint GetTileArrayIndex(uint2 tileIndex, uint2 screenDimensions)
+{
+    uint tilesPerRow = (screenDimensions.x + TILE_SIZE - 1) / TILE_SIZE;
+    return tileIndex.y * tilesPerRow + tileIndex.x;
+}
+
+// SV_Position에서 뷰포트 기준 타일 인덱스 추출 (픽셀 셰이더용)
+uint2 GetCurrentTileIndex(float4 svPosition, uint2 viewportOffset)
+{
+    return GetTileIndexFromPixelViewport(svPosition.xy, viewportOffset);
+}
+
+// SV_Position에서 뷰포트 기준 타일 배열 인덱스 추출
+uint GetCurrentTileArrayIndex(float4 svPosition, uint2 viewportOffset, uint2 viewportSize)
+{
+    uint2 viewportTileIndex = GetCurrentTileIndex(svPosition, viewportOffset);
+    uint tilesPerRow = (viewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
+    return viewportTileIndex.y * tilesPerRow + viewportTileIndex.x;
+}
+
+// 타일 내에서의 상대 위치 계산 (0~TILE_SIZE-1)
+uint2 GetPixelInTile(float2 screenPos)
+{
+    return uint2(screenPos.x % TILE_SIZE, screenPos.y % TILE_SIZE);
+}
+
+// 타일의 시작 픽셀 좌표 계산
+float2 GetTileStartPixel(uint2 tileIndex)
+{
+    return float2(tileIndex.x * TILE_SIZE, tileIndex.y * TILE_SIZE);
+}
+
+// 타일의 끝 픽셀 좌표 계산
+float2 GetTileEndPixel(uint2 tileIndex)
+{
+    return float2((tileIndex.x + 1) * TILE_SIZE - 1, (tileIndex.y + 1) * TILE_SIZE - 1);
+}
+
+// 버텍스 셰이더용: 월드 좌표에서 타일 인덱스 계산
+uint2 GetTileIndexFromWorldPos(float3 worldPos, matrix viewMatrix, matrix projMatrix, uint2 viewportOffset, uint2 viewportSize)
+{
+    // 월드 좌표를 뷰 공간으로 변환
+    float4 viewPos = mul(viewMatrix, float4(worldPos, 1.0));
+    
+    // 뷰 공간을 클립 공간으로 변환
+    float4 clipPos = mul(projMatrix, viewPos);
+    
+    // 동차 좌표를 NDC로 변환
+    float2 ndc = clipPos.xy / clipPos.w;
+    
+    // NDC를 뷰포트 기준 스크린 좌표로 변환
+    float2 screenPos;
+    screenPos.x = (ndc.x + 1.0) * 0.5 * viewportSize.x + viewportOffset.x;
+    screenPos.y = (1.0 - ndc.y) * 0.5 * viewportSize.y + viewportOffset.y;
+    
+    // 스크린 좌표에서 타일 인덱스 계산
+    return GetTileIndexFromPixelViewport(screenPos, viewportOffset);
+}
+
+// 버텍스 셰이더용: 클립 좌표에서 타일 인덱스 계산
+uint2 GetTileIndexFromClipPos(float4 clipPos, uint2 viewportOffset, uint2 viewportSize)
+{
+    // 동차 좌표를 NDC로 변환
+    float2 ndc = clipPos.xy / clipPos.w;
+    
+    // NDC를 뷰포트 기준 스크린 좌표로 변환
+    float2 screenPos;
+    screenPos.x = (ndc.x + 1.0) * 0.5 * viewportSize.x + viewportOffset.x;
+    screenPos.y = (1.0 - ndc.y) * 0.5 * viewportSize.y + viewportOffset.y;
+    
+    // 스크린 좌표에서 타일 인덱스 계산
+    return GetTileIndexFromPixelViewport(screenPos, viewportOffset);
+}
+
+// =================================================================
+
 // 광원 타입 정의
 #define LIGHT_TYPE_DIRECTIONAL 0
 #define LIGHT_TYPE_AMBIENT 1
@@ -47,7 +141,7 @@ cbuffer CullingParams : register(b0)
     uint Padding; // 16바이트 정렬을 위한 패딩
 };
 
-// 출력용 UAV(Unordered Access View) 버퍼들
+// 출력용 UAV(Unordered Access View) 버퍼
 RWStructuredBuffer<uint> LightIndexBuffer; // 타일별로 컬링된 광원 인덱스들이 저장될 전역 버퍼
 RWStructuredBuffer<uint2> TileLightInfo;   // 각 타일의 광원 정보 (LightIndexBuffer에서의 시작 오프셋, 광원 개수)
 
