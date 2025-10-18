@@ -42,6 +42,31 @@ void UStaticMeshComponentWidget::RenderWidget()
 	ImGui::Separator();
 	RenderMaterialSections();
 	ImGui::Separator();
+
+	// Render Material Texture Editor for each material slot
+	UStaticMesh* CurrentMesh = StaticMeshComponent->GetStaticMesh();
+	if (CurrentMesh)
+	{
+		FStaticMesh* MeshAsset = CurrentMesh->GetStaticMeshAsset();
+		if (MeshAsset)
+		{
+			for (int32 SlotIndex = 0; SlotIndex < MeshAsset->MaterialInfo.size(); ++SlotIndex)
+			{
+				UMaterial* Material = StaticMeshComponent->GetMaterial(SlotIndex);
+				if (Material)
+				{
+					ImGui::PushID(SlotIndex);
+					if (ImGui::CollapsingHeader(("Material " + std::to_string(SlotIndex) + " Textures").c_str()))
+					{
+						RenderMaterialTextureEditor(Material);
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::Separator();
+		}
+	}
+
 	RenderOptions();
 }
 
@@ -150,6 +175,80 @@ void UStaticMeshComponentWidget::RenderOptions()
 		{
 			StaticMeshComponent->DisableScroll();
 		}
+	}
+}
+
+void UStaticMeshComponentWidget::RenderMaterialTextureEditor(UMaterial* Material)
+{
+	if (!Material)
+	{
+		return;
+	}
+
+	RenderTextureSelector("Diffuse Texture", Material->GetDiffuseTexture(), &UMaterial::SetDiffuseTexture, Material);
+	RenderTextureSelector("Ambient Texture", Material->GetAmbientTexture(), &UMaterial::SetAmbientTexture, Material);
+	RenderTextureSelector("Specular Texture", Material->GetSpecularTexture(), &UMaterial::SetSpecularTexture, Material);
+	RenderTextureSelector("Normal Texture", Material->GetNormalTexture(), &UMaterial::SetNormalTexture, Material);
+	RenderTextureSelector("Alpha Texture", Material->GetAlphaTexture(), &UMaterial::SetAlphaTexture, Material);
+	RenderTextureSelector("Bump Texture", Material->GetBumpTexture(), &UMaterial::SetBumpTexture, Material);
+}
+
+void UStaticMeshComponentWidget::RenderTextureSelector(const char* Label, UTexture* CurrentTexture, void (UMaterial::*Setter)(UTexture*), UMaterial* Material)
+{
+	FString PreviewName = CurrentTexture ? CurrentTexture->GetFilePath().ToString() : "None";
+
+	// Extract filename from path
+	if (CurrentTexture && !PreviewName.empty())
+	{
+		size_t LastSlash = PreviewName.find_last_of("/\\");
+		if (LastSlash != std::string::npos)
+		{
+			PreviewName = PreviewName.substr(LastSlash + 1);
+		}
+	}
+
+	if (ImGui::BeginCombo(Label, PreviewName.c_str()))
+	{
+		// "None" option to clear texture
+		if (ImGui::Selectable("None", CurrentTexture == nullptr))
+		{
+			(Material->*Setter)(nullptr);
+		}
+		if (CurrentTexture == nullptr)
+		{
+			ImGui::SetItemDefaultFocus();
+		}
+
+		// Iterate through all available textures
+		for (TObjectIterator<UTexture> It; It; ++It)
+		{
+			UTexture* TextureInList = *It;
+			if (!TextureInList) continue;
+
+			FString TexturePath = TextureInList->GetFilePath().ToString();
+			FString TextureName = TexturePath;
+
+			// Extract filename
+			size_t LastSlash = TexturePath.find_last_of("/\\");
+			if (LastSlash != std::string::npos)
+			{
+				TextureName = TexturePath.substr(LastSlash + 1);
+			}
+
+			bool bIsSelected = (CurrentTexture == TextureInList);
+
+			if (ImGui::Selectable(TextureName.c_str(), bIsSelected))
+			{
+				(Material->*Setter)(TextureInList);
+			}
+
+			if (bIsSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
 	}
 }
 
