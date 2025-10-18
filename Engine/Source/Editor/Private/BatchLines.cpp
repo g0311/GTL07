@@ -7,6 +7,7 @@
 #include "Global/Octree.h"
 #include "Component/Public/DecalSpotLightComponent.h"
 #include "Component/Light/Public/SpotLightComponent.h"
+#include "Component/Light/Public/PointLightComponent.h"
 #include "Physics/Public/OBB.h"
 
 IMPLEMENT_CLASS(UBatchLines, UObject)
@@ -109,6 +110,19 @@ void UBatchLines::UpdateSpotLightConeVertices(USpotLightComponent* SpotLightComp
 	bChangedVertices = true;
 }
 
+void UBatchLines::UpdatePointLightRangeVertices(UPointLightComponent* PointLightComponent)
+{
+	if (!PointLightComponent)
+	{
+		bRenderPointLightRange = false;
+		return;
+	}
+
+	PointLightRangeLines.UpdateVertices(PointLightComponent);
+	bRenderPointLightRange = true;
+	bChangedVertices = true;
+}
+
 void UBatchLines::TraverseOctree(const FOctree* InNode)
 {
 	if (!InNode) { return; }
@@ -134,13 +148,14 @@ void UBatchLines::UpdateVertexBuffer()
 		uint32 NumBoxVertices = BoundingBoxLines.GetNumVertices();
 		uint32 NumSpotLightVertices = bRenderSpotLight ? SpotLightOBBLines.GetNumVertices() : 0;
 		uint32 NumSpotLightConeVertices = bRenderSpotLightCone ? static_cast<uint32>(SpotLightConeLines.GetVertices().size()) : 0;
+		uint32 NumPointLightRangeVertices = bRenderPointLightRange ? static_cast<uint32>(PointLightRangeLines.GetVertices().size()) : 0;
 		uint32 NumOctreeVertices = 0;
 		for (const auto& Line : OctreeLines)
 		{
 			NumOctreeVertices += Line.GetNumVertices();
 		}
 
-		Vertices.resize(NumGridVertices + NumBoxVertices + NumSpotLightVertices + NumSpotLightConeVertices + NumOctreeVertices);
+		Vertices.resize(NumGridVertices + NumBoxVertices + NumSpotLightVertices + NumSpotLightConeVertices + NumPointLightRangeVertices + NumOctreeVertices);
 
 		Grid.MergeVerticesAt(Vertices, 0);
 		BoundingBoxLines.MergeVerticesAt(Vertices, NumGridVertices);
@@ -161,6 +176,17 @@ void UBatchLines::UpdateVertexBuffer()
 				Vertices[CurrentOffset + i] = ConeVertices[i].Position;
 			}
 			CurrentOffset += NumSpotLightConeVertices;
+		}
+
+		// PointLightRange vertices (FVertex -> FVector conversion)
+		if (bRenderPointLightRange)
+		{
+			const TArray<FVertex>& RangeVertices = PointLightRangeLines.GetVertices();
+			for (uint32 i = 0; i < NumPointLightRangeVertices; ++i)
+			{
+				Vertices[CurrentOffset + i] = RangeVertices[i].Position;
+			}
+			CurrentOffset += NumPointLightRangeVertices;
 		}
 
 		for (auto& Line : OctreeLines)
@@ -244,6 +270,17 @@ void UBatchLines::SetIndices()
 			Indices.push_back(BaseVertexOffset + Idx);
 		}
 		BaseVertexOffset += NumSpotLightConeVertices;
+	}
+
+	// PointLightRange indices (직접 인덱스 추가, LineList이므로 순차적으로)
+	if (bRenderPointLightRange)
+	{
+		const uint32 NumPointLightRangeVertices = static_cast<uint32>(PointLightRangeLines.GetVertices().size());
+		for (uint32 Idx = 0; Idx < NumPointLightRangeVertices; ++Idx)
+		{
+			Indices.push_back(BaseVertexOffset + Idx);
+		}
+		BaseVertexOffset += NumPointLightRangeVertices;
 	}
 
 	for (auto& OctreeLine : OctreeLines)

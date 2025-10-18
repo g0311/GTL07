@@ -5,11 +5,13 @@
 #include "Editor/Public/Grid.h"
 #include "Editor/Public/BoundingBoxLines.h"
 #include "Editor/Public/SpotLightLines.h"
+#include "Editor/Public/PointLightLines.h"
 
 struct FVertex;
 class FOctree;
 class UDecalSpotLightComponent;
 class USpotLightComponent;
+class UPointLightComponent;
 
 class UBatchLines : UObject
 {
@@ -26,6 +28,8 @@ public:
 	void UpdateSpotLightVertices(UDecalSpotLightComponent* SpotLightComponent);
 	// SpotLight Cone Lines
 	void UpdateSpotLightConeVertices(USpotLightComponent* SpotLightComponent);
+	// PointLight Range Circle Lines
+	void UpdatePointLightRangeVertices(UPointLightComponent* PointLightComponent);
 	// GPU VertexBuffer에 복사
 	void UpdateVertexBuffer();
 
@@ -44,6 +48,7 @@ public:
 		UpdateBoundingBoxVertices(BoundingBoxLines.GetDisabledBoundingBox());
 		bRenderSpotLight = false;
 		bRenderSpotLightCone = false;
+		bRenderPointLightRange = false;
 	}
 
 	void ClearOctreeLines()
@@ -77,10 +82,12 @@ private:
 	UBoundingBoxLines BoundingBoxLines;
 	UBoundingBoxLines SpotLightOBBLines;
 	USpotLightLines SpotLightConeLines;
+	UPointLightLines PointLightRangeLines;
 	TArray<UBoundingBoxLines> OctreeLines;
 
 	bool bRenderBox;
 	bool bRenderSpotLight = false;
 	bool bRenderSpotLightCone = false;
+	bool bRenderPointLightRange = false;
 };
 
