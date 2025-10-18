@@ -182,15 +182,23 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         // 스포트 라이트: 원뿔-프러스텀 교차 검사를 수행
         else if (lightType == LIGHT_TYPE_SPOT)
         {
-            // 계산 편의를 위해 원뿔을 감싸는 바운딩 스피어로 근사하여 1차 검사를 수행
-            float3 lightDirView = normalize(mul(View, float4(light.direction.xyz, 0.0)).xyz);
-            float cosOuterAngle = light.angles.y;
+            // 원뿔을 감싸는 바운딩 스피어로 근사하여 1차 검사를 수행
             
+            // 뷰 공간에서 원뿔 지오메트리 계산
+            float3 lightDirView = normalize(mul(View, float4(light.direction.xyz, 0.0)).xyz); // 뷰 공간에서의 라이트 방향
+            float cosOuterAngle = light.angles.y; // 외부 원뿔 각도의 코사인 값 (미리 계산됨)
+            
+            // 각도와 반지름을 이용해 원뿔 끝점 계산
+            // 삼각함수 사용: 높이 = 밑변 / cos(각도), 여기서 밑변은 반지름
             float coneHeight = lightRadius / cosOuterAngle;
-            float3 coneEnd = lightPosView.xyz + lightDirView * coneHeight;
+            // 원뿔 밑면 원의 중심 찾기
+            float3 coneEnd = lightPosView.xyz + lightDirView * coneHeight; // 밑면 중심의 뷰 공간 좌표
             
+            // 원뿔을 감싸는 바운딩 스피어 계산
             float3 sphereCenter = (lightPosView.xyz + coneEnd) * 0.5;
-            float sphereRadius = length(lightPosView.xyz - coneEnd) * 0.5 + lightRadius * 0.5;
+            // 반지름은 피타고라스 정리를 사용해 정확히 계산
+            float halfHeight = length(lightPosView.xyz - coneEnd) * 0.5;
+            float sphereRadius = sqrt(halfHeight * halfHeight + lightRadius * lightRadius); // 피타고라스 정리
             
             [unroll]
             for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
@@ -206,13 +214,38 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
             // 1차 검사를 통과했으면, 더 정확한 2차 검사를 수행
             if (isVisible)
             {
-                // 타일 중심 방향과 광원 방향을 비교하여 원뿔 범위 내에 있는지 검사
-                float3 tileCenterView = normalize((c1.xyz + c2.xyz + c3.xyz + c4.xyz) * 0.25f);
-                float3 lightToTile = normalize(tileCenterView);
-                float dotProduct = dot(-lightDirView, lightToTile);
+                // 타일의 4개 코너 중 하나라도 스포트라이트 원뿔 범위 내에 있는지 검사
+                bool anyCornerInSpotlight = false;
                 
-                // 내적값이 외부 원뿔 각도의 코사인값보다 작으면 범위를 벗어남
-                if (dotProduct < cosOuterAngle)
+                // c1: 좌하단 (Left-Bottom)
+                float3 cornerDir1 = normalize(c1.xyz);
+                if (dot(-lightDirView, cornerDir1) >= cosOuterAngle)
+                {
+                    anyCornerInSpotlight = true;
+                }
+                
+                // c2: 우하단 (Right-Bottom)
+                float3 cornerDir2 = normalize(c2.xyz);
+                if (dot(-lightDirView, cornerDir2) >= cosOuterAngle)
+                {
+                    anyCornerInSpotlight = true;
+                }
+                
+                // c3: 좌상단 (Left-Top)
+                float3 cornerDir3 = normalize(c3.xyz);
+                if (dot(-lightDirView, cornerDir3) >= cosOuterAngle)
+                {
+                    anyCornerInSpotlight = true;
+                }
+                
+                // c4: 우상단 (Right-Top)
+                float3 cornerDir4 = normalize(c4.xyz);
+                if (dot(-lightDirView, cornerDir4) >= cosOuterAngle)
+                {
+                    anyCornerInSpotlight = true;
+                }
+
+                if (!anyCornerInSpotlight)
                 {
                     isVisible = false;
                 }
