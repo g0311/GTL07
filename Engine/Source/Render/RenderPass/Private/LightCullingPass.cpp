@@ -88,9 +88,6 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     FCullingParams cullingParams;
     cullingParams.View = Context.CurrentCamera->GetFViewProjConstants().View;
     cullingParams.Projection = Context.CurrentCamera->GetFViewProjConstants().Projection;
-    // 전체 렌더 타겟 크기는 리소스 버퍼 크기와 일치
-    cullingParams.RenderTargetSize[0] = DeviceResources->GetWidth();
-    cullingParams.RenderTargetSize[1] = DeviceResources->GetHeight();
     // 뷰포트 오프셋 및 크기 전달
     cullingParams.ViewportOffset[0] = static_cast<uint32>(Context.Viewport.TopLeftX);
     cullingParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
@@ -102,6 +99,10 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     
     // Light Culling 활성화 여부 설정 (ShowFlags에 따라 결정)
     cullingParams.EnableCulling = (Context.ShowFlags & EEngineShowFlags::SF_LightCulling) ? 1u : 0u;
+    
+    // 패딩 필드 초기화
+    cullingParams.Padding[0] = 0;
+    cullingParams.Padding[1] = 0;
     
     // 라이트 데이터 배열 준비 (AllLights 버퍼용)
     TArray<FLightParams> allLights;

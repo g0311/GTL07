@@ -10,11 +10,11 @@ struct FCullingParams
 {
     FMatrix View;                // 64 bytes
     FMatrix Projection;          // 64 bytes
-    uint32 RenderTargetSize[2];  // 8 bytes - HLSL과 일치시킴
     uint32 ViewportOffset[2];    // 8 bytes
     uint32 ViewportSize[2];      // 8 bytes
     uint32 NumLights;            // 4 bytes
     uint32 EnableCulling;        // 4 bytes - Light Culling 활성화 여부 (1=활성화, 0=모든라이트저장)
+    uint32 Padding[2];           // 8 bytes - 16바이트 정렬을 위한 패딩
 };
 
 // 라이트 타입 상수

@@ -134,11 +134,11 @@ cbuffer CullingParams : register(b0)
 {
     matrix View; // 뷰 행렬
     matrix Projection; // 투영 행렬
-    uint2 RenderTargetSize; // 전체 렌더 타겟 크기
     uint2 ViewportOffset; // 현재 뷰포트의 시작 오프셋
     uint2 ViewportSize; // 현재 뷰포트의 크기
     uint NumLights; // 씬에 있는 전체 광원 개수
     uint EnableCulling; // Light Culling 활성화 여부 (1=활성화, 0=모든라이트저장)
+    uint2 Padding; // 16바이트 정렬을 위한 패딩
 };
 
 // 출력용 UAV(Unordered Access View) 버퍼
@@ -356,10 +356,9 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         InterlockedAdd(LightIndexBuffer[0], numVisibleLights, globalOffset);
         globalOffset += 1; // 0번 인덱스는 카운터이므로 1부터 실제 데이터 저장
         
-        uint globalTileX = (ViewportOffset.x / TILE_SIZE) + Gid.x;
-        uint globalTileY = (ViewportOffset.y / TILE_SIZE) + Gid.y;
-        uint globalWindowTileWidth = (RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE;
-        uint tileIndex = globalTileY * globalWindowTileWidth + globalTileX;
+        // 뷰포트 기준 타일 인덱스 계산 (Gid.xy는 이미 뷰포트 내에서의 타일 인덱스)
+        uint viewportTileWidth = (ViewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
+        uint tileIndex = Gid.y * viewportTileWidth + Gid.x;
 
         TileLightInfo[tileIndex] = uint2(globalOffset, min(numVisibleLights, 1024u));
     }
@@ -367,10 +366,9 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     // 그룹 내 모든 스레드가 협력하여 공유 메모리의 내용을 전역 버퍼(LightIndexBuffer)에 복사
     if (numVisibleLights > 0)
     {
-        uint globalTileX = (ViewportOffset.x / TILE_SIZE) + Gid.x;
-        uint globalTileY = (ViewportOffset.y / TILE_SIZE) + Gid.y;
-        uint globalWindowTileWidth = (RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE;
-        uint tileIndex = globalTileY * globalWindowTileWidth + globalTileX;
+        // 뷰포트 기준 타일 인덱스 계산
+        uint viewportTileWidth = (ViewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
+        uint tileIndex = Gid.y * viewportTileWidth + Gid.x;
 
         uint globalOffset = TileLightInfo[tileIndex].x;
         uint actualCount = min(numVisibleLights, 1024u);
