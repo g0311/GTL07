@@ -136,7 +136,6 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 						LightingConstants.DirectionalLight.Color = DirectionalLight->GetColor();
 						LightingConstants.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
 						LightingConstants.HasDirectionalLight = 1;
-						break; // Currently support only one directional light
 					}
 					else if (auto PointLight = Cast<UPointLightComponent>(Light))
 					{
