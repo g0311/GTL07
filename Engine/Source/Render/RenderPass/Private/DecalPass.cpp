@@ -10,6 +10,10 @@
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Texture/Public/Texture.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
+#include "Component/Light/Public/AmbientLightComponent.h"
+#include "Component/Light/Public/PointLightComponent.h"
+#include "Component/Light/Public/SpotLightComponent.h"
+#include "Component/Light/Public/DirectionalLightComponent.h"
 
 
 namespace
@@ -136,6 +140,7 @@ FDecalPass::FDecalPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCame
 {
     ConstantBufferPrim = FRenderResourceFactory::CreateConstantBuffer<FModelConstants>();
     ConstantBufferDecal = FRenderResourceFactory::CreateConstantBuffer<FDecalConstants>();
+    ConstantBufferLighting = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
 }
 
 void FDecalPass::PreExecute(FRenderingContext& Context)
@@ -195,14 +200,14 @@ void FDecalPass::Execute(FRenderingContext& Context)
 
         if (UTexture* DecalTexture = Decal->GetTexture())
         {
-            Pipeline->SetTexture(0, false, DecalTexture->GetTextureSRV());
-            Pipeline->SetSamplerState(0, false, DecalTexture->GetTextureSampler());
+            Pipeline->SetTexture(6, false, DecalTexture->GetTextureSRV());
+            Pipeline->SetSamplerState(1, false, DecalTexture->GetTextureSampler());
         }
         
         if (UTexture* FadeTexture = Decal->GetFadeTexture())
         {
-            Pipeline->SetTexture(1, false, FadeTexture->GetTextureSRV());
-            Pipeline->SetSamplerState(1, false, FadeTexture->GetTextureSampler());
+            Pipeline->SetTexture(7, false, FadeTexture->GetTextureSRV());
+            Pipeline->SetSamplerState(2, false, FadeTexture->GetTextureSampler());
         }
 
         TArray<UPrimitiveComponent*> Primitives;
@@ -278,4 +283,49 @@ void FDecalPass::Query(FOctree* InOctree, UDecalComponent* InDecal, TArray<UPrim
     {
         Query(Child, InDecal, OutPrimitives);
     }
+}
+
+void FDecalPass::SetUpLighting(const FRenderingContext& Context)
+{
+    // Unified Lighting Process
+    FLightConstants LightingConstants = {};
+    LightingConstants.HasDirectionalLight = 0;
+    LightingConstants.NumPointLights = 0;
+    LightingConstants.NumSpotLights = 0;
+
+    for (ULightComponent* Light : Context.Lights)
+    {
+        if (auto* AmbientLight = Cast<UAmbientLightComponent>(Light))
+        {
+            int Idx = LightingConstants.NumAmbientLights;
+            LightingConstants.AmbientLights[Idx].Intensity = AmbientLight->GetIntensity();
+            LightingConstants.AmbientLights[Idx].Color = AmbientLight->GetColor();
+            LightingConstants.NumAmbientLights++;
+        }
+        else if (auto* DirectionalLight = Cast<UDirectionalLightComponent>(Light))
+        {
+            LightingConstants.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
+            LightingConstants.DirectionalLight.Color = DirectionalLight->GetColor();
+            LightingConstants.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
+            LightingConstants.HasDirectionalLight = 1;
+        }
+        else if (auto* PointLight = Cast<UPointLightComponent>(Light))
+        {
+            FPointLightData& Data = LightingConstants.PointLights[LightingConstants.NumPointLights];
+            Data.Position = PointLight->GetWorldLocation();
+            Data.Radius = PointLight->GetAttenuationRadius();
+            Data.Color = PointLight->GetColor();
+            Data.Intensity = PointLight->GetIntensity();
+            Data.FalloffExtent = PointLight->GetLightFalloffExponent();
+            LightingConstants.NumPointLights++;
+        }
+        else if (auto* SpotLight = Cast<USpotLightComponent>(Light))
+        {
+            int Idx = LightingConstants.NumSpotLights;
+            LightingConstants.SpotLights[Idx] = SpotLight->GetSpotInfo();
+            LightingConstants.NumSpotLights++;
+        }
+    }
+    FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLighting, LightingConstants);
+    Pipeline->SetConstantBuffer(3, false, ConstantBufferLighting);
 }

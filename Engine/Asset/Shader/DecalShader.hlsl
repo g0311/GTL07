@@ -1,14 +1,4 @@
-cbuffer constants : register(b0)
-{
-	row_major float4x4 World;
-	row_major float4x4 WorldInverseTranspose;
-}
-
-cbuffer PerFrame : register(b1)
-{
-	row_major float4x4 View;		// View Matrix Calculation of MVP Matrix
-	row_major float4x4 Projection;	// Projection Matrix Calculation of MVP Matrix
-};
+#include "LightingCommon.hlsli"
 
 cbuffer DecalConstants : register(b2)
 {
@@ -17,11 +7,11 @@ cbuffer DecalConstants : register(b2)
 	float FadeProgress;
 };
 
-Texture2D DecalTexture : register(t0);
-SamplerState DecalSampler : register(s0);
+Texture2D DecalTexture : register(t6);
+SamplerState DecalSampler : register(s1);
 
-Texture2D FadeTexture : register(t1);
-SamplerState FadeSampler : register(s1);
+Texture2D FadeTexture : register(t7);
+SamplerState FadeSampler : register(s2);
 
 struct VS_INPUT
 {
@@ -53,6 +43,7 @@ PS_INPUT mainVS(VS_INPUT Input)
 
 float4 mainPS(PS_INPUT Input) : SV_TARGET
 {
+    //return float4(1.0f, 0.0f, 1.0f, 1.0f);
     float2 DecalUV;
 	
 	
@@ -85,5 +76,26 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	
 	if (DecalColor.a < 0.001f) { discard; }
 	
-	return DecalColor;
+	// light
+    float3 N = normalize(Input.Normal.xyz);
+    float3 V = normalize(ViewWorldLocation - Input.WorldPos.xyz);
+	
+    float3 kD = DecalColor.rgb; // Diffuse = decal base color
+    float3 kS = float3(0.1f, 0.1f, 0.1f); // Specular ¾àÇÏ°Ô
+    float Ns = 16.0f; // Roughness (ºû ÆÛÁü Á¤µµ)
+	
+	// Ambient, Directional, Point, Spot °è»ê
+    //float3 ambient = CalculateAmbientLight(DecalUV).rgb;
+    float3 LitColor = AmbientLights[0].Color.rgb * AmbientLights[0].Intensity;
+    float3 directional = CalculateDirectionalLight(N, V, kD, kS, Ns);
+    float3 pointlight = CalculatePointLights(Input.WorldPos.xyz, N, V, kD, kS, Ns);
+    float3 spotlight = CalculateSpotLights(Input.WorldPos.xyz, N, V, kD, kS, Ns);
+	
+    float3 totalLight = LitColor + directional + pointlight + spotlight;
+	
+
+    float3 finalColor = DecalColor.rgb * totalLight;
+	
+    //return DecalColor;
+    return float4(finalColor, DecalColor.a);
 }
