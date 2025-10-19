@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 
 #include "Component/Public/FakePointLightComponent.h"
-#include "Render/UI/Widget/Public/PointLightComponentWidget.h"
+#include "Render/UI/Widget/Light/Public/PointLightComponentWidget.h"
 #include "Utility/Public/JsonSerializer.h"
 
 IMPLEMENT_CLASS(UFakePointLightComponent, UFakeLightComponent)
