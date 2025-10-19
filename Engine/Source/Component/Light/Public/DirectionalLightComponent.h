@@ -7,5 +7,6 @@ class UDirectionalLightComponent : public ULightComponent
 	GENERATED_BODY()
 	DECLARE_CLASS(UDirectionalLightComponent, ULightComponent)
 
+	void Serialize(const bool bInIsLoading, JSON& InOutHandle) override;
 	FVector GetForwardVector() const;
 };

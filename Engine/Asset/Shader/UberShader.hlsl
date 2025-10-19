@@ -161,10 +161,12 @@ float4 CalculateAmbientLight(float2 UV)
     float4 AmbientColor;
     // Material Ambient(Albedo)
     /*TODO : Apply DiffuseTexture for now, due to Binding AmbientTexture feature don't exist yet*/
-    // if (MaterialFlags & HAS_AMBIENT_MAP)
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    if (MaterialFlags & HAS_AMBIENT_MAP)
     {
-        // AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
+        AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
+    }
+    else if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
         AmbientColor = DiffuseTexture.Sample(SamplerWrap, UV);
     }
     else
@@ -199,7 +201,7 @@ float3 CalculateDirectionalLight(float3 WorldNormal, float3 ViewDir, float3 Kd, 
 }
 float3 CalculatePointLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
 {
-    float3 AccumulatedPointlightColor;
+    float3 AccumulatedPointlightColor = 0;
     for (int i = 0; i < NumPointLights; i++)
     {
         float3 LightVec = PointLights[i].Position - WorldPos;
@@ -389,7 +391,12 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 
     // Alpha handling
     /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    if (MaterialFlags & HAS_ALPHA_MAP)
+    {
+        float alpha = AlphaTexture.Sample(SamplerWrap, UV).w;
+        FinalColor.a = D * alpha;
+    }
+    else if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
         float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
         FinalColor.a = D * alpha;

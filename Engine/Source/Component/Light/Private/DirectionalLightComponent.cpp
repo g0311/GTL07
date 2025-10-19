@@ -4,6 +4,11 @@
 
 IMPLEMENT_CLASS(UDirectionalLightComponent, ULightComponent)
 
+void UDirectionalLightComponent::Serialize(const bool bInIsLoading, JSON& InOutHandle)
+{
+    Super::Serialize(bInIsLoading, InOutHandle);
+}
+
 FVector UDirectionalLightComponent::GetForwardVector() const
 {
     const FQuaternion WorldRotation = GetWorldRotationAsQuaternion();

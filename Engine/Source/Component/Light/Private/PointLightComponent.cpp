@@ -1,8 +1,25 @@
 #include "pch.h"
 #include "Component/Light/Public/PointLightComponent.h"
+#include "Utility/Public/JsonSerializer.h"
 #include "Render/UI/Widget/Light/Public/PointLightComponentWidget.h"
 
 IMPLEMENT_CLASS(UPointLightComponent, ULightComponent)
+
+void UPointLightComponent::Serialize(const bool bInIsLoading, JSON& InOutHandle)
+{
+    Super::Serialize(bInIsLoading, InOutHandle);
+
+    if (bInIsLoading)
+    {
+        FJsonSerializer::ReadFloat(InOutHandle, "AttenuationRadius", AttenuationRadius, AttenuationRadius, false);
+        FJsonSerializer::ReadFloat(InOutHandle, "LightFalloffExponent", LightFalloffExponent, LightFalloffExponent, false);
+    }
+    else
+    {
+        InOutHandle["AttenuationRadius"] = AttenuationRadius;
+        InOutHandle["LightFalloffExponent"] = LightFalloffExponent;
+    }
+}
 
 UPointLightComponent::UPointLightComponent()
     : AttenuationRadius(10.0f)
