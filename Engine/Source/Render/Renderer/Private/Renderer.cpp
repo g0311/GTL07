@@ -113,7 +113,7 @@ void URenderer::Release()
 	ReleaseLightBuffers();
 	ReleaseLightCullBuffers();
 	
-	ReleaseDefaultShader();
+	ReleaseShader();
 	ReleaseDepthStencilState();
 	ReleaseBlendState();
 	ReleaseSamplerState();
@@ -236,7 +236,8 @@ void URenderer::CreateTextureShader()
 		{ nullptr, nullptr }
 	};
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Gouraud, GouraudDefines);
-	//FRenderResourceFactory::CreateVertexShader(L"Asset/Shader/UberShader.hlsl", &UberShaderVertexPermutations.Gouraud, GouraudDefines);
+	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/UberShader.hlsl", TextureLayout, &UberShaderVertexPermutations.Gouraud,
+		&UberShaderVertexPermutations.InputLayout, GouraudDefines);
 
 	D3D_SHADER_MACRO GouraudNormalDefines[] = {
 		{ "LIGHTING_MODEL_GOURAUD", "1" },
@@ -368,7 +369,7 @@ void URenderer::CreateBillboardShader()
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/BillboardShader.hlsl", &BillboardPixelShader);
 }
 
-void URenderer::ReleaseDefaultShader()
+void URenderer::ReleaseShader()
 {
 	SafeRelease(DefaultInputLayout);
 	SafeRelease(DefaultPixelShader);
@@ -376,11 +377,12 @@ void URenderer::ReleaseDefaultShader()
 
 	SafeRelease(TextureInputLayout);
 	SafeRelease(TextureVertexShader);
-	SafeRelease(UberShaderVertexPermutations.Gouraud);
-	UberShaderVertexPermutations.Default = nullptr;
-	UberShaderVertexPermutations.Gouraud = nullptr;
-
+	
 	// Release all UberShader permutations
+	SafeRelease(UberShaderVertexPermutations.Default);
+	SafeRelease(UberShaderVertexPermutations.Gouraud);
+	SafeRelease(UberShaderVertexPermutations.InputLayout);
+	
 	SafeRelease(UberShaderPermutations.Unlit);
 	SafeRelease(UberShaderPermutations.Gouraud);
 	SafeRelease(UberShaderPermutations.Lambert);
@@ -390,10 +392,6 @@ void URenderer::ReleaseDefaultShader()
 	SafeRelease(UberShaderPermutations.LambertWithNormalMap);
 	SafeRelease(UberShaderPermutations.PhongWithNormalMap);
 	SafeRelease(UberShaderPermutations.BlinnPhongWithNormalMap);
-
-	// Legacy pointers don't need release (they point to permutation shaders)
-	TexturePixelShader = nullptr;
-	TexturePixelShaderWithNormalMap = nullptr;
 	
 	SafeRelease(DecalVertexShader);
 	SafeRelease(DecalPixelShader);
@@ -422,11 +420,9 @@ void URenderer::ReleaseDefaultShader()
 
 ID3D11VertexShader* URenderer::GetVertexShaderForLightingModel() const
 {
-	if (CurrentLightingModel == ELightingModel::Gouraud && UberShaderVertexPermutations.Gouraud)
-	{
+	if (CurrentLightingModel == ELightingModel::Gouraud)
 		return UberShaderVertexPermutations.Gouraud;
-	}
-	return UberShaderVertexPermutations.Default ? UberShaderVertexPermutations.Default : TextureVertexShader;
+	return UberShaderVertexPermutations.Default;
 }
 
 ID3D11PixelShader* URenderer::GetPixelShaderForLightingModel(bool bHasNormalMap) const

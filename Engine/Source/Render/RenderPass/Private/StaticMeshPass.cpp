@@ -30,7 +30,9 @@ void FStaticMeshPass::PreExecute(FRenderingContext& Context)
 
 	// TODO : Set Normal map version
 	ID3D11PixelShader* InPS = Renderer.GetPixelShaderForLightingModel(false);
+	ID3D11VertexShader* InVS = Renderer.GetVertexShaderForLightingModel();
 	PS = InPS;
+	VS = InVS;
 }
 
 void FStaticMeshPass::Execute(FRenderingContext& Context)

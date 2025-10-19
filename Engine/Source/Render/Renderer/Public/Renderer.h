@@ -13,7 +13,7 @@ class FCopyPass;
 class FFXAAPass;
 
 /**
- * @brief Rendering Pipeline ?�반??처리?�는 ?�래??
+ * @brief Rendering Pipeline ?�반??처리?�는 ?�래??
  */
 UCLASS()
 class URenderer : public UObject
@@ -46,7 +46,7 @@ public:
 	void ReleaseConstantBuffers();
 	void ReleaseLightBuffers();
 	void ReleaseLightCullBuffers();
-	void ReleaseDefaultShader();
+	void ReleaseShader();
 	void ReleaseDepthStencilState();
 	void ReleaseBlendState();
 	void ReleaseSamplerState();
@@ -127,10 +127,10 @@ private:
 	ID3D11UnorderedAccessView* TileLightInfoUAV = nullptr;
 	ID3D11ShaderResourceView* TileLightInfoSRV = nullptr;
     
-	// ?�이???�이??버퍼 (고정 ?�기)
+	// ?�이???�이??버퍼 (고정 ?�기)
 	ID3D11Buffer* AllLightsBuffer = nullptr;
 	ID3D11ShaderResourceView* AllLightsSRV = nullptr;
-	static constexpr uint32 MAX_LIGHTS = 1024; // 최�? ?�이??개수
+	static constexpr uint32 MAX_LIGHTS = 1024; // 최�? ?�이??개수
 
 	
 	FLOAT ClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -168,6 +168,7 @@ private:
 	{
 		ID3D11VertexShader* Default = nullptr;
 		ID3D11VertexShader* Gouraud = nullptr;
+		ID3D11InputLayout* InputLayout = nullptr;
 	} UberShaderVertexPermutations;
 	
 	struct FUberShaderPixelPermutations

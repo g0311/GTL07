@@ -1,34 +1,6 @@
 #include "pch.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Render/Renderer/Public/Renderer.h"
-
-void FRenderResourceFactory::CreateVertexShaderAndInputLayout(const wstring& InFilePath,
-	const TArray<D3D11_INPUT_ELEMENT_DESC>& InInputLayoutDescs, ID3D11VertexShader** OutVertexShader, ID3D11InputLayout** OutInputLayout, const D3D_SHADER_MACRO* InDefines)
-{
-	ID3DBlob* VertexShaderBlob = nullptr;
-	ID3DBlob* ErrorBlob = nullptr;
-
-	// Debug flags for shader compilation
-	UINT CompileFlags = 0;
-#if defined(_DEBUG)
-	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
-
-	HRESULT Result = D3DCompileFromFile(InFilePath.data(), InDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", CompileFlags, 0, &VertexShaderBlob, &ErrorBlob);
-	if (FAILED(Result))
-	{
-		if (ErrorBlob) { OutputDebugStringA(static_cast<char*>(ErrorBlob->GetBufferPointer())); SafeRelease(ErrorBlob); }
-		SafeRelease(VertexShaderBlob);
-		return;
-	}
-
-	URenderer::GetInstance().GetDevice()->CreateVertexShader(VertexShaderBlob->GetBufferPointer(), VertexShaderBlob->GetBufferSize(), nullptr, OutVertexShader);
-	if (InInputLayoutDescs.size() > 0)
-		URenderer::GetInstance().GetDevice()->CreateInputLayout(InInputLayoutDescs.data(), static_cast<uint32>(InInputLayoutDescs.size()), VertexShaderBlob->GetBufferPointer(), VertexShaderBlob->GetBufferSize(), OutInputLayout);
-
-	SafeRelease(VertexShaderBlob);
-}
-
 ID3D11Buffer* FRenderResourceFactory::CreateVertexBuffer(FNormalVertex* InVertices, uint32 InByteWidth)
 {
 	D3D11_BUFFER_DESC Desc = { InByteWidth, D3D11_USAGE_IMMUTABLE, D3D11_BIND_VERTEX_BUFFER, 0, 0, 0 };
@@ -61,12 +33,40 @@ ID3D11Buffer* FRenderResourceFactory::CreateIndexBuffer(const void* InIndices, u
 	return IndexBuffer;
 }
 
+void FRenderResourceFactory::CreateVertexShaderAndInputLayout(const wstring& InFilePath,
+	const TArray<D3D11_INPUT_ELEMENT_DESC>& InInputLayoutDescs, ID3D11VertexShader** OutVertexShader,
+	ID3D11InputLayout** OutInputLayout, const D3D_SHADER_MACRO* InDefines)
+{
+	ID3DBlob* VertexShaderBlob = nullptr;
+	ID3DBlob* ErrorBlob = nullptr;
+
+	// Debug flags for shader compilation
+	UINT CompileFlags = 0;
+#if defined(_DEBUG)
+	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
+	HRESULT Result = D3DCompileFromFile(InFilePath.data(), InDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", CompileFlags, 0, &VertexShaderBlob, &ErrorBlob);
+	if (FAILED(Result))
+	{
+		if (ErrorBlob) { OutputDebugStringA(static_cast<char*>(ErrorBlob->GetBufferPointer())); SafeRelease(ErrorBlob); }
+		SafeRelease(VertexShaderBlob);
+		return;
+	}
+
+	URenderer::GetInstance().GetDevice()->CreateVertexShader(VertexShaderBlob->GetBufferPointer(), VertexShaderBlob->GetBufferSize(), nullptr, OutVertexShader);
+	if (InInputLayoutDescs.size() > 0)
+		URenderer::GetInstance().GetDevice()->CreateInputLayout(InInputLayoutDescs.data(), static_cast<uint32>(InInputLayoutDescs.size()), VertexShaderBlob->GetBufferPointer(), VertexShaderBlob->GetBufferSize(), OutInputLayout);
+
+	SafeRelease(VertexShaderBlob);	
+}
+
 void FRenderResourceFactory::CreatePixelShader(const wstring& InFilePath, ID3D11PixelShader** OutPixelShader, const D3D_SHADER_MACRO* InDefines)
 {
 	ID3DBlob* PixelShaderBlob = nullptr;
 	ID3DBlob* ErrorBlob = nullptr;
 
-	// Debug flags for shader compilation
+	// Debug flags fo r shader compilation
 	UINT CompileFlags = 0;
 #if defined(_DEBUG)
 	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;

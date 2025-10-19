@@ -1,11 +1,3 @@
-#if !defined(UNLIT) && !defined(LIGHTING_MODEL_GOURAUD) && !defined(LIGHTING_MODEL_LAMBERT) && !defined(LIGHTING_MODEL_PHONG) && !defined(LIGHTING_MODEL_BLINNPHONG)
-#define LIGHTING_MODEL_PHONG 1
-#endif
-
-#if (defined(UNLIT) + defined(LIGHTING_MODEL_GOURAUD) + defined(LIGHTING_MODEL_LAMBERT) + defined(LIGHTING_MODEL_PHONG)) + defined(LIGHTING_MODEL_BLINNPHONG)!= 1
-#error "Exactly one of LIGHTING_MODEL_* must be defined."
-#endif
-
 #define NUM_POINT_LIGHT 8
 #define NUM_SPOT_LIGHT 8
 #define NUM_AMBIENT_LIGHT 8
@@ -152,7 +144,9 @@ float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, fl
     float NdotH = saturate(dot(WorldNormal, H));
     return Ks * LightColor * pow(NdotH, Shininess);
 #else
-    return float3(0, 0, 0);
+    float3 H = normalize(LightDir + ViewDir);
+    float NdotH = saturate(dot(WorldNormal, H));
+    return Ks * LightColor * pow(NdotH, Shininess);
 #endif
 }
 
@@ -268,7 +262,7 @@ float3 CalculateSpotLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, 
 
     return AccumulatedSpotlightColor;
 }
-float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
+float3 CalculateWorldNormal(PS_INPUT Input)
 {
     float3 WorldNormal = Input.WorldNormal;
     
@@ -285,7 +279,7 @@ float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
     // Sample normal map (tangent space)
     if (MaterialFlags & HAS_NORMAL_MAP)
     {
-        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
+        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, Input.Tex).rgb;
         // Decode from [0,1] to [-1,1]
         TangentNormal = TangentNormal * 2.0f - 1.0f;
 
@@ -351,26 +345,23 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     PS_OUTPUT Output;
 
 #if LIGHTING_MODEL_GOURAUD
-    if (MaterialFlags & LIGHTING_MODEL_GOURAUD)
+    Output.SceneColor = Input.Color;
+    // 텍스처가 있다면 곱하기
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
-        Output.SceneColor = Input.Color;
-        // 텍스처가 있다면 곱하기
-        if (MaterialFlags & HAS_DIFFUSE_MAP)
-        {
         
-            float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
-            Output.SceneColor.rgb *= TexColor.rgb;
-            Output.SceneColor.a = TexColor.a;
-        };
-    }
+        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
+        Output.SceneColor.rgb *= TexColor.rgb;
+        Output.SceneColor.a = TexColor.a;
+    };
 #else
-    float2 UV = Input.Tex; 
+    float2 UV = Input.Tex;
     float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
-
+     
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
-
+     
     // Unlit 처리
     if (MaterialFlags & UNLIT)
     {
@@ -378,17 +369,17 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         Output.NormalData = float4(Normal * 0.5f + 0.5f, 1.0);
         return Output;
     }
-
+     
     // Light
     float3 AmbientColor = CalculateAmbientLight(UV).rgb;
     float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
     float3 PointLightColor = CalculatePointLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
     float3 SpotLightColor = CalculateSpotLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
-    
+         
     float4 FinalColor;
     FinalColor.rgb = AmbientColor + DirectionalColor + PointLightColor + SpotLightColor;
     FinalColor.a = 1.0f;
-
+     
     // Alpha handling
     /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
     if (MaterialFlags & HAS_ALPHA_MAP)
@@ -406,7 +397,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     
     // Normal
     // Calculate World Normal for Normal Buffer
-    float3 WorldNormal = CalculateWorldNormal(Input, UV);
+    float3 WorldNormal = CalculateWorldNormal(Input);
     
     // Encode world normal to [0,1] range for storage
     float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
