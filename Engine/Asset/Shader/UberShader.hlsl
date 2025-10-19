@@ -201,7 +201,7 @@ float3 CalculatePointLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir,
         
         float3 LightDir = LightVec / Distance;
 
-        float RangeAttenuation = saturate(1.0 - Distance * PointLights[i].Radius);
+        float RangeAttenuation = saturate(1.0 - Distance/PointLights[i].Radius);
         RangeAttenuation = pow(RangeAttenuation, max(PointLights[i].FalloffExtent, 0.0));
         
         // Light * Intensity
