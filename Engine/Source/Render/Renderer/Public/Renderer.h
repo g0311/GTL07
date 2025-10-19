@@ -36,6 +36,7 @@ public:
 	void CreateFogShader();
 	void CreateCopyShader();
 	void CreateFXAAShader();
+	void CreateBillboardShader();
 
 	void CreateConstantBuffers();
 	void CreateLightBuffers();
@@ -144,6 +145,11 @@ private:
 	ID3D11PixelShader* FXAAPixelShader = nullptr;
 	ID3D11InputLayout* FXAAInputLayout = nullptr;
 	ID3D11SamplerState* FXAASamplerState = nullptr;
+
+	// Billboard Shaders
+	ID3D11VertexShader* BillboardVertexShader = nullptr;
+	ID3D11PixelShader* BillboardPixelShader = nullptr;
+	ID3D11InputLayout* BillboardInputLayout = nullptr;
 	
 	// Texture Shaders
 	ID3D11VertexShader* TextureVertexShader = nullptr;

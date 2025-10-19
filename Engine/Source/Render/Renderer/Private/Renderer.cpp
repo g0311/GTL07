@@ -58,6 +58,7 @@ void URenderer::Init(HWND InWindowHandle)
 	CreateFogShader();
 	CreateCopyShader();
 	CreateFXAAShader();
+	CreateBillboardShader();
 
 	CreateConstantBuffers();
 	CreateLightBuffers();
@@ -77,7 +78,7 @@ void URenderer::Init(HWND InWindowHandle)
 	RenderPasses.push_back(DecalPass);
 	
 	FBillboardPass* BillboardPass = new FBillboardPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
-		TextureVertexShader, TexturePixelShader, TextureInputLayout, DefaultDepthStencilState, AlphaBlendState);
+		BillboardVertexShader, BillboardPixelShader, BillboardInputLayout, DefaultDepthStencilState, AlphaBlendState);
 	RenderPasses.push_back(BillboardPass);
 
 	FTextPass* TextPass = new FTextPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels);
@@ -296,6 +297,21 @@ void URenderer::CreateFXAAShader()
     FXAASamplerState = FRenderResourceFactory::CreateFXAASamplerState();
 }
 
+void URenderer::CreateBillboardShader()
+{
+	TArray<D3D11_INPUT_ELEMENT_DESC> BillboardLayout =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Normal), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(FNormalVertex, Color), D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(FNormalVertex, TexCoord), D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Tangent), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Bitangent), D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/BillboardShader.hlsl", BillboardLayout, &BillboardVertexShader, &BillboardInputLayout);
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/BillboardShader.hlsl", &BillboardPixelShader);
+}
+
 void URenderer::ReleaseDefaultShader()
 {
 	SafeRelease(DefaultInputLayout);
@@ -326,6 +342,10 @@ void URenderer::ReleaseDefaultShader()
 	SafeRelease(FXAAVertexShader);
 	SafeRelease(FXAAPixelShader);
 	SafeRelease(FXAAInputLayout);
+
+	SafeRelease(BillboardVertexShader);
+	SafeRelease(BillboardPixelShader);
+	SafeRelease(BillboardInputLayout);
 }
 
 void URenderer::ReleaseDepthStencilState()
