@@ -80,6 +80,9 @@
     <ClCompile Include="Source\Render\UI\Widget\Light\Private\SpotlightComponentWidget.cpp">
       <Filter>Source\Render\UI\Widget\Light\Private</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Render\UI\Widget\Light\Private\PointLightComponentWidget.cpp">
+      <Filter>Source\\Render\\UI\\Widget\\Light\\Private</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Actor\Private\Actor.cpp">
       <Filter>Source\Actor\Private</Filter>
     </ClCompile>
@@ -532,6 +535,9 @@
     </ClInclude>
     <ClInclude Include="Source\Render\UI\Widget\Light\Public\SpotlightComponentWidget.h">
       <Filter>Source\Render\UI\Widget\Light\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Render\UI\Widget\Light\Public\PointLightComponentWidget.h">
+      <Filter>Source\\Render\\UI\\Widget\\Light\\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Actor\Public\Actor.h">
       <Filter>Source\Actor\Public</Filter>

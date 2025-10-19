@@ -455,6 +455,7 @@
     <ClInclude Include="Source\Render\UI\Widget\Light\Public\AmbientComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Light\Public\LightComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Light\Public\SpotlightComponentWidget.h" />
+    <ClInclude Include="Source\Render\UI\Widget\Light\Public\PointLightComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorDetailWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorTerminationWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\CameraControlWidget.h" />
@@ -647,6 +648,7 @@
     <ClCompile Include="Source\Render\UI\Widget\Light\Private\AmbientComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Light\Private\LightComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Light\Private\SpotlightComponentWidget.cpp" />
+    <ClCompile Include="Source\Render\UI\Widget\Light\Private\PointLightComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorDetailWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorTerminationWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\CameraControlWIdget.cpp" />

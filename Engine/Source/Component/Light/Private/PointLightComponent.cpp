@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Component/Light/Public/PointLightComponent.h"
+#include "Render/UI/Widget/Light/Public/PointLightComponentWidget.h"
 
 IMPLEMENT_CLASS(UPointLightComponent, ULightComponent)
 
@@ -13,4 +14,9 @@ UPointLightComponent::UPointLightComponent()
 UPointLightComponent::~UPointLightComponent()
 {
     // ...delete if something allocated
+}
+
+UClass* UPointLightComponent::GetSpecificWidgetClass() const
+{
+	return UPointLightComponentWidget::StaticClass();
 }

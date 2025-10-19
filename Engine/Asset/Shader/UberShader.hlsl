@@ -1,3 +1,11 @@
+#if !defined(UNLIT) && !defined(LIGHTING_MODEL_GOURAUD) && !defined(LIGHTING_MODEL_LAMBERT) && !defined(LIGHTING_MODEL_PHONG) && !defined(LIGHTING_MODEL_BLINNPHONG)
+#define LIGHTING_MODEL_PHONG 1
+#endif
+
+#if (defined(UNLIT) + defined(LIGHTING_MODEL_GOURAUD) + defined(LIGHTING_MODEL_LAMBERT) + defined(LIGHTING_MODEL_PHONG)) + defined(LIGHTING_MODEL_BLINNPHONG)!= 1
+#error "Exactly one of LIGHTING_MODEL_* must be defined."
+#endif
+
 #define NUM_POINT_LIGHT 8
 #define NUM_SPOT_LIGHT 8
 #define NUM_AMBIENT_LIGHT 8
