@@ -224,7 +224,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         }
     }
     // Final Color
-    FinalColor.rgb = AmbientColor + Diffuse * (SpotlightColor + DirectLighting + PointLighting);
+    FinalColor.rgb = AmbientColor + Diffuse * (DirectLighting + PointLighting) + SpotlightColor;
     FinalColor.a = 1.0f;
     Output.SceneColor = FinalColor;
     

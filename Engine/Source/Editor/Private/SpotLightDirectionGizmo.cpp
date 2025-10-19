@@ -23,7 +23,7 @@ USpotLightDirectionGizmo::USpotLightDirectionGizmo()
 	Primitive.Color = FVector4(1.0f, 0.9f, 0.25f, 1.0f);
 	Primitive.Location = FVector::ZeroVector();
 	Primitive.Rotation = FQuaternion::Identity();
-	Primitive.Scale = FVector(50.0f * GizmoScaleFactor, 25.0f * GizmoScaleFactor, 25.0f * GizmoScaleFactor);
+	Primitive.Scale = FVector(GizmoScaleFactor, GizmoScaleFactor, GizmoScaleFactor);
 	Primitive.RenderState.CullMode = ECullMode::None;
 	Primitive.RenderState.FillMode = EFillMode::Solid;
 	Primitive.bShouldAlwaysVisible = true;
@@ -49,8 +49,8 @@ void USpotLightDirectionGizmo::UpdateFromSpotLight(USpotLightComponent* InSpotLi
 	}
 	Primitive.Location = InSpotLightComponent->GetWorldLocation() + Direction * GizmoLocateOffset;
 	const float LightRange = std::max(InSpotLightComponent->GetRange(), 1.0f);
-	const float ArrowLength = std::clamp(LightRange, 10.0f, 1000.0f);
-	const float ThicknessScale = std::clamp(ArrowLength * 0.25f, 5.0f, ArrowLength);
+	const float ArrowLength = std::clamp(LightRange, 10.0f, 15.0f);
+	const float ThicknessScale = std::clamp(ArrowLength * 0.10f, 5.0f, ArrowLength);
 	Primitive.Scale = FVector(ArrowLength * GizmoScaleFactor, ThicknessScale * GizmoScaleFactor, ThicknessScale * GizmoScaleFactor);
 
 	bIsVisible = true;
