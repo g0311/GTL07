@@ -8,6 +8,8 @@
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Render/Renderer/Public/DeviceResources.h"
 #include "Render/RenderPass/Public/FogPass.h"
+#include <Component/Light/Public/DirectionalLightComponent.h>
+#include <Component/Light/Public/AmbientLightComponent.h>
 
 FLightCullingPass::FLightCullingPass(UPipeline* InPipeline, UDeviceResources* InDeviceResources)
     : FRenderPass(InPipeline, nullptr, nullptr)
@@ -94,7 +96,7 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     cullingParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
     cullingParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
     // 리소스 크기 체크 및 라이트 데이터 준비
-    const uint32 totalLights = static_cast<uint32>(Context.PointLights.size() + Context.SpotLights.size());
+    const uint32 totalLights = static_cast<uint32>(Context.Lights.size());
     cullingParams.NumLights = totalLights;
     
     // 라이트 데이터 배열 준비 (AllLights 버퍼용)
@@ -102,32 +104,39 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     allLights.reserve(totalLights);
     
     // 포인트 라이트 추가
-    for (const auto& pointLight : Context.PointLights)
+    for (const auto& Light : Context.Lights)
     {
         FLightParams lightData;
-        FVector worldPos = pointLight->GetWorldLocation();
-        lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, pointLight->GetSourceRadius());
-        lightData.Color = FVector4(pointLight->GetLightColor().X, pointLight->GetLightColor().Y, pointLight->GetLightColor().Z, 1.f);
-        lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Point));
-        lightData.Angles = FVector4(0, 0, 0, 0);
-        allLights.push_back(lightData);
-    }
-    
-    // 스포 라이트 추가
-    for (const auto& spotLight : Context.SpotLights)
-    {
-        FLightParams lightData;
-        FVector worldPos = spotLight->GetWorldLocation();
-        FVector forwardDir = {1,0,0} /*spotLight->GetForwardVector()*/;
+        FVector worldPos = Light->GetWorldLocation();
+        lightData.Color = FVector4(Light->GetColor().X, Light->GetColor().Y, Light->GetColor().Z, Light->GetIntensity());
         
-        lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 100.0f); // 기본 반지름
-        lightData.Color = FVector4(1.0f, 1.0f, 1.0f, 1.0f); // 기본 색상
-        lightData.Direction = FVector4(forwardDir.X, forwardDir.Y, forwardDir.Z, static_cast<float>(ELightType::Spot));
-        // 기본 컨 각도 (30도 inner, 45도 outer)
-        lightData.Angles = FVector4(cosf(30.0f * 3.14159f / 180.0f), cosf(45.0f * 3.14159f / 180.0f), 0, 0);
+        if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Light))
+        {
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, -1.f);
+            lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Ambient));
+            lightData.Angles = FVector4(0, 0, 0, 0);
+        }
+        else if (UDirectionalLightComponent* Directional = Cast<UDirectionalLightComponent>(Light))
+        {
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, -1.f);
+            lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Directional));
+            lightData.Angles = FVector4(0, 0, 0, 0);
+        }
+        else if (UPointLightComponent* Point = Cast<UPointLightComponent>(Light))
+        {
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, Point->GetAttenuationRadius());
+            lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Point));
+            lightData.Angles = FVector4(0, 0, 0, 0);
+        }
+        else if (USpotLightComponent* Spot = Cast<USpotLightComponent>(Light))
+        {
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 0.f);
+            //FVector Dir = Spot->GetForward()
+            //lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Spot));
+            lightData.Angles = FVector4(0, 0, 0, 0);
+        }
         allLights.push_back(lightData);
     }
-
     FRenderResourceFactory::UpdateConstantBufferData(CullingParamsCB, cullingParams);
     
     // 라이트 데이터 업데이트 (DYNAMIC 버퍼 사용)
