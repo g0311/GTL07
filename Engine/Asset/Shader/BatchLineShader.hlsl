@@ -1,3 +1,11 @@
+#ifndef LIGHTING_MODEL_LAMBERT
+#ifndef LIGHTING_MODEL_PHONG
+	#define LIGHTING_MODEL_PHONG 1
+#endif
+#endif
+
+
+
 cbuffer PerFrame : register(b1)
 {
 	row_major float4x4 View; // View Matrix Calculation of MVP Matrix
