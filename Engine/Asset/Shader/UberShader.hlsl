@@ -238,7 +238,10 @@ float3 CalculateSpotLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, 
 
         // SpotRatio: 0 when outside CosOuter, 1 when inside CosInner
         float SpotRatio = saturate((SpotLightCos - SpotLights[i].CosOuter) / ConeWidth);
-        SpotRatio = pow(SpotRatio, max(SpotLights[i].Falloff, 0.0)); // Falloff increase, light between outer~inner spread out
+        if (SpotRatio!=0)
+        {
+            SpotRatio = pow(SpotRatio, max(SpotLights[i].Falloff, 0.0)); // Falloff increase, light between outer~inner spread out 
+        }
         
         // Light * Intensity
         float3 SpotlightColor = SpotLights[i].Color.rgb * SpotLights[i].Intensity * RangeAttenuation * SpotRatio;
