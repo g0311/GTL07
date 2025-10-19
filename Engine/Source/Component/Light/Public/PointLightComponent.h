@@ -8,6 +8,7 @@ class UPointLightComponent : public ULightComponent
 	DECLARE_CLASS(UPointLightComponent, ULightComponent)
 
 public:
+	virtual UClass* GetSpecificWidgetClass() const override;
     UPointLightComponent();
     virtual ~UPointLightComponent() override;
 
