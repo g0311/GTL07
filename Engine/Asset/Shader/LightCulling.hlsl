@@ -111,8 +111,8 @@ struct Light
 {
     float4 position;    // xyz: 월드 위치, w: 영향 반경
     float4 color;       // xyz: 색상, w: 강도
-    float4 direction;   // xyz: 방향 (스포트라이트용), w: 광원 타입 (0=점, 1=스포트)
-    float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), zw: 사용 안함
+    float4 direction;   // xyz: 방향 (스포트라이트용), w: 광원 타입
+    float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
 };
 
 // Z 범위(Near/Far) 컬링을 수행하는 함수

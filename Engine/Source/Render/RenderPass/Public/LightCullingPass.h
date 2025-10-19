@@ -32,7 +32,7 @@ struct FLightParams
     FVector4 Position;    // xyz: world position, w: radius
     FVector4 Color;       // xyz: color, w: intensity
     FVector4 Direction;   // xyz: direction (for spot), w: light type
-    FVector4 Angles;      // x: inner cone angle (cos), y: outer cone angle (cos), z,w: unused
+    FVector4 Angles;      // x: inner cone angle (cos), y: outer cone angle (cos), z: falloff extent/falloff, w: InvRange2 (spot only)
 };
 
 class FLightCullingPass : public FRenderPass

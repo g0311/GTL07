@@ -130,7 +130,9 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
         {
             lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, Point->GetAttenuationRadius());
             lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Point));
-            lightData.Angles = FVector4(0, 0, 0, 0);
+            // Point Light: z에 falloff extent 저장, w는 사용하지 않음
+            float falloffExtent = Point->GetLightFalloffExponent(); // Point Light의 falloff extent 가져오기
+            lightData.Angles = FVector4(0, 0, falloffExtent, 0);
         }
         else if (USpotLightComponent* Spot = Cast<USpotLightComponent>(Light))
         {
@@ -139,7 +141,13 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
             
             lightData.Position = FVector4(spotInfo.Position.X, spotInfo.Position.Y, spotInfo.Position.Z, Spot->GetRange());
             lightData.Direction = FVector4(spotInfo.Direction.X, spotInfo.Direction.Y, spotInfo.Direction.Z, static_cast<float>(ELightType::Spot));
-            lightData.Angles = FVector4(spotInfo.CosInner, spotInfo.CosOuter, 0, 0);
+            
+            // Spot Light: z에 falloff, w에 InvRange2 저장
+            float falloff = Spot->GetFallOff(); // Spot Light의 falloff 가져오기
+            float range = Spot->GetRange();
+            float invRange2 = (range > 0) ? (1.0f / (range * range)) : 0.0f;
+            
+            lightData.Angles = FVector4(spotInfo.CosInner, spotInfo.CosOuter, falloff, invRange2);
         }
         allLights.push_back(lightData);
     }

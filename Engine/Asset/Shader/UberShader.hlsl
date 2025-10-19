@@ -6,6 +6,54 @@
 #error "Exactly one of LIGHTING_MODEL_* must be defined."
 #endif
 
+// Light Culling에서 공유하는 헤더 파일 내용
+// LightCulling.hlsl의 유틸리티 함수들을 포함
+#define TILE_SIZE 32
+
+// 스크린 픽셀 좌표에서 타일 인덱스 계산 (전역 화면 기준)
+uint2 GetTileIndexFromPixel(float2 screenPos)
+{
+    return uint2(floor(screenPos.x / TILE_SIZE), floor(screenPos.y / TILE_SIZE));
+}
+
+// 스크린 픽셀 좌표에서 타일 인덱스 계산 (뷰포트 기준)
+uint2 GetTileIndexFromPixelViewport(float2 screenPos, uint2 viewportOffset)
+{
+    float2 viewportRelativePos = screenPos - viewportOffset;
+    return uint2(floor(viewportRelativePos.x / TILE_SIZE), floor(viewportRelativePos.y / TILE_SIZE));
+}
+
+// SV_Position에서 뷰포트 기준 타일 인덱스 추출 (픽셀 셰이더용)
+uint2 GetCurrentTileIndex(float4 svPosition, uint2 viewportOffset)
+{
+    return GetTileIndexFromPixelViewport(svPosition.xy, viewportOffset);
+}
+
+// SV_Position에서 뷰포트 기준 타일 배열 인덱스 추출
+uint GetCurrentTileArrayIndex(float4 svPosition, uint2 viewportOffset, uint2 viewportSize)
+{
+    uint2 viewportTileIndex = GetCurrentTileIndex(svPosition, viewportOffset);
+    uint tilesPerRow = (viewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
+    return viewportTileIndex.y * tilesPerRow + viewportTileIndex.x;
+}
+
+// Light Culling시스템에서 사용하는 라이트 구조체
+// LightCulling.hlsl과 동일한 구조체 사용
+struct Light
+{
+    float4 position;    // xyz: 월드 위치, w: 영향 반경
+    float4 color;       // xyz: 색상, w: 강도
+    float4 direction;   // xyz: 방향 (스포트라이트용), w: 광원 타입
+    float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
+};
+
+// 광원 타입 정의 (LightCulling.hlsl과 동일)
+#define LIGHT_TYPE_DIRECTIONAL 0
+#define LIGHT_TYPE_AMBIENT 1
+#define LIGHT_TYPE_POINT 2
+#define LIGHT_TYPE_SPOT 3
+
+// 기존 라이트 구조체들 (호환성을 위해 유지)
 #define NUM_POINT_LIGHT 8
 #define NUM_SPOT_LIGHT 8
 #define NUM_AMBIENT_LIGHT 8
@@ -93,6 +141,12 @@ cbuffer Lighting : register(b3)
     float3 _pad3;
     FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
 };
+
+// Light Culling시스템에서 사용하는 Structured Buffer
+StructuredBuffer<Light> AllLights : register(t13);             // 라이트 데이터 버퍼
+StructuredBuffer<uint> LightIndexBuffer : register(t14);       // 타일별 라이트 인덱스
+StructuredBuffer<uint2> TileLightInfo : register(t15);         // 타일 라이트 정보 (offset, count)
+// 레지스터 번호 뒤에서 시작 => 기존 셰이더에서 인클루드 해도 문제 X
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
 Texture2D AmbientTexture : register(t1);	// map_Ka
