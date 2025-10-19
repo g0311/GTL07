@@ -276,7 +276,8 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
             
             // 뷰 공간에서 원뿔 지오메트리 계산
             float3 lightDirView = normalize(mul(View, float4(light.direction.xyz, 0.0)).xyz); // 뷰 공간에서의 라이트 방향
-            float cosOuterAngle = light.angles.y; // 외부 원뿔 각도의 코사인 값 (미리 계산됨)
+            float cosInnerAngle = light.angles.x; // 내부 원뿔 각도의 코사인 값
+            float cosOuterAngle = light.angles.y; // 외부 원뿔 각도의 코사인 값
             
             // 각도와 반지름을 이용해 원뿔 끝점 계산
             // 삼각함수 사용: 높이 = 밑변 / cos(각도), 여기서 밑변은 반지름
@@ -301,41 +302,37 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
                 }
             }
             
-            // 1차 검사를 통과했으면, 더 정확한 2차 검사를 수행
+            // 원뿔 검사: 타일의 4개 코너 모두 검사
             if (isVisible)
             {
-                // 타일의 4개 코너 중 하나라도 스포트라이트 원뿔 범위 내에 있는지 검사
-                bool anyCornerInSpotlight = false;
+                // bias 추가로 원뿔 꼭지점 근처의 수치 오차 방지
+                float biasedCosOuterAngle = cosOuterAngle; // 약간의 여유 공간
                 
-                // c1: 좌하단 (Left-Bottom)
-                float3 cornerDir1 = normalize(c1.xyz);
-                if (dot(-lightDirView, cornerDir1) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
+                // 타일의 4개 코너 위치를 라이트 z 깊이에서 계산
+                float lightDepth = abs(lightPosView.z);
+                float3 corner1 = normalize(c1.xyz) * lightDepth;
+                float3 corner2 = normalize(c2.xyz) * lightDepth;
+                float3 corner3 = normalize(c3.xyz) * lightDepth;
+                float3 corner4 = normalize(c4.xyz) * lightDepth;
                 
-                // c2: 우하단 (Right-Bottom)
-                float3 cornerDir2 = normalize(c2.xyz);
-                if (dot(-lightDirView, cornerDir2) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
+                // 4개 코너 중 하나라도 원뿔 안에 있으면 통과
+                bool anyCornerInside = false;
                 
-                // c3: 좌상단 (Left-Top)
-                float3 cornerDir3 = normalize(c3.xyz);
-                if (dot(-lightDirView, cornerDir3) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
-                
-                // c4: 우상단 (Right-Top)
-                float3 cornerDir4 = normalize(c4.xyz);
-                if (dot(-lightDirView, cornerDir4) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
+                float3 toCorner1 = normalize(corner1 - lightPosView.xyz);
+                float3 toCorner2 = normalize(corner2 - lightPosView.xyz);
+                float3 toCorner3 = normalize(corner3 - lightPosView.xyz);
+                float3 toCorner4 = normalize(corner4 - lightPosView.xyz);
 
-                if (!anyCornerInSpotlight)
+                float EPS = 1e-5;
+                if (dot(lightDirView, toCorner1)+EPS >= biasedCosOuterAngle ||
+                    dot(lightDirView, toCorner2)+EPS >= biasedCosOuterAngle ||
+                    dot(lightDirView, toCorner3)+EPS >= biasedCosOuterAngle ||
+                    dot(lightDirView, toCorner4)+EPS >= biasedCosOuterAngle)
+                {
+                    anyCornerInside = true;
+                }
+                
+                if (!anyCornerInside)
                 {
                     isVisible = false;
                 }

@@ -27,6 +27,12 @@ void FLightCullingPass::CreateResources()
 {
     HRESULT hr;
     ID3DBlob* pBlobCS = nullptr;
+
+    // Debug flags for shader compilation
+    UINT CompileFlags = 0;
+#if defined(_DEBUG)
+    CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
     
     // 셰이더 컴파일
     hr = D3DCompileFromFile(
@@ -35,7 +41,7 @@ void FLightCullingPass::CreateResources()
         nullptr,
         "CSMain",
         "cs_5_0",
-        0,
+        CompileFlags,
         0,
         &pBlobCS,
         nullptr);
@@ -130,10 +136,12 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
         }
         else if (USpotLightComponent* Spot = Cast<USpotLightComponent>(Light))
         {
-            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 0.f);
-            //FVector Dir = Spot->GetForward()
-            //lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Spot));
-            lightData.Angles = FVector4(0, 0, 0, 0);
+            // 스포트 라이트 컴포넌트의 GetSpotInfo() 메서드 사용
+            FSpotLightData spotInfo = Spot->GetSpotInfo();
+            
+            lightData.Position = FVector4(spotInfo.Position.X, spotInfo.Position.Y, spotInfo.Position.Z, Spot->GetRange());
+            lightData.Direction = FVector4(spotInfo.Direction.X, spotInfo.Direction.Y, spotInfo.Direction.Z, static_cast<float>(ELightType::Spot));
+            lightData.Angles = FVector4(spotInfo.CosInner, spotInfo.CosOuter, 0, 0);
         }
         allLights.push_back(lightData);
     }
