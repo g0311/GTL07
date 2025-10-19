@@ -90,8 +90,13 @@ public:
 	ID3D11ShaderResourceView* GetTileLightInfoSRV() const { return TileLightInfoSRV; }
 	ID3D11Buffer* GetAllLightsBuffer() const { return AllLightsBuffer; }
 	ID3D11ShaderResourceView* GetAllLightsSRV() const { return AllLightsSRV; }
-	
+
 	void SetIsResizing(bool isResizing) { bIsResizing = isResizing; }
+
+	// Lighting Model
+	ELightingModel GetLightingModel() const { return CurrentLightingModel; }
+	void SetLightingModel(ELightingModel InModel) { CurrentLightingModel = InModel; }
+	ID3D11PixelShader* GetPixelShaderForLightingModel(bool bHasNormalMap) const;
 
 private:
 	UPipeline* Pipeline = nullptr;
@@ -156,6 +161,25 @@ private:
 	ID3D11PixelShader* TexturePixelShader = nullptr;
 	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
 	ID3D11InputLayout* TextureInputLayout = nullptr;
+
+	// UberShader Permutations - All lighting models pre-compiled
+	struct FUberShaderPermutations
+	{
+		ID3D11PixelShader* Unlit = nullptr;
+		
+		ID3D11PixelShader* Gouraud = nullptr;
+		ID3D11PixelShader* Lambert = nullptr;
+		ID3D11PixelShader* Phong = nullptr;
+		ID3D11PixelShader* BlinnPhong = nullptr;
+
+		ID3D11PixelShader* GouraudWithNormalMap = nullptr;
+		ID3D11PixelShader* LambertWithNormalMap = nullptr;
+		ID3D11PixelShader* PhongWithNormalMap = nullptr;
+		ID3D11PixelShader* BlinnPhongWithNormalMap = nullptr;
+	} UberShaderPermutations;
+
+	// Current Lighting Model
+	ELightingModel CurrentLightingModel = ELightingModel::BlinnPhong;
 
 	// Decal Shaders
 	ID3D11VertexShader* DecalVertexShader = nullptr;

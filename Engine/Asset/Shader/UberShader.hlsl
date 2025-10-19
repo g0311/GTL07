@@ -130,6 +130,7 @@ struct PS_INPUT
     float2 Tex : TEXCOORD2;
     float3 WorldTangent : TEXCOORD3;
     float3 WorldBitangent : TEXCOORD4;
+    float4 Color : COLOR;
 };
 
 struct PS_OUTPUT
@@ -322,14 +323,45 @@ PS_INPUT mainVS(VS_INPUT Input)
     Output.Tex = Input.Tex;
 
 #if LIGHTING_MODEL_GOURAUD
-          
+    {
+        float3 Normal = normalize(Output.WorldNormal);
+        float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
+
+        // 텍스처 없이 Material 상수만 사용
+        float3 kD = Kd.rgb;
+        float3 kS = Ks.rgb;
+    
+        float3 AmbientColor = Ka.rgb; // 상수만
+        float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
+        float3 PointLightColor = CalculatePointLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+        float3 SpotLightColor = CalculateSpotLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+
+        Output.Color.rgb = AmbientColor + DirectionalColor + PointLightColor + SpotLightColor;
+        Output.Color.a = 1.0f;
+    }
 #endif
+    
     return Output;
 }
 
 PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
+
+#if LIGHTING_MODEL_GOURAUD
+    if (MaterialFlags & LIGHTING_MODEL_GOURAUD)
+    {
+        Output.SceneColor = Input.Color;
+        // 텍스처가 있다면 곱하기
+        if (MaterialFlags & HAS_DIFFUSE_MAP)
+        {
+        
+            float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
+            Output.SceneColor.rgb *= TexColor.rgb;
+            Output.SceneColor.a = TexColor.a;
+        };
+    }
+#else
     float2 UV = Input.Tex; 
     float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
@@ -363,7 +395,8 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         FinalColor.a = D * alpha;
     }
     Output.SceneColor = FinalColor;
-
+#endif
+    
     // Normal
     // Calculate World Normal for Normal Buffer
     float3 WorldNormal = CalculateWorldNormal(Input, UV);

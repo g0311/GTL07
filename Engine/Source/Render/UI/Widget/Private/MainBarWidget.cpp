@@ -2,6 +2,7 @@
 #include "Render/UI/Widget/Public/MainBarWidget.h"
 #include "Manager/UI/Public/UIManager.h"
 #include "Render/UI/Window/Public/UIWindow.h"
+#include "Render/Renderer/Public/Renderer.h"
 #include "Level/Public/Level.h"
 #include <shobjidl.h>
 
@@ -252,11 +253,14 @@ void UMainBarWidget::RenderViewMenu()
 
 			ImGui::EndMenu();
 		}
-
+		
 		if (ImGui::MenuItem("조명 비적용(Unlit)", nullptr, bIsUnlit) && !bIsUnlit)
 		{
+			URenderer& RendererInstance = URenderer::GetInstance();
+			
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_Unlit);
-			UE_LOG("MainBarWidget: ViewMode를 Unlit으로 변경");
+			RendererInstance.SetLightingModel(ELightingModel::Unlit);
+			UE_LOG("MainBarWidget: Lighting Model을 Unlit로 변경");
 		}
 
 		if (ImGui::MenuItem("와이어프레임(Wireframe)", nullptr, bIsWireframe) && !bIsWireframe)

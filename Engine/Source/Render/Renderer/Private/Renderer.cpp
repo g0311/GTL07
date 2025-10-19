@@ -222,16 +222,75 @@ void URenderer::CreateTextureShader()
 	};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/UberShader.hlsl", TextureLayout, &TextureVertexShader, &TextureInputLayout);
 
-	// Compile pixel shader without normal map (nullptr = no defines)
-	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &TexturePixelShader, nullptr);
+	// ===== SHADER PERMUTATIONS: Compile all lighting model variants =====
+	UE_LOG("URenderer: Compiling UberShader permutations...");
 
-	// Compile pixel shader with normal map
-	D3D_SHADER_MACRO NormalMapDefines[] =
-	{
+	// 0. Unlit
+	D3D_SHADER_MACRO UnlitDefines[] = {
+		{ "UNLIT", "0" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Unlit, UnlitDefines);
+	
+	// 1. Gouraud (LM_GOURAUD = 0)
+	D3D_SHADER_MACRO GouraudDefines[] = {
+		{ "LIGHTING_MODEL", "1" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Gouraud, GouraudDefines);
+
+	GouraudDefines[0] = { "LIGHTING_MODEL", "1" };
+	GouraudDefines[1] = { "HAS_NORMAL_MAP", "1" };
+	D3D_SHADER_MACRO GouraudDefines2[] = { GouraudDefines[0], GouraudDefines[1], { nullptr, nullptr } };
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.GouraudWithNormalMap, GouraudDefines2);
+
+	// 2. Lambert (LM_LAMBERT = 1)
+	D3D_SHADER_MACRO LambertDefines[] = {
+		{ "LIGHTING_MODEL", "2" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Lambert, LambertDefines);
+
+	D3D_SHADER_MACRO LambertDefines2[] = {
+		{ "LIGHTING_MODEL", "2" },
 		{ "HAS_NORMAL_MAP", "1" },
 		{ nullptr, nullptr }
 	};
-	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &TexturePixelShaderWithNormalMap, NormalMapDefines);
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.LambertWithNormalMap, LambertDefines2);
+
+	// 3. Phong (LM_PHONG = 2)
+	D3D_SHADER_MACRO PhongDefines[] = {
+		{ "LIGHTING_MODEL", "3" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Phong, PhongDefines);
+
+	D3D_SHADER_MACRO PhongDefines2[] = {
+		{ "LIGHTING_MODEL", "3" },
+		{ "HAS_NORMAL_MAP", "1" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.PhongWithNormalMap, PhongDefines2);
+
+	// 4. Blinn-Phong (LM_BLINNPHONG = 3)
+	D3D_SHADER_MACRO BlinnPhongDefines[] = {
+		{ "LIGHTING_MODEL", "4" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.BlinnPhong, BlinnPhongDefines);
+
+	D3D_SHADER_MACRO BlinnPhongDefines2[] = {
+		{ "LIGHTING_MODEL", "4" },
+		{ "HAS_NORMAL_MAP", "1" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.BlinnPhongWithNormalMap, BlinnPhongDefines2);
+
+	UE_LOG("URenderer: UberShader permutations compiled successfully!");
+
+	// Set legacy pointers to default (Blinn-Phong)
+	TexturePixelShader = UberShaderPermutations.BlinnPhong;
+	TexturePixelShaderWithNormalMap = UberShaderPermutations.BlinnPhongWithNormalMap;
 }
 
 void URenderer::CreateDecalShader()
@@ -317,11 +376,24 @@ void URenderer::ReleaseDefaultShader()
 	SafeRelease(DefaultInputLayout);
 	SafeRelease(DefaultPixelShader);
 	SafeRelease(DefaultVertexShader);
-	
+
 	SafeRelease(TextureInputLayout);
-	SafeRelease(TexturePixelShader);
-	SafeRelease(TexturePixelShaderWithNormalMap);
 	SafeRelease(TextureVertexShader);
+
+	// Release all UberShader permutations
+	SafeRelease(UberShaderPermutations.Unlit);
+	SafeRelease(UberShaderPermutations.Gouraud);
+	SafeRelease(UberShaderPermutations.Lambert);
+	SafeRelease(UberShaderPermutations.Phong);
+	SafeRelease(UberShaderPermutations.BlinnPhong);
+	SafeRelease(UberShaderPermutations.GouraudWithNormalMap);
+	SafeRelease(UberShaderPermutations.LambertWithNormalMap);
+	SafeRelease(UberShaderPermutations.PhongWithNormalMap);
+	SafeRelease(UberShaderPermutations.BlinnPhongWithNormalMap);
+
+	// Legacy pointers don't need release (they point to permutation shaders)
+	TexturePixelShader = nullptr;
+	TexturePixelShaderWithNormalMap = nullptr;
 	
 	SafeRelease(DecalVertexShader);
 	SafeRelease(DecalPixelShader);
@@ -346,6 +418,42 @@ void URenderer::ReleaseDefaultShader()
 	SafeRelease(BillboardVertexShader);
 	SafeRelease(BillboardPixelShader);
 	SafeRelease(BillboardInputLayout);
+}
+
+ID3D11PixelShader* URenderer::GetPixelShaderForLightingModel(bool bHasNormalMap) const
+{
+	if (bHasNormalMap)
+	{
+		switch (CurrentLightingModel)
+		{
+		case ELightingModel::Gouraud:
+			return UberShaderPermutations.GouraudWithNormalMap;
+		case ELightingModel::Lambert:
+			return UberShaderPermutations.LambertWithNormalMap;
+		case ELightingModel::Phong:
+			return UberShaderPermutations.PhongWithNormalMap;
+		case ELightingModel::BlinnPhong:
+		default:
+			return UberShaderPermutations.BlinnPhongWithNormalMap;
+		}
+	}
+	else
+	{
+		switch (CurrentLightingModel)
+		{
+		case ELightingModel::Unlit:
+			return UberShaderPermutations.Unlit;
+		case ELightingModel::Gouraud:
+			return UberShaderPermutations.Gouraud;
+		case ELightingModel::Lambert:
+			return UberShaderPermutations.Lambert;
+		case ELightingModel::Phong:
+			return UberShaderPermutations.Phong;
+		case ELightingModel::BlinnPhong:
+		default:
+			return UberShaderPermutations.BlinnPhong;
+		}	
+	}
 }
 
 void URenderer::ReleaseDepthStencilState()
