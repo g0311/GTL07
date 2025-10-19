@@ -1,16 +1,19 @@
 #include "TextureVS.hlsl"
 
+#define NUM_POINT_LIGHT 8
+#define NUM_SPOT_LIGHT 8
+
 struct FAmbientLightInfo
 {
-    float4 AmbientColor;
+    float4 Color;
     float Intensity;
-    float3 _pad0;
+    float3 _padding;
 };
 
 struct FDirectionalLightInfo
 {
     float3 Direction;
-    float _Padding;
+    float _padding;
     float3 Color;
     float Intensity;
 };
@@ -28,17 +31,14 @@ struct FPointLightInfo
 struct FSpotLightInfo
 {
     float4 Color;
-
     float Intensity;
     float3 Position;
-
     float3 Direction;
-    float InvRange2;// 1/(Range*Range) : Spotlight Range
-
-    float Falloff;  // Inner Cone부터 Outer Cone까지 범위의 감쇠율
-    float CosOuter;   // cos(OuterAngle)
-    float CosInner; // cos(InnerAngle) - (InnerAngle < OuterAngle)
-    float _pad0;
+    float InvRange2;    // 1/(Range*Range) : Spotlight Range
+    float Falloff;      // Inner Cone부터 Outer Cone까지 범위의 감쇠율
+    float CosOuter;     // cos(OuterAngle)
+    float CosInner;     // cos(InnerAngle) - (InnerAngle < OuterAngle)
+    float _padding;
 };
 
 cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
@@ -55,26 +55,22 @@ cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
 
 cbuffer Lighting : register(b3)
 {
-    int AmbientCount;
+    int NumAmbientLights;
     float3 _pad0;
-    FAmbientLightInfo Ambient[8];
+    FAmbientLightInfo AmbientLights[8];
     
-    int SpotlightCount;
-    float3 _pad1;
-    FSpotLightInfo Spotlight[8];
-};
-
-cbuffer DirectionalLighting : register(b4)
-{
-    FDirectionalLightInfo Directional;
     int HasDirectionalLight;
-}
-
-cbuffer PointLighting : register(b5)
-{
-    FPointLightInfo PointLights[8];
+    float3 _pad2;
+    FDirectionalLightInfo DirectionalLight;
+    
     int NumPointLights;
-}
+    float3 _pad3;
+    FPointLightInfo PointLights[NUM_POINT_LIGHT];
+    
+    int NumSpotLights;
+    float3 _pad1;
+    FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
+};
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
 Texture2D AmbientTexture : register(t1);	// map_Ka
@@ -92,6 +88,7 @@ SamplerState SamplerWrap : register(s0);
 #define HAS_NORMAL_MAP	 (1 << 3)
 #define HAS_ALPHA_MAP	 (1 << 4)
 #define HAS_BUMP_MAP	 (1 << 5)
+#define UNLIT			 (1 << 6)
 
 float4 CalculateAmbientFactor(float2 UV)
 {
@@ -110,10 +107,10 @@ float4 CalculateAmbientFactor(float2 UV)
     }
     // Light Ambient
     float4 AccumulatedAmbientColor = 0;
-    for (int i = 0; i < AmbientCount; i++)
+    for (int i = 0; i < NumAmbientLights; i++)
     {
         // Light * Intensity
-        AccumulatedAmbientColor+= Ambient[i].AmbientColor*Ambient[i].Intensity;
+        AccumulatedAmbientColor += AmbientLights[i].Color * AmbientLights[i].Intensity;
     }
     AmbientColor *= AccumulatedAmbientColor;
     return AmbientColor;
@@ -121,29 +118,29 @@ float4 CalculateAmbientFactor(float2 UV)
 float3 CalculateSpotlightFactors(float3 Position, float3 Norm, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
 {
     float3 AccumulatedSpotlightColor = 0;
-    for (int i = 0; i < SpotlightCount; i++)
+    for (int i = 0; i < NumSpotLights; i++)
     {
-        float3 LightVec = Spotlight[i].Position - Position;
+        float3 LightVec = SpotLights[i].Position - Position;
         float Distance = length(LightVec);
         float3 LightDir = LightVec / Distance;
 
         // Attenuation : Range & Cone(Cos)
-        float RangeAttenuation = saturate(1.0 - Distance * Distance * Spotlight[i].InvRange2);
+        float RangeAttenuation = saturate(1.0 - Distance * Distance * SpotLights[i].InvRange2);
 
         // SpotLight Cone Attenuation
         // SpotLightCos: angle between light direction and pixel direction
-        float SpotLightCos = dot(-LightDir, normalize(Spotlight[i].Direction));
+        float SpotLightCos = dot(-LightDir, normalize(SpotLights[i].Direction));
 
         // ConeWidth: CosInner > CosOuter (because InnerAngle < OuterAngle, cos is decreasing)
-        float ConeWidth = max(Spotlight[i].CosInner - Spotlight[i].CosOuter, 1e-5);
+        float ConeWidth = max(SpotLights[i].CosInner - SpotLights[i].CosOuter, 1e-5);
 
         // SpotRatio: 0 when outside CosOuter, 1 when inside CosInner
-        float SpotRatio = saturate((SpotLightCos - Spotlight[i].CosOuter) / ConeWidth);
-        SpotRatio = pow(SpotRatio, max(Spotlight[i].Falloff, 0.0));
+        float SpotRatio = saturate((SpotLightCos - SpotLights[i].CosOuter) / ConeWidth);
+        SpotRatio = pow(SpotRatio, max(SpotLights[i].Falloff, 0.0));
 
         /* TODO : Blinn Phong for Now */
         // Light * Intensity
-        float3 SpotlightColor = Spotlight[i].Color.rgb * Spotlight[i].Intensity * RangeAttenuation * SpotRatio;
+        float3 SpotlightColor = SpotLights[i].Color.rgb * SpotLights[i].Intensity * RangeAttenuation * SpotRatio;
 
         // Diffuse
         float NdotL = saturate(dot(Norm, LightDir));
@@ -176,6 +173,16 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
 
+    float4 FinalColor;
+    if (MaterialFlags & UNLIT)
+    {
+        FinalColor.rgb = kD;
+        FinalColor.a = 1.0;
+        Output.SceneColor = FinalColor;
+        Output.NormalData = 1.0;
+        return Output;
+    }
+    
     float3 Diffuse;
     if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
@@ -194,9 +201,9 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     if (HasDirectionalLight > 0)
     {
         float3 normal = normalize(Input.WorldNormal);
-        float3 lightDir = normalize(-Directional.Direction);
+        float3 lightDir = normalize(-DirectionalLight.Direction);
         float NdotL = saturate(dot(normal, lightDir));
-        DirectLighting += Directional.Color * Directional.Intensity * NdotL;
+        DirectLighting += DirectionalLight.Color * DirectionalLight.Intensity * NdotL;
     }
     
     // Point Lights
@@ -217,7 +224,6 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         }
     }
     // Final Color
-    float4 FinalColor;
     FinalColor.rgb = AmbientColor + Diffuse * (SpotlightColor + DirectLighting + PointLighting);
     FinalColor.a = 1.0f;
     Output.SceneColor = FinalColor;
@@ -229,8 +235,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     //     float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
     //     FinalColor.a = D * alpha;
     // }
-
-
+    
     // Calculate World Normal for Normal Buffer
     float3 WorldNormal = Input.WorldNormal;
 

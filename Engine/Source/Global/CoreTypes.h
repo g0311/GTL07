@@ -40,6 +40,7 @@ struct FCameraConstants
 #define HAS_NORMAL_MAP	 (1 << 3)
 #define HAS_ALPHA_MAP	 (1 << 4)
 #define HAS_BUMP_MAP	 (1 << 5)
+#define UNLIT			 (1 << 6)
 
 struct FMaterialConstants
 {
@@ -53,56 +54,38 @@ struct FMaterialConstants
 	float Time; // Time in seconds
 };
 
-struct FLight
+#define MAX_POINT_LIGHTS 8
+#define MAX_SPOT_LIGHTS 8
+
+struct FAmbientLightData
 {
 	FVector4 Color;
 	float Intensity;
-	FVector   _pad0; 
+	FVector _padding;
 };
 
-struct FSpotLight
+struct FSpotLightData
 {
 	FVector4 Color;
-	
 	float Intensity;
 	FVector Position;
-
 	FVector Direction;
-	float InvRange2;// 1/(Range*Range) : Spotlight Range
-
-	float Falloff;  // Inner Cone부터 Outer Cone까지 범위의 감쇠율
-	float CosOuter;   // Spotlight의 바깥 Cone
-	float CosInner; // Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
-	float   _pad0;
+	float InvRange2;	// 1/(Range*Range) : Spotlight Range
+	float Falloff;		// Inner Cone부터 Outer Cone까지 범위의 감쇠율
+	float CosOuter;		// Spotlight의 바깥 Cone
+	float CosInner;		// Spotlight의 안쪽 Cone (OuterAngle > InnerAngle)
+	float _padding;
 };
 
-struct FLightConstants
-{
-	int AmbientCount;
-	FVector _pad0;
-	FLight AmbientLight[8];
-
-	int SpotlightCount;
-	FVector _pad1;
-	FSpotLight SpotLight[8];
-};
-
-struct FDirectionalLightConstants
+struct FDirectionalLightData
 {
 	FVector Direction;
-	float _Padding;
+	float _padding;
 	FVector Color;
 	float Intensity;
 };
 
-struct FDirectionalLightCBuffer
-{
-	FDirectionalLightConstants DirectionalLight;
-	int HasDirectionalLight;
-	float _Padding[3];
-};
-
-struct FPointLightData2
+struct FPointLightData
 {
 	FVector Position;
 	float Radius;
@@ -112,11 +95,27 @@ struct FPointLightData2
 	float _padding[3];
 };
 
-struct FPointLightCBuffer
+struct FLightConstants
 {
-	FPointLightData2 PointLights[8];
+	/* Ambient Light */
+	int NumAmbientLights;
+	FVector _pad0;
+	FAmbientLightData AmbientLights[8];
+
+	/* Directional Light */
+	int HasDirectionalLight;
+	float _padding0[3];
+	FDirectionalLightData DirectionalLight;
+
+	/* Point Light */
 	int NumPointLights;
-	float _padding[3];
+	float _padding1[3];
+	FPointLightData PointLights[MAX_POINT_LIGHTS];
+
+	/* Spot Light */
+	int NumSpotLights;
+	FVector _pad1;
+	FSpotLightData SpotLights[MAX_SPOT_LIGHTS];
 };
 
 struct FVertex

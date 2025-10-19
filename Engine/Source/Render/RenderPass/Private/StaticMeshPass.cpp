@@ -15,9 +15,7 @@ FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstant
 	: FRenderPass(InPipeline, InConstantBufferCamera, InConstantBufferModel), VS(InVS), PS(InPS), PSWithNormalMap(InPSWithNormalMap), InputLayout(InLayout), DS(InDS)
 {
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
-	ConstantBufferLight = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
-	ConstantBufferDirectionalLight = FRenderResourceFactory::CreateConstantBuffer<FDirectionalLightCBuffer>();
-	ConstantBufferPointLight = FRenderResourceFactory::CreateConstantBuffer<FPointLightCBuffer>();
+	ConstantBufferLighting = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
 }
 
 void FStaticMeshPass::PreExecute(FRenderingContext& Context)
@@ -117,65 +115,48 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
 
-				// Ambient Light
-				FLightConstants LightConstants = {};
-				for (size_t i=0; i < Context.Lights.size(); i++)
-				{
-					if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Context.Lights[i]))
-					{
-						int Idx = LightConstants.AmbientCount;
-						LightConstants.AmbientLight[Idx].Intensity = Ambient->GetIntensity(); 
-						LightConstants.AmbientLight[Idx].Color = Ambient->GetColor();
-						LightConstants.AmbientCount++;
-					}
-					else if (USpotLightComponent* Spotlight = Cast<USpotLightComponent>(Context.Lights[i]))
-					{
-						int Idx = LightConstants.SpotlightCount;
-						LightConstants.SpotLight[Idx] = Spotlight->GetSpotInfo();
-						LightConstants.SpotlightCount++;
-					}
-				}
-				
-				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLight, LightConstants);
-				Pipeline->SetConstantBuffer(3, false, ConstantBufferLight);
+				// Unified Lighting Process
+				FLightConstants LightingConstants = {};
+				LightingConstants.HasDirectionalLight = 0;
+				LightingConstants.NumPointLights = 0;
+				LightingConstants.NumSpotLights = 0;
 
-				// Directional Light
-				FDirectionalLightCBuffer DirectionalLightCBuffer = {};
-				DirectionalLightCBuffer.HasDirectionalLight = 0;
 				for (ULightComponent* Light : Context.Lights)
 				{
-					if (auto DirectionalLight = Cast<UDirectionalLightComponent>(Light))
+					if (auto AmbientLight = Cast<UAmbientLightComponent>(Light))
 					{
-						DirectionalLightCBuffer.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
-						DirectionalLightCBuffer.DirectionalLight.Color = DirectionalLight->GetColor();
-						DirectionalLightCBuffer.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
-						DirectionalLightCBuffer.HasDirectionalLight = 1;
+						int Idx = LightingConstants.NumAmbientLights;
+						LightingConstants.AmbientLights[Idx].Intensity = AmbientLight->GetIntensity();
+						LightingConstants.AmbientLights[Idx].Color = AmbientLight->GetColor();
+						LightingConstants.NumAmbientLights++;
+					}
+					else if (auto DirectionalLight = Cast<UDirectionalLightComponent>(Light))
+					{
+						LightingConstants.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
+						LightingConstants.DirectionalLight.Color = DirectionalLight->GetColor();
+						LightingConstants.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
+						LightingConstants.HasDirectionalLight = 1;
 						break; // Currently support only one directional light
 					}
-				}
-
-				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferDirectionalLight, DirectionalLightCBuffer);
-				Pipeline->SetConstantBuffer(4, false, ConstantBufferDirectionalLight);
-
-				// Point Light
-				FPointLightCBuffer PointLightCBuffer = {};
-				PointLightCBuffer.NumPointLights = 0;
-				for (ULightComponent* Light : Context.Lights)
-				{
-					if (auto PointLight = Cast<UPointLightComponent>(Light))
+					else if (auto PointLight = Cast<UPointLightComponent>(Light))
 					{
-						if (PointLightCBuffer.NumPointLights >= 8) { break; } // Max 8 point lights supported
-						PointLightCBuffer.PointLights[0].Position = PointLight->GetWorldLocation();
-						PointLightCBuffer.PointLights[0].Radius = PointLight->GetAttenuationRadius();
-						PointLightCBuffer.PointLights[0].Color = PointLight->GetColor();
-						PointLightCBuffer.PointLights[0].Intensity = PointLight->GetIntensity();
-						PointLightCBuffer.PointLights[0].FalloffExtent = PointLight->GetLightFalloffExponent();
-						PointLightCBuffer.NumPointLights++;
+						FPointLightData& Data = LightingConstants.PointLights[LightingConstants.NumPointLights];
+						Data.Position = PointLight->GetWorldLocation();
+						Data.Radius = PointLight->GetAttenuationRadius();
+						Data.Color = PointLight->GetColor();
+						Data.Intensity = PointLight->GetIntensity();
+						Data.FalloffExtent = PointLight->GetLightFalloffExponent();
+						LightingConstants.NumPointLights++;
+					}
+					else if (auto SpotLight = Cast<USpotLightComponent>(Light))
+					{
+						int Idx = LightingConstants.NumSpotLights;
+						LightingConstants.SpotLights[Idx] = SpotLight->GetSpotInfo();
+						LightingConstants.NumSpotLights++;
 					}
 				}
-
-				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferPointLight, PointLightCBuffer);
-				Pipeline->SetConstantBuffer(5, false, ConstantBufferPointLight);
+				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLighting, LightingConstants);
+				Pipeline->SetConstantBuffer(3, false, ConstantBufferLighting);
 
 				if (UTexture* DiffuseTexture = Material->GetDiffuseTexture())
 				{
@@ -219,7 +200,5 @@ void FStaticMeshPass::PostExecute(FRenderingContext& Context)
 void FStaticMeshPass::Release()
 {
 	SafeRelease(ConstantBufferMaterial);
-	SafeRelease(ConstantBufferLight);
-	SafeRelease(ConstantBufferDirectionalLight);
-	SafeRelease(ConstantBufferPointLight);
+	SafeRelease(ConstantBufferLighting);
 }

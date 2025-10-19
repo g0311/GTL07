@@ -44,7 +44,7 @@ void USpotlightComponentWidget::RenderWidget()
         SpotlightComponent->SetIntensity(Intensity);
     }
 
-    FSpotLight Spot = SpotlightComponent->GetSpotInfo();
+    FSpotLightData Spot = SpotlightComponent->GetSpotInfo();
     
     float Range   = SpotlightComponent->GetRange();
     float InnerRad   = SpotlightComponent->GetInnerConeAngleRad();

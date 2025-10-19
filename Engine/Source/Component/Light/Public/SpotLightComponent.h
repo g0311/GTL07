@@ -21,7 +21,7 @@ public:
 	float GetOuterConeAngleRad() { return OuterConeAngleRad; }
 	
 	/* Todo : rename & 통일 Method name && set Dirty Bit*/
-	FSpotLight GetSpotInfo()
+	FSpotLightData GetSpotInfo()
 	{
 		// Use World coordinates for shader calculations
 		Light.Position = GetWorldLocation();
@@ -52,5 +52,5 @@ private:
 	float OuterConeAngleRad = 0.785398f; // 45 degrees default, stored in radians
 	float Range = 50.0f;
 
-	FSpotLight Light;
+	FSpotLightData Light;
 };
