@@ -80,11 +80,6 @@ void FLightCullingPass::PreExecute(FRenderingContext& Context)
 
 void FLightCullingPass::Execute(FRenderingContext& Context)
 {
-    if (!(Context.ShowFlags & EEngineShowFlags::SF_LightCulling))
-    {
-        return;
-    }
-
     TIME_PROFILE(LightCullingPass)
     
     ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
@@ -104,6 +99,9 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     // 리소스 크기 체크 및 라이트 데이터 준비
     const uint32 totalLights = static_cast<uint32>(Context.Lights.size());
     cullingParams.NumLights = totalLights;
+    
+    // Light Culling 활성화 여부 설정 (ShowFlags에 따라 결정)
+    cullingParams.EnableCulling = (Context.ShowFlags & EEngineShowFlags::SF_LightCulling) ? 1u : 0u;
     
     // 라이트 데이터 배열 준비 (AllLights 버퍼용)
     TArray<FLightParams> allLights;
