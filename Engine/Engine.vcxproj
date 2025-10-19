@@ -466,7 +466,6 @@
     <ClInclude Include="Source\Render\UI\Widget\Public\InputInformationWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\MainBarWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ActorSpawnWidget.h" />
-    <ClInclude Include="Source\Render\UI\Widget\Public\PointLightComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\ProjectileMovementComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\RotatingMovementComponentWidget.h" />
     <ClInclude Include="Source\Render\UI\Widget\Public\SceneHierarchyWidget.h" />
@@ -662,7 +661,6 @@
     <ClCompile Include="Source\Render\UI\Widget\Private\InputInformationWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\MainBarWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ActorSpawnWidget.cpp" />
-    <ClCompile Include="Source\Render\UI\Widget\Private\PointLightComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\ProjectileMovementComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\RotatingMovementComponentWidget.cpp" />
     <ClCompile Include="Source\Render\UI\Widget\Private\SceneHierarchyWidget.cpp" />
