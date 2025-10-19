@@ -11,8 +11,6 @@ public:
 	ULightComponentBase() {};
 	~ULightComponentBase() override {};
 
-	void Serialize(const bool bInIsLoading, JSON& InOutHandle) override;
-
 	void SetIntensity(float InIntensity) { Intensity = InIntensity;}
 	float GetIntensity() { return Intensity;}
 

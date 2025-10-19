@@ -10,7 +10,6 @@ class USpotLightComponent : public ULightComponent
 
 public:
 	UClass* GetSpecificWidgetClass() const override;
-	void Serialize(const bool bInIsLoading, JSON& InOutHandle) override;
 	
 	void SetRange(float InRange) { Range = InRange; }
 	void SetOuterAngleRad(float InOutAngleRad) { OuterConeAngleRad = InOutAngleRad; }
@@ -55,4 +54,3 @@ private:
 
 	FSpotLightData Light;
 };
-

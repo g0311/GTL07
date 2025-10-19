@@ -11,7 +11,6 @@ public:
 	virtual UClass* GetSpecificWidgetClass() const override;
     UPointLightComponent();
     virtual ~UPointLightComponent() override;
-    void Serialize(const bool bInIsLoading, JSON& InOutHandle) override;
 
     float GetAttenuationRadius() const { return AttenuationRadius; }
     float GetLightFalloffExponent() const { return LightFalloffExponent; }
