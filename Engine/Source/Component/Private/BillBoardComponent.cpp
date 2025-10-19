@@ -30,6 +30,9 @@ UBillBoardComponent::UBillBoardComponent()
     if (!TextureCache.empty()) { Sprite = TextureCache.begin()->second; }
 
     bReceivesDecals = false;
+
+	// Set a new base scale because the default from USceneComponent (0.3) is too small.
+	SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 }
 
 UBillBoardComponent::~UBillBoardComponent() = default;
