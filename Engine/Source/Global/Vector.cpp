@@ -140,26 +140,30 @@ FArchive& operator<<(FArchive& Ar, FVector& Vector)
 	return Ar;
 }
 
-	/**
-	 * @brief FVector 기본 생성자
-	 */
+/**
+* @brief FVector 기본 생성자
+*/
 FVector4::FVector4()
-		: X(0), Y(0), Z(0), W(0)
+	: X(0), Y(0), Z(0), W(0)
 {
 }
 
-	/**
-	 * @brief FVector의 멤버값을 Param으로 넘기는 생성자
-	 */
+/**
+* @brief FVector의 멤버값을 Param으로 넘기는 생성자
+*/
 FVector4::FVector4(const float InX, const float InY, const float InZ, const float InW)
-		: X(InX), Y(InY), Z(InZ), W(InW)
+	: X(InX), Y(InY), Z(InZ), W(InW)
+{
+}
+FVector4::FVector4(const FVector& InVec, float InW)
+	: X(InVec.X), Y(InVec.Y), Z(InVec.Z), W(InW)
 {
 }
 
 
-	/**
-	 * @brief FVector를 Param으로 넘기는 생성자
-	 */
+/**
+* @brief FVector를 Param으로 넘기는 생성자
+*/
 FVector4::FVector4(const FVector4& InOther)
 		: X(InOther.X), Y(InOther.Y), Z(InOther.Z), W(InOther.W)
 {
