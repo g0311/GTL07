@@ -31,20 +31,22 @@ void FStaticMeshPass::PreExecute(FRenderingContext& Context)
 
 void FStaticMeshPass::Execute(FRenderingContext& Context)
 {
+	if (!(Context.ShowFlags & EEngineShowFlags::SF_StaticMesh)) { return; }
+
 	FRenderState RenderState = UStaticMeshComponent::GetClassDefaultRenderState();
 	if (Context.ViewMode == EViewModeIndex::VMI_Wireframe)
 	{
-		RenderState.CullMode = ECullMode::None; RenderState.FillMode = EFillMode::WireFrame;
+		RenderState.CullMode = ECullMode::None;
+		RenderState.FillMode = EFillMode::WireFrame;
 	}
 	ID3D11RasterizerState* RS = FRenderResourceFactory::GetRasterizerState(RenderState);
-
 	// Set a default sampler to slot 0 to ensure one is always bound
 	Pipeline->SetSamplerState(0, false, URenderer::GetInstance().GetDefaultSampler());
-
 	Pipeline->SetConstantBuffer(0, true, ConstantBufferModel);
 	Pipeline->SetConstantBuffer(1, true, ConstantBufferCamera);
 	Pipeline->SetConstantBuffer(1, false, ConstantBufferCamera);
 	
+	// Sort Static Mesh Components
 	if (!(Context.ShowFlags & EEngineShowFlags::SF_StaticMesh)) { return; }
 	TArray<UStaticMeshComponent*>& MeshComponents = Context.StaticMeshes;
 	sort(MeshComponents.begin(), MeshComponents.end(),
@@ -90,95 +92,20 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 		for (const FMeshSection& Section : MeshAsset->Sections)
 		{
 			UMaterial* Material = MeshComp->GetMaterial(Section.MaterialSlot);
-			if (CurrentMaterial != Material) {
-				FMaterialConstants MaterialConstants = {};
-				FVector AmbientColor = Material->GetAmbientColor(); MaterialConstants.Ka = FVector4(AmbientColor.X, AmbientColor.Y, AmbientColor.Z, 1.0f);
-				FVector DiffuseColor = Material->GetDiffuseColor(); MaterialConstants.Kd = FVector4(DiffuseColor.X, DiffuseColor.Y, DiffuseColor.Z, 1.0f);
-				FVector SpecularColor = Material->GetSpecularColor(); MaterialConstants.Ks = FVector4(SpecularColor.X, SpecularColor.Y, SpecularColor.Z, 1.0f);
-				MaterialConstants.Ns = Material->GetSpecularExponent();
-				MaterialConstants.Ni = Material->GetRefractionIndex();
-				MaterialConstants.D = Material->GetDissolveFactor();
-				MaterialConstants.MaterialFlags = 0;
-				if (Material->GetDiffuseTexture())  { MaterialConstants.MaterialFlags |= HAS_DIFFUSE_MAP; }
-				if (Material->GetAmbientTexture())  { MaterialConstants.MaterialFlags |= HAS_AMBIENT_MAP; }
-				if (Material->GetSpecularTexture()) { MaterialConstants.MaterialFlags |= HAS_SPECULAR_MAP; }
-				if (Material->GetNormalTexture())   { MaterialConstants.MaterialFlags |= HAS_NORMAL_MAP; }
-				if (Material->GetAlphaTexture())    { MaterialConstants.MaterialFlags |= HAS_ALPHA_MAP; }
-				if (Material->GetBumpTexture())     { MaterialConstants.MaterialFlags |= HAS_BUMP_MAP; }
-				MaterialConstants.Time = MeshComp->GetElapsedTime();
-
+			if (CurrentMaterial != Material) 
+			{
 				// Select appropriate pixel shader based on normal map presence
 				ID3D11PixelShader* SelectedPS = (Material->GetNormalTexture()) ? PSWithNormalMap : PS;
 				FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, SelectedPS, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
 				Pipeline->UpdatePipeline(PipelineInfo);
 
+				FMaterialConstants MaterialConstants = CreateMaterialConstants(Material, MeshComp);
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
 
-				// Unified Lighting Process
-				FLightConstants LightingConstants = {};
-				LightingConstants.HasDirectionalLight = 0;
-				LightingConstants.NumPointLights = 0;
-				LightingConstants.NumSpotLights = 0;
+				SetUpLighting(Context);
 
-				for (ULightComponent* Light : Context.Lights)
-				{
-					if (auto AmbientLight = Cast<UAmbientLightComponent>(Light))
-					{
-						int Idx = LightingConstants.NumAmbientLights;
-						LightingConstants.AmbientLights[Idx].Intensity = AmbientLight->GetIntensity();
-						LightingConstants.AmbientLights[Idx].Color = AmbientLight->GetColor();
-						LightingConstants.NumAmbientLights++;
-					}
-					else if (auto DirectionalLight = Cast<UDirectionalLightComponent>(Light))
-					{
-						LightingConstants.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
-						LightingConstants.DirectionalLight.Color = DirectionalLight->GetColor();
-						LightingConstants.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
-						LightingConstants.HasDirectionalLight = 1;
-					}
-					else if (auto PointLight = Cast<UPointLightComponent>(Light))
-					{
-						FPointLightData& Data = LightingConstants.PointLights[LightingConstants.NumPointLights];
-						Data.Position = PointLight->GetWorldLocation();
-						Data.Radius = PointLight->GetAttenuationRadius();
-						Data.Color = PointLight->GetColor();
-						Data.Intensity = PointLight->GetIntensity();
-						Data.FalloffExtent = PointLight->GetLightFalloffExponent();
-						LightingConstants.NumPointLights++;
-					}
-					else if (auto SpotLight = Cast<USpotLightComponent>(Light))
-					{
-						int Idx = LightingConstants.NumSpotLights;
-						LightingConstants.SpotLights[Idx] = SpotLight->GetSpotInfo();
-						LightingConstants.NumSpotLights++;
-					}
-				}
-				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLighting, LightingConstants);
-				Pipeline->SetConstantBuffer(3, false, ConstantBufferLighting);
-
-				if (UTexture* DiffuseTexture = Material->GetDiffuseTexture())
-				{
-					Pipeline->SetTexture(0, false, DiffuseTexture->GetTextureSRV());
-					Pipeline->SetSamplerState(0, false, DiffuseTexture->GetTextureSampler());
-				}
-				if (UTexture* AmbientTexture = Material->GetAmbientTexture())
-				{
-					Pipeline->SetTexture(1, false, AmbientTexture->GetTextureSRV());
-				}
-				if (UTexture* SpecularTexture = Material->GetSpecularTexture())
-				{
-					Pipeline->SetTexture(2, false, SpecularTexture->GetTextureSRV());
-				}
-				if (UTexture* NormalTexture = Material->GetNormalTexture())
-				{
-					Pipeline->SetTexture(3, false, NormalTexture->GetTextureSRV());
-				}
-				if (UTexture* AlphaTexture = Material->GetAlphaTexture())
-				{
-					Pipeline->SetTexture(4, false, AlphaTexture->GetTextureSRV());
-				}
-
+				BindMaterialTextures(Material);
 				CurrentMaterial = Material;
 			}
 			Pipeline->DrawIndexed(Section.IndexCount, Section.StartIndex, 0);
@@ -200,4 +127,90 @@ void FStaticMeshPass::Release()
 {
 	SafeRelease(ConstantBufferMaterial);
 	SafeRelease(ConstantBufferLighting);
+}
+
+void FStaticMeshPass::SetUpLighting(const FRenderingContext& Context)
+{
+	// Unified Lighting Process
+	FLightConstants LightingConstants = {};
+	LightingConstants.HasDirectionalLight = 0;
+	LightingConstants.NumPointLights = 0;
+	LightingConstants.NumSpotLights = 0;
+
+	for (ULightComponent* Light : Context.Lights)
+	{
+		if (auto* AmbientLight = Cast<UAmbientLightComponent>(Light))
+		{
+			int Idx = LightingConstants.NumAmbientLights;
+			LightingConstants.AmbientLights[Idx].Intensity = AmbientLight->GetIntensity();
+			LightingConstants.AmbientLights[Idx].Color = AmbientLight->GetColor();
+			LightingConstants.NumAmbientLights++;
+		}
+		else if (auto* DirectionalLight = Cast<UDirectionalLightComponent>(Light))
+		{
+			LightingConstants.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
+			LightingConstants.DirectionalLight.Color = DirectionalLight->GetColor();
+			LightingConstants.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
+			LightingConstants.HasDirectionalLight = 1;
+		}
+		else if (auto* PointLight = Cast<UPointLightComponent>(Light))
+		{
+			FPointLightData& Data = LightingConstants.PointLights[LightingConstants.NumPointLights];
+			Data.Position = PointLight->GetWorldLocation();
+			Data.Radius = PointLight->GetAttenuationRadius();
+			Data.Color = PointLight->GetColor();
+			Data.Intensity = PointLight->GetIntensity();
+			Data.FalloffExtent = PointLight->GetLightFalloffExponent();
+			LightingConstants.NumPointLights++;
+		}
+		else if (auto* SpotLight = Cast<USpotLightComponent>(Light))
+		{
+			int Idx = LightingConstants.NumSpotLights;
+			LightingConstants.SpotLights[Idx] = SpotLight->GetSpotInfo();
+			LightingConstants.NumSpotLights++;
+		}
+	}
+	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLighting, LightingConstants);
+	Pipeline->SetConstantBuffer(3, false, ConstantBufferLighting);
+}
+
+FMaterialConstants FStaticMeshPass::CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp)
+{
+	FMaterialConstants Constants = {};
+	Constants.Ka = FVector4(Material->GetAmbientColor(), 1.0f);
+	Constants.Kd = FVector4(Material->GetDiffuseColor(), 1.0f);
+	Constants.Ks = FVector4(Material->GetSpecularColor(), 1.0f);
+	Constants.Ns = Material->GetSpecularExponent();
+	Constants.Ni = Material->GetRefractionIndex();
+	Constants.D	 = Material->GetDissolveFactor();
+	Constants.Time = MeshComp->GetElapsedTime();
+
+	Constants.MaterialFlags = 0;
+	if (Material->GetDiffuseTexture())	Constants.MaterialFlags |= HAS_DIFFUSE_MAP;
+	if (Material->GetAmbientTexture())	Constants.MaterialFlags |= HAS_AMBIENT_MAP;
+	if (Material->GetSpecularTexture())	Constants.MaterialFlags |= HAS_SPECULAR_MAP;
+	if (Material->GetNormalTexture())	Constants.MaterialFlags |= HAS_NORMAL_MAP;
+	if (Material->GetAlphaTexture())	Constants.MaterialFlags |= HAS_ALPHA_MAP;
+	if (Material->GetBumpTexture())		Constants.MaterialFlags |= HAS_BUMP_MAP;
+
+	return Constants;
+}
+
+void FStaticMeshPass::BindMaterialTextures(UMaterial* Material)
+{
+	auto Bind = [&](int Slot, UTexture* Tex, bool bSetSampler = false) {
+		if (Tex)
+		{
+			Pipeline->SetTexture(Slot, false, Tex->GetTextureSRV());
+			if (bSetSampler) {
+				Pipeline->SetSamplerState(Slot, false, Tex->GetTextureSampler());
+			}
+		}
+	};
+
+	Bind(0, Material->GetDiffuseTexture(), true);
+	Bind(1, Material->GetAmbientTexture());
+	Bind(2, Material->GetSpecularTexture());
+	Bind(3, Material->GetNormalTexture());
+	Bind(4, Material->GetAlphaTexture());
 }

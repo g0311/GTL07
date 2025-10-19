@@ -257,7 +257,7 @@ struct alignas(16) FVector4
 	 * @brief FVector의 멤버값을 Param으로 넘기는 생성자
 	 */
 	FVector4(float InX, float InY, float InZ, float InW);
-
+	FVector4(const FVector& InVec, float InW = 1.0f);
 
 	/**
 	 * @brief FVector를 Param으로 넘기는 생성자

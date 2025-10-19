@@ -11,6 +11,10 @@ public:
     void PostExecute(FRenderingContext& Context) override;
     void Release() override;
 
+    void SetUpLighting(const FRenderingContext& Context);
+    FMaterialConstants CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp);
+    void BindMaterialTextures(UMaterial* Material);
+
 private:
     ID3D11VertexShader* VS = nullptr;
     ID3D11PixelShader* PS = nullptr;
