@@ -13,7 +13,7 @@ class FCopyPass;
 class FFXAAPass;
 
 /**
- * @brief Rendering Pipeline 전반을 처리하는 클래스
+ * @brief Rendering Pipeline ?�반??처리?�는 ?�래??
  */
 UCLASS()
 class URenderer : public UObject
@@ -96,6 +96,7 @@ public:
 	// Lighting Model
 	ELightingModel GetLightingModel() const { return CurrentLightingModel; }
 	void SetLightingModel(ELightingModel InModel) { CurrentLightingModel = InModel; }
+	ID3D11VertexShader* GetVertexShaderForLightingModel() const;
 	ID3D11PixelShader* GetPixelShaderForLightingModel(bool bHasNormalMap) const;
 
 private:
@@ -126,10 +127,10 @@ private:
 	ID3D11UnorderedAccessView* TileLightInfoUAV = nullptr;
 	ID3D11ShaderResourceView* TileLightInfoSRV = nullptr;
     
-	// 라이트 데이터 버퍼 (고정 크기)
+	// ?�이???�이??버퍼 (고정 ?�기)
 	ID3D11Buffer* AllLightsBuffer = nullptr;
 	ID3D11ShaderResourceView* AllLightsSRV = nullptr;
-	static constexpr uint32 MAX_LIGHTS = 1024; // 최대 라이트 개수
+	static constexpr uint32 MAX_LIGHTS = 1024; // 최�? ?�이??개수
 
 	
 	FLOAT ClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -163,7 +164,13 @@ private:
 	ID3D11InputLayout* TextureInputLayout = nullptr;
 
 	// UberShader Permutations - All lighting models pre-compiled
-	struct FUberShaderPermutations
+	struct FUberShaderVertexPermutations
+	{
+		ID3D11VertexShader* Default = nullptr;
+		ID3D11VertexShader* Gouraud = nullptr;
+	} UberShaderVertexPermutations;
+	
+	struct FUberShaderPixelPermutations
 	{
 		ID3D11PixelShader* Unlit = nullptr;
 		

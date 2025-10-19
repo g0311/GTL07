@@ -3,7 +3,7 @@
 #include "Render/Renderer/Public/Renderer.h"
 
 void FRenderResourceFactory::CreateVertexShaderAndInputLayout(const wstring& InFilePath,
-                                                              const TArray<D3D11_INPUT_ELEMENT_DESC>& InInputLayoutDescs, ID3D11VertexShader** OutVertexShader, ID3D11InputLayout** OutInputLayout)
+                                                              const TArray<D3D11_INPUT_ELEMENT_DESC>& InInputLayoutDescs, ID3D11VertexShader** OutVertexShader, ID3D11InputLayout** OutInputLayout, const D3D_SHADER_MACRO* InDefines)
 {
 	ID3DBlob* VertexShaderBlob = nullptr;
 	ID3DBlob* ErrorBlob = nullptr;
@@ -14,7 +14,7 @@ void FRenderResourceFactory::CreateVertexShaderAndInputLayout(const wstring& InF
 	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-	HRESULT Result = D3DCompileFromFile(InFilePath.data(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", CompileFlags, 0, &VertexShaderBlob, &ErrorBlob);
+	HRESULT Result = D3DCompileFromFile(InFilePath.data(), InDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", CompileFlags, 0, &VertexShaderBlob, &ErrorBlob);
 	if (FAILED(Result))
 	{
 		if (ErrorBlob) { OutputDebugStringA(static_cast<char*>(ErrorBlob->GetBufferPointer())); SafeRelease(ErrorBlob); }
@@ -28,6 +28,28 @@ void FRenderResourceFactory::CreateVertexShaderAndInputLayout(const wstring& InF
 
 	SafeRelease(VertexShaderBlob);
 }
+void FRenderResourceFactory::CreateVertexShader(const wstring& InFilePath, ID3D11VertexShader** OutVertexShader, const D3D_SHADER_MACRO* InDefines)
+{
+	ID3DBlob* VertexShaderBlob = nullptr;
+	ID3DBlob* ErrorBlob = nullptr;
+
+	UINT CompileFlags = 0;
+#if defined(_DEBUG)
+	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
+	HRESULT Result = D3DCompileFromFile(InFilePath.data(), InDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", CompileFlags, 0, &VertexShaderBlob, &ErrorBlob);
+	if (FAILED(Result))
+	{
+		if (ErrorBlob) { OutputDebugStringA(static_cast<char*>(ErrorBlob->GetBufferPointer())); SafeRelease(ErrorBlob); }
+		SafeRelease(VertexShaderBlob);
+		return;
+	}
+
+	URenderer::GetInstance().GetDevice()->CreateVertexShader(VertexShaderBlob->GetBufferPointer(), VertexShaderBlob->GetBufferSize(), nullptr, OutVertexShader);
+	SafeRelease(VertexShaderBlob);
+}
+
 
 ID3D11Buffer* FRenderResourceFactory::CreateVertexBuffer(FNormalVertex* InVertices, uint32 InByteWidth)
 {
@@ -98,7 +120,7 @@ ID3D11SamplerState* FRenderResourceFactory::CreateSamplerState(D3D11_FILTER InFi
 	ID3D11SamplerState* SamplerState = nullptr;
 	if (FAILED(URenderer::GetInstance().GetDevice()->CreateSamplerState(&SamplerDesc, &SamplerState)))
 	{
-		UE_LOG_ERROR("Renderer: 샘플러 스테이트 생성 실패");
+		UE_LOG_ERROR("Renderer: ?�플???�테?�트 ?�성 ?�패");
 		return nullptr;
 	}
 	return SamplerState;
@@ -106,7 +128,7 @@ ID3D11SamplerState* FRenderResourceFactory::CreateSamplerState(D3D11_FILTER InFi
 
 ID3D11SamplerState* FRenderResourceFactory::CreateFXAASamplerState()
 {
-	// FXAA샘플러 상태 생성
+	// FXAA?�플???�태 ?�성
 	D3D11_SAMPLER_DESC SamplerDesc = {};
 	SamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	SamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -119,7 +141,7 @@ ID3D11SamplerState* FRenderResourceFactory::CreateFXAASamplerState()
 	ID3D11SamplerState* FXAASamplerState = nullptr;
 	if (FAILED(URenderer::GetInstance().GetDevice()->CreateSamplerState(&SamplerDesc, &FXAASamplerState)))
 	{
-		UE_LOG_ERROR("Renderer: 샘플러 스테이트 생성 실패");
+		UE_LOG_ERROR("Renderer: ?�플???�테?�트 ?�성 ?�패");
 		return nullptr;
 	}
 	return FXAASamplerState;
