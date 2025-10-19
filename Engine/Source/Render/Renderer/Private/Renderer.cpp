@@ -236,7 +236,7 @@ void URenderer::CreateTextureShader()
 		{ nullptr, nullptr }
 	};
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Gouraud, GouraudDefines);
-	FRenderResourceFactory::CreateVertexShader(L"Asset/Shader/UberShader.hlsl", &UberShaderVertexPermutations.Gouraud, GouraudDefines);
+	//FRenderResourceFactory::CreateVertexShader(L"Asset/Shader/UberShader.hlsl", &UberShaderVertexPermutations.Gouraud, GouraudDefines);
 
 	D3D_SHADER_MACRO GouraudNormalDefines[] = {
 		{ "LIGHTING_MODEL_GOURAUD", "1" },

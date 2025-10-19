@@ -27,6 +27,10 @@ void FStaticMeshPass::PreExecute(FRenderingContext& Context)
 	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
 	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
 	Pipeline->SetRenderTargets(2, RTVs, DSV);
+
+	// TODO : Set Normal map version
+	ID3D11PixelShader* InPS = Renderer.GetPixelShaderForLightingModel(false);
+	PS = InPS;
 }
 
 void FStaticMeshPass::Execute(FRenderingContext& Context)

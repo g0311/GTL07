@@ -4,8 +4,9 @@
 class FRenderResourceFactory
 {
 public:
-	static void CreateVertexShaderAndInputLayout(const wstring& InFilePath, const TArray<D3D11_INPUT_ELEMENT_DESC>& InInputLayoutDescriptions,
-												 ID3D11VertexShader** OutVertexShader, ID3D11InputLayout** OutInputLayout);
+	static void CreateVertexShaderAndInputLayout(const wstring& InFilePath,
+		const TArray<D3D11_INPUT_ELEMENT_DESC>& InInputLayoutDescs, ID3D11VertexShader** OutVertexShader,
+		ID3D11InputLayout** OutInputLayout, const D3D_SHADER_MACRO* InDefines =nullptr);
 	static ID3D11Buffer* CreateVertexBuffer(FNormalVertex* InVertices, uint32 InByteWidth);
 	static ID3D11Buffer* CreateVertexBuffer(FVector* InVertices, uint32 InByteWidth, bool bCpuAccess);
 	static ID3D11Buffer* CreateIndexBuffer(const void* InIndices, uint32 InByteWidth);
