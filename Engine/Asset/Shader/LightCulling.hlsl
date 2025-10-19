@@ -272,24 +272,28 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         // 스포트 라이트: 원뿔-프러스텀 교차 검사를 수행
         else if (lightType == LIGHT_TYPE_SPOT)
         {
-            // 원뿔을 감싸는 바운딩 스피어로 근사하여 1차 검사를 수행
-            
+            // 원뿔을 감싸는 바운딩 스피어로 근사하여 검사
             // 뷰 공간에서 원뿔 지오메트리 계산
             float3 lightDirView = normalize(mul(View, float4(light.direction.xyz, 0.0)).xyz); // 뷰 공간에서의 라이트 방향
-            float cosInnerAngle = light.angles.x; // 내부 원뿔 각도의 코사인 값
             float cosOuterAngle = light.angles.y; // 외부 원뿔 각도의 코사인 값
+
+            // light.position.w (lightRadius)는 원뿔의 높이(range)
+            float coneHeight = lightRadius;
             
-            // 각도와 반지름을 이용해 원뿔 끝점 계산
-            // 삼각함수 사용: 높이 = 밑변 / cos(각도), 여기서 밑변은 반지름
-            float coneHeight = lightRadius / cosOuterAngle;
-            // 원뿔 밑면 원의 중심 찾기
-            float3 coneEnd = lightPosView.xyz + lightDirView * coneHeight; // 밑면 중심의 뷰 공간 좌표
+            // tan(angle) = sqrt(1 - cos^2) / cos
+            float tanOuterAngle = sqrt(1.0f - cosOuterAngle * cosOuterAngle) / cosOuterAngle;
+            float baseRadius = coneHeight * tanOuterAngle;
+
+            // 원뿔 밑면 원의 중심
+            float3 coneEnd = lightPosView.xyz + lightDirView * coneHeight;
             
-            // 원뿔을 감싸는 바운딩 스피어 계산
-            float3 sphereCenter = (lightPosView.xyz + coneEnd) * 0.5;
-            // 반지름은 피타고라스 정리를 사용해 정확히 계산
-            float halfHeight = length(lightPosView.xyz - coneEnd) * 0.5;
-            float sphereRadius = sqrt(halfHeight * halfHeight + lightRadius * lightRadius); // 피타고라스 정리
+            // 바운딩 스피어의 중심은 원뿔의 꼭짓점과 밑면 중심의 중간입니다.
+            float3 sphereCenter = (lightPosView.xyz + coneEnd) * 0.5f;
+            
+            // 바운딩 스피어의 반지름은 중심점에서 원뿔 꼭짓점까지의 거리와 같습니다.
+            // (피타고라스 정리로 계산)
+            float halfHeight = coneHeight * 0.5f;
+            float sphereRadius = sqrt(halfHeight * halfHeight + baseRadius * baseRadius);
             
             [unroll]
             for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
@@ -299,42 +303,6 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
                 {
                     isVisible = false;
                     break;
-                }
-            }
-            
-            // 원뿔 검사: 타일의 4개 코너 모두 검사
-            if (isVisible)
-            {
-                // bias 추가로 원뿔 꼭지점 근처의 수치 오차 방지
-                float biasedCosOuterAngle = cosOuterAngle; // 약간의 여유 공간
-                
-                // 타일의 4개 코너 위치를 라이트 z 깊이에서 계산
-                float lightDepth = abs(lightPosView.z);
-                float3 corner1 = normalize(c1.xyz) * lightDepth;
-                float3 corner2 = normalize(c2.xyz) * lightDepth;
-                float3 corner3 = normalize(c3.xyz) * lightDepth;
-                float3 corner4 = normalize(c4.xyz) * lightDepth;
-                
-                // 4개 코너 중 하나라도 원뿔 안에 있으면 통과
-                bool anyCornerInside = false;
-                
-                float3 toCorner1 = normalize(corner1 - lightPosView.xyz);
-                float3 toCorner2 = normalize(corner2 - lightPosView.xyz);
-                float3 toCorner3 = normalize(corner3 - lightPosView.xyz);
-                float3 toCorner4 = normalize(corner4 - lightPosView.xyz);
-
-                float EPS = 1e-5;
-                if (dot(lightDirView, toCorner1)+EPS >= biasedCosOuterAngle ||
-                    dot(lightDirView, toCorner2)+EPS >= biasedCosOuterAngle ||
-                    dot(lightDirView, toCorner3)+EPS >= biasedCosOuterAngle ||
-                    dot(lightDirView, toCorner4)+EPS >= biasedCosOuterAngle)
-                {
-                    anyCornerInside = true;
-                }
-                
-                if (!anyCornerInside)
-                {
-                    isVisible = false;
                 }
             }
 
