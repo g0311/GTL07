@@ -208,10 +208,12 @@ void FStaticMeshPass::SetUpTiledLighting(const FRenderingContext& Context)
 	tiledParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
 	tiledParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
 	tiledParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
-	
+	tiledParams.NumLights = static_cast<uint32>(Context.Lights.size());  // Gouraud용 전체 라이트 개수
+	tiledParams._padding = 0;
+
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
 	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting);
-	Pipeline->SetConstantBuffer(3, true, ConstantBufferTiledLighting); 
+	Pipeline->SetConstantBuffer(3, true, ConstantBufferTiledLighting);
 }
 
 void FStaticMeshPass::BindTiledLightingBuffers()

@@ -108,6 +108,8 @@ cbuffer TiledLightingParams : register(b3)
 {
     uint2 ViewportOffset;   // 뷰포트 오프셋
     uint2 ViewportSize;     // 뷰포트 크기
+    uint NumLights;         // 씬의 전체 라이트 개수 (Gouraud용)
+    uint _padding;          // 16바이트 정렬
 };
 // Light Culling시스템에서 사용하는 Structured Buffer
 StructuredBuffer<Light> AllLights : register(t13);             // 라이트 데이터 버퍼
@@ -455,27 +457,17 @@ float3 CalculateSingleSpotLight(FSpotLightInfo spotLight, float3 WorldPos, float
     return Diffuse + Specular;
 }
 
-// Tiled Lighting 메인 계산 함수 (기존 함수들 재사용)
-float3 CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess, uint2 viewportOffset, uint2 viewportSize)
+// Gouraud용: 모든 라이트를 순회하는 함수 (Tiled Culling 없이)
+float3 CalculateAllLightsGouraud(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
 {
     float3 AccumulatedColor = float3(0, 0, 0);
-    
-    // 현재 픽셀이 속한 타일의 인덱스를 계산
-    uint tileArrayIndex = GetCurrentTileArrayIndex(svPosition, viewportOffset, viewportSize);
-    
-    // 타일의 라이트 정보 가져오기
-    uint2 tileLightInfo = TileLightInfo[tileArrayIndex];
-    uint lightIndexOffset = tileLightInfo.x;
-    uint lightCount = tileLightInfo.y;
-    
-    // 타일에 속한 모든 라이트를 순회하면서 계산
-    for (uint i = 0; i < lightCount; ++i)
+
+    // 모든 라이트를 순회
+    for (uint i = 0; i < NumLights; ++i)
     {
-        uint lightIndex = LightIndexBuffer[lightIndexOffset + i];
-        Light light = AllLights[lightIndex];
-        
+        Light light = AllLights[i];
         uint lightType = (uint)light.direction.w;
-        
+
         if (lightType == LIGHT_TYPE_AMBIENT)
         {
             FAmbientLightInfo ambientLight = ConvertToAmbientLight(light);
@@ -497,7 +489,53 @@ float3 CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNo
             AccumulatedColor += CalculateSingleSpotLight(spotLight, WorldPos, WorldNormal, ViewDir, Kd, Ks, Shininess);
         }
     }
-    
+
+    return AccumulatedColor;
+}
+
+// Tiled Lighting 메인 계산 함수 (PS용 - 최적화됨)
+float3 CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess, uint2 viewportOffset, uint2 viewportSize)
+{
+    float3 AccumulatedColor = float3(0, 0, 0);
+
+    // 현재 픽셀이 속한 타일의 인덱스를 계산
+    uint tileArrayIndex = GetCurrentTileArrayIndex(svPosition, viewportOffset, viewportSize);
+
+    // 타일의 라이트 정보 가져오기
+    uint2 tileLightInfo = TileLightInfo[tileArrayIndex];
+    uint lightIndexOffset = tileLightInfo.x;
+    uint lightCount = tileLightInfo.y;
+
+    // 타일에 속한 모든 라이트를 순회하면서 계산
+    for (uint i = 0; i < lightCount; ++i)
+    {
+        uint lightIndex = LightIndexBuffer[lightIndexOffset + i];
+        Light light = AllLights[lightIndex];
+
+        uint lightType = (uint)light.direction.w;
+
+        if (lightType == LIGHT_TYPE_AMBIENT)
+        {
+            FAmbientLightInfo ambientLight = ConvertToAmbientLight(light);
+            AccumulatedColor += CalculateSingleAmbientLight(ambientLight, Kd);
+        }
+        else if (lightType == LIGHT_TYPE_DIRECTIONAL)
+        {
+            FDirectionalLightInfo directionalLight = ConvertToDirectionalLight(light);
+            AccumulatedColor += CalculateSingleDirectionalLight(directionalLight, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+        else if (lightType == LIGHT_TYPE_POINT)
+        {
+            FPointLightInfo pointLight = ConvertToPointLight(light);
+            AccumulatedColor += CalculateSinglePointLight(pointLight, WorldPos, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+        else if (lightType == LIGHT_TYPE_SPOT)
+        {
+            FSpotLightInfo spotLight = ConvertToSpotLight(light);
+            AccumulatedColor += CalculateSingleSpotLight(spotLight, WorldPos, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+    }
+
     return AccumulatedColor;
 }
 
@@ -527,11 +565,12 @@ PS_INPUT mainVS(VS_INPUT Input)
     float3 kD = Kd.rgb;
     float3 kS = Ks.rgb;
 
-    // Tiled Lighting 계산 (버텍스 셰이더에서)
-    float3 TiledLightColor = CalculateTiledLighting(Output.Position, Output.WorldPosition, Normal, ViewDir, kD, kS, Ns, ViewportOffset, ViewportSize);
+    // Gouraud: 모든 라이트를 순회 (Tiled Culling 사용 안 함)
+    // 이것이 진정한 Gouraud Shading - 버텍스 단위로 계산하므로 밴딩 현상 발생
+    float3 LightColor = CalculateAllLightsGouraud(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
 
     // 입력 버텍스 컬러와 라이팅 결과를 블렌드
-    Output.Color.rgb = Input.Color.rgb * TiledLightColor;
+    Output.Color.rgb = LightColor;
     Output.Color.a = Input.Color.a;
 #endif
     return Output;
@@ -541,14 +580,21 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
 #if LIGHTING_MODEL_GOURAUD
+    // Gouraud: VS에서 계산된 라이팅을 그대로 사용
     Output.SceneColor = Input.Color;
+
     // 텍스처가 있다면 곱하기
     if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
         float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
         Output.SceneColor.rgb *= TexColor.rgb;
         Output.SceneColor.a = TexColor.a;
-    };
+    }
+
+    // Normal 데이터 출력
+    float3 Normal = CalculateWorldNormal(Input);
+    float3 EncodedNormal = Normal * 0.5f + 0.5f;
+    Output.NormalData = float4(EncodedNormal, 1.0f);
 #elif LIGHTING_MODEL_UNLIT
     // TODO : 원래는 Albedo로 해야하지만, 현재는 DiffuseTexture = Albedo임
     Output.SceneColor= float4(0.5, 0.5, 0.5, 1);
