@@ -44,14 +44,16 @@ struct FCameraConstants
 
 struct FMaterialConstants
 {
-	FVector4 Ka;
-	FVector4 Kd;
-	FVector4 Ks;
-	float Ns;
-	float Ni;
-	float D;
-	uint32 MaterialFlags;
-	float Time; // Time in seconds
+	FVector4 Ka;            // 16 bytes
+	FVector4 Kd;            // 16 bytes
+	FVector4 Ks;            // 16 bytes
+	float Ns;               // 4 bytes
+	float Ni;               // 4 bytes
+	float D;                // 4 bytes
+	uint32 MaterialFlags;   // 4 bytes (총 16 bytes)
+	float Time;             // 4 bytes
+	float HeightScale;      // 4 bytes (POM depth scale)
+	FVector2 HeightTextureSize; // 8 bytes (Height map resolution)
 };
 
 #define MAX_POINT_LIGHTS 8
