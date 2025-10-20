@@ -139,7 +139,6 @@ FDecalPass::FDecalPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCame
 {
     ConstantBufferPrim = FRenderResourceFactory::CreateConstantBuffer<FModelConstants>();
     ConstantBufferDecal = FRenderResourceFactory::CreateConstantBuffer<FDecalConstants>();
-	ConstantBufferTiledLighting = FRenderResourceFactory::CreateConstantBuffer<FTiledLightingParams>();
 }
 
 void FDecalPass::PreExecute(FRenderingContext& Context)
@@ -164,9 +163,9 @@ void FDecalPass::Execute(FRenderingContext& Context)
     Pipeline->UpdatePipeline(PipelineInfo);
     Pipeline->SetConstantBuffer(1, true, ConstantBufferCamera);
 
-    // Set up and bind Tiled Lighting buffers before drawing decals
-    SetUpTiledLighting(Context);
-    BindTiledLightingBuffers();
+    // Set up lighting buffers once for all passes
+    URenderer::GetInstance().SetUpTiledLighting(Context);
+    URenderer::GetInstance().BindTiledLightingBuffers();
 
     // --- Decals Stats ---
     uint32 RenderedDecal = 0;
@@ -262,9 +261,7 @@ void FDecalPass::Release()
 {
     SafeRelease(ConstantBufferPrim);
     SafeRelease(ConstantBufferDecal);
-	SafeRelease(ConstantBufferTiledLighting);
 }
-
 void FDecalPass::Query(FOctree* InOctree, UDecalComponent* InDecal, TArray<UPrimitiveComponent*>& OutPrimitives)
 {
     /** @todo Use polymorphism to gracefully handle collsion between decal and octree. For now, use explicit casting. */
@@ -286,35 +283,4 @@ void FDecalPass::Query(FOctree* InOctree, UDecalComponent* InDecal, TArray<UPrim
     {
         Query(Child, InDecal, OutPrimitives);
     }
-}
-
-void FDecalPass::SetUpTiledLighting(const FRenderingContext& Context)
-{
-    // Tiled Lighting용 cbuffer 설정
-    FTiledLightingParams tiledParams = {};
-    tiledParams.ViewportOffset[0] = static_cast<uint32>(Context.Viewport.TopLeftX);
-    tiledParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
-    tiledParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
-    tiledParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
-    tiledParams.NumLights = static_cast<uint32>(Context.Lights.size());  // Gouraud용 전체 라이트 개수
-    tiledParams._padding = 0;
-
-    FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
-    Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting);
-    Pipeline->SetConstantBuffer(3, true, ConstantBufferTiledLighting);
-}
-
-void FDecalPass::BindTiledLightingBuffers()
-{
-    // UberShader에서 사용할 Light Culling Structured Buffer SRV 바인딩
-    const auto& Renderer = URenderer::GetInstance();
-
-    // AllLights: t13, LightIndexBuffer: t14, TileLightInfo: t15
-    // VS와 PS 모두에 바인딩 (Gouraud 모드에서는 VS에서 라이팅 계산)
-    Pipeline->SetTexture(13, true, Renderer.GetAllLightsSRV());
-    Pipeline->SetTexture(13, false, Renderer.GetAllLightsSRV());
-    Pipeline->SetTexture(14, true, Renderer.GetLightIndexBufferSRV());
-    Pipeline->SetTexture(14, false, Renderer.GetLightIndexBufferSRV());
-    Pipeline->SetTexture(15, true, Renderer.GetTileLightInfoSRV());
-    Pipeline->SetTexture(15, false, Renderer.GetTileLightInfoSRV());
 }

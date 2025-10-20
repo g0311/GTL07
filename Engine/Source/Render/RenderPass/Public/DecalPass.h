@@ -38,5 +38,4 @@ private:
 
     ID3D11Buffer* ConstantBufferDecal = nullptr;
     ID3D11Buffer* ConstantBufferPrim = nullptr;
-    ID3D11Buffer* ConstantBufferTiledLighting = nullptr;
 };

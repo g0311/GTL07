@@ -556,6 +556,34 @@ void URenderer::RenderBegin() const
     DeviceResources->UpdateViewport();
 }
 
+void URenderer::SetUpTiledLighting(const FRenderingContext& Context)
+{
+	// Tiled Lighting용 cbuffer 설정
+	FTiledLightingParams tiledParams = {};
+	tiledParams.ViewportOffset[0] = static_cast<uint32>(Context.Viewport.TopLeftX);
+	tiledParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
+	tiledParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
+	tiledParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
+	
+	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
+	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting);
+	Pipeline->SetConstantBuffer(3, true, ConstantBufferTiledLighting); 
+}
+
+void URenderer::BindTiledLightingBuffers()
+{
+	// UberShader에서 사용할 Light Culling Structured Buffer SRV 바인딩
+
+	// AllLights: t13, LightIndexBuffer: t14, TileLightInfo: t15
+	// VS와 PS 모두에 바인딩 (Gouraud 모드에서는 VS에서 라이팅 계산)
+	Pipeline->SetTexture(13, true, GetAllLightsSRV());
+	Pipeline->SetTexture(13, false, GetAllLightsSRV());
+	Pipeline->SetTexture(14, true, GetLightIndexBufferSRV());
+	Pipeline->SetTexture(14, false, GetLightIndexBufferSRV());
+	Pipeline->SetTexture(15, true, GetTileLightInfoSRV());
+	Pipeline->SetTexture(15, false, GetTileLightInfoSRV());
+}
+
 void URenderer::RenderLevel(FViewportClient& InViewportClient)
 {
 	const ULevel* CurrentLevel = GWorld->GetLevel();
@@ -717,6 +745,7 @@ void URenderer::CreateConstantBuffers()
 	ConstantBufferModels = FRenderResourceFactory::CreateConstantBuffer<FModelConstants>();
 	ConstantBufferColor = FRenderResourceFactory::CreateConstantBuffer<FVector4>();
 	ConstantBufferViewProj = FRenderResourceFactory::CreateConstantBuffer<FCameraConstants>();
+	ConstantBufferTiledLighting = FRenderResourceFactory::CreateConstantBuffer<FTiledLightingParams>();
 }
 
 void URenderer::CreateLightBuffers()
@@ -821,6 +850,7 @@ void URenderer::ReleaseConstantBuffers()
 	SafeRelease(ConstantBufferModels);
 	SafeRelease(ConstantBufferColor);
 	SafeRelease(ConstantBufferViewProj);
+	SafeRelease(ConstantBufferTiledLighting);
 }
 
 void URenderer::ReleaseLightBuffers()

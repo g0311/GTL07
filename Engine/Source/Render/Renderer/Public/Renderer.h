@@ -99,6 +99,9 @@ public:
 	void SetLightingModel(ELightingModel InModel) { CurrentLightingModel = InModel; }
 	ID3D11VertexShader* GetVertexShaderForLightingModel() const;
 	ID3D11PixelShader* GetPixelShaderForLightingModel(bool bHasNormalMap) const;
+	
+	void SetUpTiledLighting(const FRenderingContext& Context);
+	void BindTiledLightingBuffers();
 
 private:
 	UPipeline* Pipeline = nullptr;
@@ -116,8 +119,7 @@ private:
 	ID3D11Buffer* ConstantBufferModels = nullptr;
 	ID3D11Buffer* ConstantBufferViewProj = nullptr;
 	ID3D11Buffer* ConstantBufferColor = nullptr;
-
-	// Light Structured Buffers
+	ID3D11Buffer* ConstantBufferTiledLighting = nullptr;
 	
 	// UAV Buffers for light lists
 	ID3D11Buffer* LightIndexBuffer = nullptr;

@@ -13,8 +13,6 @@ public:
 
     FMaterialConstants CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp);
     void BindMaterialTextures(UMaterial* Material);
-    void SetUpTiledLighting(const FRenderingContext& Context); // Tiled Lighting cbuffer 설정
-    void BindTiledLightingBuffers(); // Tiled Lighting을 위한 Structured Buffer SRV 바인딩
 
 private:
     ID3D11VertexShader* VS = nullptr;
@@ -24,5 +22,4 @@ private:
     ID3D11DepthStencilState* DS = nullptr;
 
     ID3D11Buffer* ConstantBufferMaterial = nullptr;
-	ID3D11Buffer* ConstantBufferTiledLighting = nullptr; // Tiled Lighting 용 cbuffer
 };
