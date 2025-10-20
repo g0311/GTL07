@@ -11,6 +11,9 @@ public:
     UPointLightComponent();
     virtual ~UPointLightComponent() override;
 
+	void Serialize(const bool bInIsLoading, JSON& InOutHandle) override;
+	UObject* Duplicate() override;
+
 	virtual UClass* GetSpecificWidgetClass() const override;
 
     float GetAttenuationRadius() const { return AttenuationRadius; }

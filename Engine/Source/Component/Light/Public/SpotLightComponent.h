@@ -9,6 +9,9 @@ class USpotLightComponent : public ULightComponent
 	DECLARE_CLASS(USpotLightComponent, ULightComponent)
 
 public:
+	void Serialize(const bool bInIsLoading, JSON& InOutHandle) override;
+	UObject* Duplicate() override;
+
 	UClass* GetSpecificWidgetClass() const override;
 	
 	void SetRange(float InRange) { Range = InRange; }
