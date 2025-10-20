@@ -2,7 +2,6 @@
 #include "Render/RenderPass/Public/LightCullingPass.h"
 #include "Component/Light/Public/PointLightComponent.h"
 #include "Component/Light/Public/SpotLightComponent.h"
-#include "Component/Public/FakePointLightComponent.h"
 #include "Editor/Public/Camera.h"
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/Renderer/Public/RenderResourceFactory.h"

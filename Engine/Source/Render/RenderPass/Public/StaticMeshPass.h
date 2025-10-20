@@ -18,7 +18,6 @@ public:
     void PostExecute(FRenderingContext& Context) override;
     void Release() override;
 
-    void SetUpLighting(const FRenderingContext& Context);
     FMaterialConstants CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp);
     void BindMaterialTextures(UMaterial* Material);
     void SetUpTiledLighting(const FRenderingContext& Context); // Tiled Lighting cbuffer 설정
@@ -32,6 +31,5 @@ private:
     ID3D11DepthStencilState* DS = nullptr;
 
     ID3D11Buffer* ConstantBufferMaterial = nullptr;
-	ID3D11Buffer* ConstantBufferLighting = nullptr;
 	ID3D11Buffer* ConstantBufferTiledLighting = nullptr; // Tiled Lighting 용 cbuffer
 };

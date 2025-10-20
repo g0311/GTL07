@@ -10,7 +10,10 @@
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Texture/Public/Texture.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
-
+#include "Component/Light/Public/AmbientLightComponent.h"
+#include "Component/Light/Public/PointLightComponent.h"
+#include "Component/Light/Public/SpotLightComponent.h"
+#include "Component/Light/Public/DirectionalLightComponent.h"
 
 namespace
 {
@@ -272,7 +275,6 @@ void FDecalPass::Query(FOctree* InOctree, UDecalComponent* InDecal, TArray<UPrim
     {
         return;
     }
-
     
     for (auto Child : InOctree->GetChildren())
     {
