@@ -128,15 +128,15 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
         
         if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Light))
         {
-            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, -1.f);
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 0.0f);
             lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Ambient));
             lightData.Angles = FVector4(0, 0, 0, 0);
         }
         else if (UDirectionalLightComponent* Directional = Cast<UDirectionalLightComponent>(Light))
         {
             FVector direction = Directional->GetForwardVector();
-            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 1.0f);
-            lightData.Direction = FVector4(direction.X, direction.Y, direction.Z,  1.0f);
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 0.0f);
+            lightData.Direction = FVector4(direction.X, direction.Y, direction.Z,  static_cast<float>(ELightType::Directional));
             lightData.Angles = FVector4(0, 0, 0, 0);
         }
         else if (UPointLightComponent* Point = Cast<UPointLightComponent>(Light))
@@ -152,15 +152,9 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
             // 스포트 라이트 컴포넌트의 GetSpotInfo() 메서드 사용
             FSpotLightData spotInfo = Spot->GetSpotInfo();
             
-            lightData.Position = FVector4(spotInfo.Position.X, spotInfo.Position.Y, spotInfo.Position.Z, Spot->GetRange());
+            lightData.Position = FVector4(spotInfo.Position.X, spotInfo.Position.Y, spotInfo.Position.Z, 0.0f);
             lightData.Direction = FVector4(spotInfo.Direction.X, spotInfo.Direction.Y, spotInfo.Direction.Z, static_cast<float>(ELightType::Spot));
-            
-            // Spot Light: z에 falloff, w에 InvRange2 저장
-            float falloff = Spot->GetFallOff(); // Spot Light의 falloff 가져오기
-            float range = Spot->GetRange();
-            float invRange2 = (range > 0) ? (1.0f / (range * range)) : 0.0f;
-            
-            lightData.Angles = FVector4(spotInfo.CosInner, spotInfo.CosOuter, falloff, invRange2);
+            lightData.Angles = FVector4(spotInfo.CosInner, spotInfo.CosOuter, spotInfo.Falloff, spotInfo.InvRange2);
         }
         allLights.push_back(lightData);
     }

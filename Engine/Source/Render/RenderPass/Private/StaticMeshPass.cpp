@@ -51,6 +51,10 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 	Pipeline->SetConstantBuffer(0, true, ConstantBufferModel);
 	Pipeline->SetConstantBuffer(1, true, ConstantBufferCamera);
 	Pipeline->SetConstantBuffer(1, false, ConstantBufferCamera);
+
+	// Tiled Lighting 설정을 Execute 시작 시 미리 바인딩
+	SetUpTiledLighting(Context);
+	BindTiledLightingBuffers();
 	
 	// Sort Static Mesh Components
 	if (!(Context.ShowFlags & EEngineShowFlags::SF_StaticMesh)) { return; }
@@ -84,8 +88,20 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 		FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferModel, ModelConstants);
 		Pipeline->SetConstantBuffer(0, true, ConstantBufferModel);
 
-		if (MeshAsset->MaterialInfo.empty() || MeshComp->GetStaticMesh()->GetNumMaterials() == 0) 
+		if (MeshAsset->MaterialInfo.empty() || MeshComp->GetStaticMesh()->GetNumMaterials() == 0)
 		{
+			// Material이 없어도 파이프라인은 설정해야 함
+			FPipelineInfo PipelineInfo = { InputLayout, VS, RS, DS, PS, nullptr, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST };
+			Pipeline->UpdatePipeline(PipelineInfo);
+
+			// 기본 Material 상수 설정
+			FMaterialConstants MaterialConstants = {};
+			MaterialConstants.Kd = FVector4(0.5f, 0.5f, 0.5f, 1.0f);
+			MaterialConstants.MaterialFlags = 0;
+			FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
+			Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
+			Pipeline->SetConstantBuffer(2, true, ConstantBufferMaterial);
+
 			Pipeline->DrawIndexed(MeshAsset->Indices.size(), 0, 0);
 			continue;
 		}
@@ -111,11 +127,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				Pipeline->SetConstantBuffer(2, true, ConstantBufferMaterial);
 
 				BindMaterialTextures(Material);
-				
-				// Tiled Lighting 설정 및 Structured Buffer 바인딩
-				SetUpTiledLighting(Context);
-				BindTiledLightingBuffers();
-				
+
 				CurrentMaterial = Material;
 			}
 			Pipeline->DrawIndexed(Section.IndexCount, Section.StartIndex, 0);
@@ -132,10 +144,13 @@ void FStaticMeshPass::PostExecute(FRenderingContext& Context)
 	Pipeline->SetTexture(3, false, nullptr);
 	Pipeline->SetTexture(4, false, nullptr);
 	Pipeline->SetTexture(5, false, nullptr);
-	
-	// Tiled Lighting Structured Buffer SRV 언바인딩
+
+	// Tiled Lighting Structured Buffer SRV 언바인딩 (VS와 PS 모두)
+	Pipeline->SetTexture(13, true, nullptr);
 	Pipeline->SetTexture(13, false, nullptr);
+	Pipeline->SetTexture(14, true, nullptr);
 	Pipeline->SetTexture(14, false, nullptr);
+	Pipeline->SetTexture(15, true, nullptr);
 	Pipeline->SetTexture(15, false, nullptr);
 }
 
@@ -154,6 +169,23 @@ FMaterialConstants FStaticMeshPass::CreateMaterialConstants(UMaterial* Material,
 	Constants.Ni = Material->GetRefractionIndex();
 	Constants.D	 = Material->GetDissolveFactor();
 	Constants.Time = MeshComp->GetElapsedTime();
+
+	// POM: HeightScale (0.02~0.1 권장)
+	Constants.HeightScale = 0.05f; // Default value
+
+	// POM: Height Texture Size for normalization
+	UTexture* BumpTexture = Material->GetBumpTexture();
+	if (BumpTexture)
+	{
+		Constants.HeightTextureSize.X = static_cast<float>(BumpTexture->GetWidth());
+		Constants.HeightTextureSize.Y = static_cast<float>(BumpTexture->GetHeight());
+	}
+	else
+	{
+		// Default to 1024x1024 if no bump texture
+		Constants.HeightTextureSize.X = 1024.0f;
+		Constants.HeightTextureSize.Y = 1024.0f;
+	}
 
 	Constants.MaterialFlags = 0;
 	if (Material->GetDiffuseTexture())	Constants.MaterialFlags |= HAS_DIFFUSE_MAP;
@@ -183,6 +215,7 @@ void FStaticMeshPass::BindMaterialTextures(UMaterial* Material)
 	Bind(2, Material->GetSpecularTexture());
 	Bind(3, Material->GetNormalTexture());
 	Bind(4, Material->GetAlphaTexture());
+	Bind(5, Material->GetBumpTexture()); // Height Map for POM
 }
 
 void FStaticMeshPass::SetUpTiledLighting(const FRenderingContext& Context)
@@ -193,18 +226,25 @@ void FStaticMeshPass::SetUpTiledLighting(const FRenderingContext& Context)
 	tiledParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
 	tiledParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
 	tiledParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
-	
+	tiledParams.NumLights = static_cast<uint32>(Context.Lights.size());  // Gouraud용 전체 라이트 개수
+	tiledParams._padding = 0;
+
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
-	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting); // b3 레지스터에 바인딩
+	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting);
+	Pipeline->SetConstantBuffer(3, true, ConstantBufferTiledLighting);
 }
 
 void FStaticMeshPass::BindTiledLightingBuffers()
 {
 	// UberShader에서 사용할 Light Culling Structured Buffer SRV 바인딩
 	const auto& Renderer = URenderer::GetInstance();
-	
+
 	// AllLights: t13, LightIndexBuffer: t14, TileLightInfo: t15
+	// VS와 PS 모두에 바인딩 (Gouraud 모드에서는 VS에서 라이팅 계산)
+	Pipeline->SetTexture(13, true, Renderer.GetAllLightsSRV());
 	Pipeline->SetTexture(13, false, Renderer.GetAllLightsSRV());
+	Pipeline->SetTexture(14, true, Renderer.GetLightIndexBufferSRV());
 	Pipeline->SetTexture(14, false, Renderer.GetLightIndexBufferSRV());
+	Pipeline->SetTexture(15, true, Renderer.GetTileLightInfoSRV());
 	Pipeline->SetTexture(15, false, Renderer.GetTileLightInfoSRV());
 }

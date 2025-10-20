@@ -517,17 +517,41 @@ void UActorDetailWidget::RenderTransformEdit()
 
 	// Relative Position
 	FVector ComponentPosition = SceneComponent->GetRelativeLocation();
-	if (ImGui::DragFloat3("Relative Position", &ComponentPosition.X, 0.1f))
+	ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
+	if (ImGui::DragFloat3("##RelativePosition", &ComponentPosition.X, 0.1f))
 	{
 		SceneComponent->SetRelativeLocation(ComponentPosition);
 	}
+	ImGui::SameLine();
+	if (ImGui::Button("R##ResetPosition"))
+	{
+		SceneComponent->SetRelativeLocation(FVector::Zero());
+	}
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("Reset Position to (0, 0, 0)");
+	}
+	ImGui::SameLine();
+	ImGui::Text("Relative Position");
 
 	// Relative Rotation
 	FVector ComponentRotation = SceneComponent->GetRelativeRotation().ToEuler();
-	if (ImGui::DragFloat3("Relative Rotation", &ComponentRotation.X, 1.0f))
+	ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
+	if (ImGui::DragFloat3("##RelativeRotation", &ComponentRotation.X, 1.0f))
 	{
 		SceneComponent->SetRelativeRotation(FQuaternion::FromEuler(ComponentRotation));
 	}
+	ImGui::SameLine();
+	if (ImGui::Button("R##ResetRotation"))
+	{
+		SceneComponent->SetRelativeRotation(FQuaternion::Identity());
+	}
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("Reset Rotation to (0, 0, 0)");
+	}
+	ImGui::SameLine();
+	ImGui::Text("Relative Rotation");
 
 	// Relative Scale
 	FVector ComponentScale = SceneComponent->GetRelativeScale3D();
@@ -535,19 +559,32 @@ void UActorDetailWidget::RenderTransformEdit()
 	if (bUniformScale)
 	{
 		float UniformScale = ComponentScale.X;
-
-		if (ImGui::DragFloat("Relative Scale", &UniformScale, 0.1f))
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
+		if (ImGui::DragFloat("##RelativeScale", &UniformScale, 0.1f))
 		{
 			SceneComponent->SetRelativeScale3D({UniformScale, UniformScale, UniformScale});
 		}
 	}
 	else
 	{
-		if (ImGui::DragFloat3("Relative Scale", &ComponentScale.X, 0.1f))
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
+		if (ImGui::DragFloat3("##RelativeScale", &ComponentScale.X, 0.1f))
 		{
 			SceneComponent->SetRelativeScale3D(ComponentScale);
 		}
 	}
+	ImGui::SameLine();
+	if (ImGui::Button("R##ResetScale"))
+	{
+		SceneComponent->SetRelativeScale3D({1.0f, 1.0f, 1.0f});
+	}
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("Reset Scale to (1, 1, 1)");
+	}
+	ImGui::SameLine();
+	ImGui::Text("Relative Scale");
+
 	ImGui::Checkbox("Uniform Scale", &bUniformScale);
 	SceneComponent->SetUniformScale(bUniformScale);
 	
