@@ -27,9 +27,9 @@ struct Light
     float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
 };
 
-// 광원 타입 정의 (LightCulling.hlsl과 동일)
-#define LIGHT_TYPE_DIRECTIONAL 0
-#define LIGHT_TYPE_AMBIENT 1
+// 광원 타입 정의 (C++ ELightType enum과 동일한 순서)
+#define LIGHT_TYPE_AMBIENT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2
 #define LIGHT_TYPE_SPOT 3
 
@@ -296,8 +296,8 @@ float3 CalculateSpotLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, 
 FAmbientLightInfo ConvertToAmbientLight(Light light)
 {
     FAmbientLightInfo ambientLight;
-    ambientLight.Color = light.color;
-    ambientLight.Intensity = light.color.w;
+    ambientLight.Color = float4(light.color.rgb, 1.0);  // Only RGB, no intensity in color
+    ambientLight.Intensity = light.color.w;  // Intensity stored separately
     return ambientLight;
 }
 

@@ -122,8 +122,9 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
         }
         else if (UDirectionalLightComponent* Directional = Cast<UDirectionalLightComponent>(Light))
         {
-            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, -1.f);
-            lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Directional));
+            FVector direction = Directional->GetForwardVector();
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 1.0f);
+            lightData.Direction = FVector4(direction.X, direction.Y, direction.Z,  1.0f);
             lightData.Angles = FVector4(0, 0, 0, 0);
         }
         else if (UPointLightComponent* Point = Cast<UPointLightComponent>(Light))
