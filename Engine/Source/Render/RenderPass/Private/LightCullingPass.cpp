@@ -84,6 +84,11 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     
     ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
 
+    // 0. UAV 버퍼 초기화 (이전 프레임 데이터 클리어)
+    uint32 clearValues[4] = {0, 0, 0, 0};
+    DeviceContext->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
+    DeviceContext->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
+
     // 1. 상수 버퍼 업데이트
     FCullingParams cullingParams;
     cullingParams.View = Context.CurrentCamera->GetFViewProjConstants().View;
