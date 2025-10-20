@@ -27,9 +27,9 @@ struct Light
     float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
 };
 
-// 광원 타입 정의 (LightCulling.hlsl과 동일)
-#define LIGHT_TYPE_DIRECTIONAL 0
-#define LIGHT_TYPE_AMBIENT 1
+// 광원 타입 정의 (C++ ELightType enum과 동일한 순서)
+#define LIGHT_TYPE_AMBIENT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2
 #define LIGHT_TYPE_SPOT 3
 
@@ -296,8 +296,8 @@ float3 CalculateSpotLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, 
 FAmbientLightInfo ConvertToAmbientLight(Light light)
 {
     FAmbientLightInfo ambientLight;
-    ambientLight.Color = light.color;
-    ambientLight.Intensity = light.color.w;
+    ambientLight.Color = float4(light.color.rgb, 1.0);  // Only RGB, no intensity in color
+    ambientLight.Intensity = light.color.w;  // Intensity stored separately
     return ambientLight;
 }
 
@@ -559,9 +559,17 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     };
 #else
     float2 UV = Input.Tex;
-    float3 Normal  = normalize(Input.WorldNormal);
+    // float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
 
+    // Normal
+    // Calculate World Normal for Normal Buffer
+    float3 Normal = CalculateWorldNormal(Input);
+    
+    // Encode world normal to [0,1] range for storage
+    float3 EncodedNormal = Normal * 0.5f + 0.5f;
+    Output.NormalData = float4(EncodedNormal, 1.0f);
+    
     // 기본 Albedo: map_Kd (DiffuseTexture)가 물체의 기본 색상
     float3 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd.rgb;
 
@@ -608,13 +616,13 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     Output.SceneColor = FinalColor;
 #endif
     
-    // Normal
-    // Calculate World Normal for Normal Buffer
-    float3 WorldNormal = CalculateWorldNormal(Input);
-    
-    // Encode world normal to [0,1] range for storage
-    float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
-    Output.NormalData = float4(EncodedNormal, 1.0f);
+    // // Normal
+    // // Calculate World Normal for Normal Buffer
+    // float3 WorldNormal = CalculateWorldNormal(Input);
+    //
+    // // Encode world normal to [0,1] range for storage
+    // float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
+    // Output.NormalData = float4(EncodedNormal, 1.0f);
 
     return Output;
 };

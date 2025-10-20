@@ -6,9 +6,9 @@
 // 타일 한 변의 크기 정의. TILE_SIZE x TILE_SIZE 스레드가 하나의 타일을 처리
 #define TILE_SIZE 32
 
-// 광원 타입 정의
-#define LIGHT_TYPE_DIRECTIONAL 0
-#define LIGHT_TYPE_AMBIENT 1
+// 광원 타입 정의 (C++ ELightType enum과 동일한 순서)
+#define LIGHT_TYPE_AMBIENT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2
 #define LIGHT_TYPE_SPOT 3
 
