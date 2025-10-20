@@ -559,9 +559,17 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     };
 #else
     float2 UV = Input.Tex;
-    float3 Normal  = normalize(Input.WorldNormal);
+    // float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
 
+    // Normal
+    // Calculate World Normal for Normal Buffer
+    float3 Normal = CalculateWorldNormal(Input);
+    
+    // Encode world normal to [0,1] range for storage
+    float3 EncodedNormal = Normal * 0.5f + 0.5f;
+    Output.NormalData = float4(EncodedNormal, 1.0f);
+    
     // 기본 Albedo: map_Kd (DiffuseTexture)가 물체의 기본 색상
     float3 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd.rgb;
 
@@ -608,13 +616,13 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     Output.SceneColor = FinalColor;
 #endif
     
-    // Normal
-    // Calculate World Normal for Normal Buffer
-    float3 WorldNormal = CalculateWorldNormal(Input);
-    
-    // Encode world normal to [0,1] range for storage
-    float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
-    Output.NormalData = float4(EncodedNormal, 1.0f);
+    // // Normal
+    // // Calculate World Normal for Normal Buffer
+    // float3 WorldNormal = CalculateWorldNormal(Input);
+    //
+    // // Encode world normal to [0,1] range for storage
+    // float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
+    // Output.NormalData = float4(EncodedNormal, 1.0f);
 
     return Output;
 };
