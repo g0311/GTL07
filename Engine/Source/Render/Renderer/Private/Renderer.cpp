@@ -546,13 +546,7 @@ void URenderer::RenderBegin() const
 
 	auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
 	GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
-
-
-    // Clear UAVs
-    const UINT clearValues[4] = { 0, 0, 0, 0 };
-    GetDeviceContext()->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
-    GetDeviceContext()->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
-
+	
     DeviceResources->UpdateViewport();
 }
 
@@ -564,24 +558,27 @@ void URenderer::SetUpTiledLighting(const FRenderingContext& Context)
 	tiledParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
 	tiledParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
 	tiledParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
-	
+	tiledParams.NumLights = static_cast<uint32>(Context.Lights.size());  // Gouraud용 전체 라이트 개수
+	tiledParams._padding = 0;
+
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
 	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting);
-	Pipeline->SetConstantBuffer(3, true, ConstantBufferTiledLighting); 
+	Pipeline->SetConstantBuffer(3, true, ConstantBufferTiledLighting);
 }
 
 void URenderer::BindTiledLightingBuffers()
 {
 	// UberShader에서 사용할 Light Culling Structured Buffer SRV 바인딩
+	const auto& Renderer = URenderer::GetInstance();
 
 	// AllLights: t13, LightIndexBuffer: t14, TileLightInfo: t15
 	// VS와 PS 모두에 바인딩 (Gouraud 모드에서는 VS에서 라이팅 계산)
-	Pipeline->SetTexture(13, true, GetAllLightsSRV());
-	Pipeline->SetTexture(13, false, GetAllLightsSRV());
-	Pipeline->SetTexture(14, true, GetLightIndexBufferSRV());
-	Pipeline->SetTexture(14, false, GetLightIndexBufferSRV());
-	Pipeline->SetTexture(15, true, GetTileLightInfoSRV());
-	Pipeline->SetTexture(15, false, GetTileLightInfoSRV());
+	Pipeline->SetTexture(13, true, Renderer.GetAllLightsSRV());
+	Pipeline->SetTexture(13, false, Renderer.GetAllLightsSRV());
+	Pipeline->SetTexture(14, true, Renderer.GetLightIndexBufferSRV());
+	Pipeline->SetTexture(14, false, Renderer.GetLightIndexBufferSRV());
+	Pipeline->SetTexture(15, true, Renderer.GetTileLightInfoSRV());
+	Pipeline->SetTexture(15, false, Renderer.GetTileLightInfoSRV());
 }
 
 void URenderer::RenderLevel(FViewportClient& InViewportClient)
@@ -809,8 +806,8 @@ void URenderer::CreateLightCullBuffers()
 	D3D11_SHADER_RESOURCE_VIEW_DESC lightIndexSRVDesc = {};
 	lightIndexSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
 	lightIndexSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-	lightIndexSRVDesc.Buffer.FirstElement = 1;
-	lightIndexSRVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES;
+	lightIndexSRVDesc.Buffer.FirstElement = 0;
+	lightIndexSRVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES + 1;
         
 	hr = DeviceResources->GetDevice()->CreateShaderResourceView(LightIndexBuffer, &lightIndexSRVDesc, &LightIndexBufferSRV);
 	assert(SUCCEEDED(hr) && "LightIndexBufferSRV 생성 실패");

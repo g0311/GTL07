@@ -101,6 +101,8 @@ cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
     float D;		// Dissolve factor
     uint MaterialFlags;
     float Time;
+    float HeightScale; // POM depth scale
+    float2 HeightTextureSize; // Height map resolution for normalization
 };
 
 // Tiled Lighting을 위한 뷰포트 정보
@@ -224,7 +226,97 @@ FSpotLightInfo ConvertToSpotLight(Light light)
     return spotLight;
 }
 
-float3 CalculateWorldNormal(PS_INPUT Input)
+//==================================================//
+//==================== POM Functions ===============//
+//==================================================//
+
+// World space vector를 Tangent space로 변환
+float3 WorldToTangentSpace(float3 worldVec, float3 worldNormal, float3 worldTangent, float3 worldBitangent)
+{
+    float3 T = normalize(worldTangent);
+    float3 B = normalize(worldBitangent);
+    float3 N = normalize(worldNormal);
+
+    // World -> Tangent 변환 행렬 (전치 행렬)
+    float3x3 TBN = float3x3(T, B, N);
+    return mul(TBN, worldVec);
+}
+
+// Parallax Occlusion Mapping with Texture Size Normalization
+float2 ParallaxOcclusionMapping(
+    float2 UV,
+    float3 ViewDirTangent,
+    float heightScale,
+    float2 textureSize)
+{
+    // Safety check: ViewDirTangent이 너무 작으면 POM 비활성화
+    if (length(ViewDirTangent) < 0.001f)
+        return UV;
+
+    // ViewDirTangent.z가 0에 가까우면 (거의 수평) POM 비활성화
+    if (abs(ViewDirTangent.z) < 0.1f)
+        return UV;
+
+    // 레이어 수 동적 조절 (각도에 따라)
+    const int minLayers = 8;
+    const int maxLayers = 32;
+    float numLayers = lerp(maxLayers, minLayers, abs(dot(float3(0, 0, 1), ViewDirTangent)));
+
+    float layerDepth = 1.0f / numLayers;
+    float currentLayerDepth = 0.0f;
+
+    // ViewDirTangent.z로 나눠서 올바른 parallax 비율 계산
+    float2 parallaxDir = ViewDirTangent.xy / ViewDirTangent.z;
+    parallaxDir.x = -parallaxDir.x;  // X축 반전
+
+    // 텍스처 해상도 정규화 제거 (문제 발생)
+    // 대신 heightScale만 사용
+    float2 deltaUV = parallaxDir * heightScale / numLayers;
+
+    // Ray Marching: 표면과 교차점 찾기
+    float2 currentUV = UV;
+    float currentHeight = BumpTexture.Sample(SamplerWrap, currentUV).r;
+
+    [unroll(32)]
+    for(int i = 0; i < numLayers; i++)
+    {
+        // 현재 레이어 깊이가 높이맵보다 깊으면 교차점 발견
+        if(currentLayerDepth >= currentHeight)
+            break;
+
+        // UV 이동 및 다음 높이 샘플링
+        currentUV -= deltaUV;
+        currentHeight = BumpTexture.Sample(SamplerWrap, currentUV).r;
+        currentLayerDepth += layerDepth;
+    }
+
+    // 선형 보간 (Relief Mapping) - 교차점 정밀화
+    float2 prevUV = currentUV + deltaUV;
+
+    float afterDepth = currentHeight - currentLayerDepth;
+    float beforeDepth = BumpTexture.Sample(SamplerWrap, prevUV).r - (currentLayerDepth - layerDepth);
+
+    // Division by zero 방지
+    float denominator = afterDepth - beforeDepth;
+    float weight = 0.5f; // 기본값
+    if (abs(denominator) > 0.0001f)
+    {
+        weight = saturate(afterDepth / denominator);
+    }
+
+    float2 finalUV = lerp(currentUV, prevUV, weight);
+
+    // UV가 너무 많이 이동했다면 원본 UV 반환
+    float2 uvDelta = abs(finalUV - UV);
+    if (uvDelta.x > 0.5f || uvDelta.y > 0.5f)
+    {
+        return UV;
+    }
+
+    return finalUV;
+}
+
+float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
 {
     float3 WorldNormal = Input.WorldNormal;
     
@@ -238,12 +330,14 @@ float3 CalculateWorldNormal(PS_INPUT Input)
         WorldNormal = normalize(WorldNormal);
     }
     
-    // Sample normal map (tangent space)
+    // Sample normal map (tangent space) - UV 파라미터 사용
     if (MaterialFlags & HAS_NORMAL_MAP)
     {
-        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, Input.Tex).rgb;
+        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
         // Decode from [0,1] to [-1,1]
         TangentNormal = TangentNormal * 2.0f - 1.0f;
+        // DirectX 텍스처 좌표계 보정: X축 반전
+        TangentNormal.x = -TangentNormal.x;
 
         // Construct TBN matrix (Tangent, Bitangent, Normal)
         float3 N = WorldNormal;
@@ -259,7 +353,7 @@ float3 CalculateWorldNormal(PS_INPUT Input)
             WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
         }
     }
-    
+
     return WorldNormal;
 }
 
@@ -478,7 +572,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     }
 
     // Normal 데이터 출력
-    float3 Normal = CalculateWorldNormal(Input);
+    float3 Normal = CalculateWorldNormal(Input, Input.Tex);
     float3 EncodedNormal = Normal * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
 #elif LIGHTING_MODEL_UNLIT
@@ -491,18 +585,29 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     };
 #else
     float2 UV = Input.Tex;
-    // float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
 
-    // Normal
-    // Calculate World Normal for Normal Buffer
-    float3 Normal = CalculateWorldNormal(Input);
-    
+    // POM: Parallax Occlusion Mapping 적용
+    if (MaterialFlags & HAS_BUMP_MAP)
+    {
+        float3 ViewDirTangent = WorldToTangentSpace(
+            ViewDir,
+            Input.WorldNormal,
+            Input.WorldTangent,
+            Input.WorldBitangent
+        );
+
+        UV = ParallaxOcclusionMapping(UV, ViewDirTangent, HeightScale, HeightTextureSize);
+    }
+
+    // Normal 계산 (POM으로 수정된 UV 사용)
+    float3 Normal = CalculateWorldNormal(Input, UV);
+
     // Encode world normal to [0,1] range for storage
     float3 EncodedNormal = Normal * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
-    
-    // 기본 Albedo: map_Kd (DiffuseTexture)가 물체의 기본 색상
+
+    // 기본 Albedo: map_Kd (DiffuseTexture)가 물체의 기본 색상 (POM UV 사용)
     float3 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd.rgb;
 
     // Diffuse: 기본적으로 Albedo 사용

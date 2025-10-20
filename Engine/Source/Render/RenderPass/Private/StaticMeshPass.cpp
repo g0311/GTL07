@@ -169,6 +169,23 @@ FMaterialConstants FStaticMeshPass::CreateMaterialConstants(UMaterial* Material,
 	Constants.D	 = Material->GetDissolveFactor();
 	Constants.Time = MeshComp->GetElapsedTime();
 
+	// POM: HeightScale (0.02~0.1 권장)
+	Constants.HeightScale = 0.05f; // Default value
+
+	// POM: Height Texture Size for normalization
+	UTexture* BumpTexture = Material->GetBumpTexture();
+	if (BumpTexture)
+	{
+		Constants.HeightTextureSize.X = static_cast<float>(BumpTexture->GetWidth());
+		Constants.HeightTextureSize.Y = static_cast<float>(BumpTexture->GetHeight());
+	}
+	else
+	{
+		// Default to 1024x1024 if no bump texture
+		Constants.HeightTextureSize.X = 1024.0f;
+		Constants.HeightTextureSize.Y = 1024.0f;
+	}
+
 	Constants.MaterialFlags = 0;
 	if (Material->GetDiffuseTexture())	Constants.MaterialFlags |= HAS_DIFFUSE_MAP;
 	if (Material->GetAmbientTexture())	Constants.MaterialFlags |= HAS_AMBIENT_MAP;
@@ -197,4 +214,5 @@ void FStaticMeshPass::BindMaterialTextures(UMaterial* Material)
 	Bind(2, Material->GetSpecularTexture());
 	Bind(3, Material->GetNormalTexture());
 	Bind(4, Material->GetAlphaTexture());
+	Bind(5, Material->GetBumpTexture()); // Height Map for POM
 }

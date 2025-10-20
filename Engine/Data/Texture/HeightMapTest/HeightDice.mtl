@@ -1,0 +1,20 @@
+# Blender 4.5.3 LTS MTL File: 'HeightDice.blend'
+# www.blender.org
+
+newmtl HeightDice
+Ns 12.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+# 알베도(색상) — HeightMap은 색으로 쓰지 않음
+map_Kd Dice_BaseColor.png
+
+# 노멀맵 — 많은 뷰어가 map_Bump/bump에 노멀맵 등록을 허용
+map_Bump NormalMap_Cross.png
+disp HeightMap_Cross.png
+
+
