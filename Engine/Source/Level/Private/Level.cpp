@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Actor/Public/Actor.h"
 #include "Component/Public/PrimitiveComponent.h"
-#include "Component/Public/FakePointLightComponent.h"
 #include "Component/Light/Public/LightComponent.h"
 #include "Core/Public/Object.h"
 #include "Editor/Public/Editor.h"
@@ -149,10 +148,6 @@ void ULevel::RegisterComponent(UActorComponent* InComponent)
 			OnPrimitiveUpdated(PrimitiveComponent);
 		}
 	}
-	else if (auto PointLightComponent = Cast<UFakePointLightComponent>(InComponent))
-	{
-		PointLights.push_back(PointLightComponent);
-	}
 	else if (auto LightComponent = Cast<ULightComponent>(InComponent))
 	{
 		Lights.push_back(LightComponent);
@@ -180,13 +175,6 @@ void ULevel::UnregisterComponent(UActorComponent* InComponent)
 	
 		OnPrimitiveUnregistered(PrimitiveComponent);
 	}
-	else if (auto PointLightComponent = Cast<UFakePointLightComponent>(InComponent))
-	{
-		if (auto It = std::find(PointLights.begin(), PointLights.end(), PointLightComponent); It != PointLights.end())
-		{
-			PointLights.erase(It);
-		}	
-	}
 	else if (auto LightComponent = Cast<ULightComponent>(InComponent))
 	{
 		if (auto It = std::find(Lights.begin(), Lights.end(), LightComponent); It != Lights.end())
@@ -209,10 +197,6 @@ void ULevel::AddLevelComponent(AActor* Actor)
 		if (auto PrimitiveComponent = Cast<UPrimitiveComponent>(Component))
 		{
 			OnPrimitiveUpdated(PrimitiveComponent);			
-		}
-		else if (auto PointLightComponent = Cast<UFakePointLightComponent>(Component))
-		{
-			PointLights.push_back(PointLightComponent);
 		}
 		else if (auto LightComponent = Cast<ULightComponent>(Component))
 		{

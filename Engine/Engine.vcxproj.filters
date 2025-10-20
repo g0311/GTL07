@@ -122,12 +122,6 @@
     <ClCompile Include="Source\Component\Private\DecalSpotLightComponent.cpp">
       <Filter>Source\Component\Private</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Component\Private\FakeLightComponent.cpp">
-      <Filter>Source\Component\Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Component\Private\FakePointLightComponent.cpp">
-      <Filter>Source\Component\Private</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Component\Private\MovementComponent.cpp">
       <Filter>Source\Component\Private</Filter>
     </ClCompile>
@@ -581,9 +575,6 @@
     <ClInclude Include="Source\Component\Public\DecalSpotLightComponent.h">
       <Filter>Source\Component\Public</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Component\Public\FakePointLightComponent.h">
-      <Filter>Source\Component\Public</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Component\Public\MovementComponent.h">
       <Filter>Source\Component\Public</Filter>
     </ClInclude>
@@ -597,9 +588,6 @@
       <Filter>Source\Component\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Component\Public\TextComponent.h">
-      <Filter>Source\Component\Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Component\Public\FakeLightComponent.h">
       <Filter>Source\Component\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Component\Public\UUIDTextComponent.h">

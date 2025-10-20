@@ -7,7 +7,6 @@
 #include "Component/Light/Public/SpotLightComponent.h"
 #include "Component/Public/DecalComponent.h"
 #include "Component/Public/HeightFogComponent.h"
-#include "Component/Public/FakePointLightComponent.h"
 #include "Component/Public/PrimitiveComponent.h"
 #include "Component/Public/UUIDTextComponent.h"
 #include "Editor/Public/Camera.h"

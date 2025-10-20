@@ -10,7 +10,6 @@ class UWorld;
 class AActor;
 class UPrimitiveComponent;
 class ULightComponent;
-class UFakePointLightComponent;
 class FOctree;
 
 UCLASS()
@@ -119,10 +118,8 @@ private:
 		Lighting Management
 	-----------------------------------------------------------------------------*/
 public:
-	const TArray<UFakePointLightComponent*>& GetPointLights() const { return PointLights; }
 	const TArray<ULightComponent*>& GetLights() const { return Lights; } 
 
 private:
-	TArray<UFakePointLightComponent*> PointLights;
 	TArray<ULightComponent*> Lights;
 };
