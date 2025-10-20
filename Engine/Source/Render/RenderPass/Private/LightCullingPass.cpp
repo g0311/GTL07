@@ -152,7 +152,7 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
             // 스포트 라이트 컴포넌트의 GetSpotInfo() 메서드 사용
             FSpotLightData spotInfo = Spot->GetSpotInfo();
             
-            lightData.Position = FVector4(spotInfo.Position.X, spotInfo.Position.Y, spotInfo.Position.Z, 0.0f);
+            lightData.Position = FVector4(spotInfo.Position.X, spotInfo.Position.Y, spotInfo.Position.Z, Spot->GetRange());
             lightData.Direction = FVector4(spotInfo.Direction.X, spotInfo.Direction.Y, spotInfo.Direction.Z, static_cast<float>(ELightType::Spot));
             lightData.Angles = FVector4(spotInfo.CosInner, spotInfo.CosOuter, spotInfo.Falloff, spotInfo.InvRange2);
         }
