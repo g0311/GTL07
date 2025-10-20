@@ -1,15 +1,6 @@
 #pragma once
 #include "Render/RenderPass/Public/RenderPass.h"
 
-// TiledLightingParams cbuffer에 대응하는 구조체
-struct FTiledLightingParams
-{
-    uint32 ViewportOffset[2];   // 뷰포트 오프셋
-    uint32 ViewportSize[2];     // 뷰포트 크기
-    uint32 NumLights;           // 씬의 전체 라이트 개수 (Gouraud용)
-    uint32 _padding;            // 16바이트 정렬
-};
-
 class FStaticMeshPass : public FRenderPass
 {
 public:

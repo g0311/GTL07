@@ -101,8 +101,6 @@ public:
 	ID3D11PixelShader* GetPixelShaderForLightingModel(bool bHasNormalMap) const;
 
 private:
-	void SetUpLightingForAllPasses(const FRenderingContext& Context);
-	
 	UPipeline* Pipeline = nullptr;
 	UDeviceResources* DeviceResources = nullptr;
 	TArray<UPrimitiveComponent*> PrimitiveComponents;
@@ -118,7 +116,6 @@ private:
 	ID3D11Buffer* ConstantBufferModels = nullptr;
 	ID3D11Buffer* ConstantBufferViewProj = nullptr;
 	ID3D11Buffer* ConstantBufferColor = nullptr;
-	ID3D11Buffer* ConstantBufferLighting = nullptr;
 
 	// Light Structured Buffers
 	

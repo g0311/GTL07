@@ -30,7 +30,6 @@
 #include "Render/RenderPass/Public/FXAAPass.h"
 #include "Render/RenderPass/Public/LightCullingPass.h"
 #include "Render/RenderPass/Public/LightCullingDebugPass.h"
-
 #include "Render/RenderPass/Public/SceneDepthPass.h"
 #include "Render/RenderPass/Public/WorldNormalPass.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
@@ -38,16 +37,13 @@
 IMPLEMENT_SINGLETON_CLASS(URenderer, UObject)
 
 URenderer::URenderer() = default;
-
 URenderer::~URenderer() = default;
-
 
 void URenderer::Init(HWND InWindowHandle)
 {
 	DeviceResources = new UDeviceResources(InWindowHandle);
 	Pipeline = new UPipeline(GetDeviceContext());
 	ViewportClient = new FViewport();
-	
 	
 	// 렌더링 상태 및 리소스 생성
 	CreateDepthStencilState();
@@ -623,59 +619,12 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 		}
 	}
 
-	SetUpLightingForAllPasses(RenderingContext);
-
 	for (auto RenderPass: RenderPasses)
 	{
 		RenderPass->PreExecute(RenderingContext);
 		RenderPass->Execute(RenderingContext);
 		RenderPass->PostExecute(RenderingContext);
 	}
-}
-
-void URenderer::SetUpLightingForAllPasses(const FRenderingContext& Context)
-{
-	// Unified Lighting Process
-	FLightConstants LightingConstants = {};
-	LightingConstants.HasDirectionalLight = 0;
-	LightingConstants.NumPointLights = 0;
-	LightingConstants.NumSpotLights = 0;
-
-	for (ULightComponent* Light : Context.Lights)
-	{
-		if (auto* AmbientLight = Cast<UAmbientLightComponent>(Light))
-		{
-			int Idx = LightingConstants.NumAmbientLights;
-			LightingConstants.AmbientLights[Idx].Intensity = AmbientLight->GetIntensity();
-			LightingConstants.AmbientLights[Idx].Color = AmbientLight->GetColor();
-			LightingConstants.NumAmbientLights++;
-		}
-		else if (auto* DirectionalLight = Cast<UDirectionalLightComponent>(Light))
-		{
-			LightingConstants.DirectionalLight.Direction = DirectionalLight->GetForwardVector();
-			LightingConstants.DirectionalLight.Color = DirectionalLight->GetColor();
-			LightingConstants.DirectionalLight.Intensity = DirectionalLight->GetIntensity();
-			LightingConstants.HasDirectionalLight = 1;
-		}
-		else if (auto* PointLight = Cast<UPointLightComponent>(Light))
-		{
-			FPointLightData& Data = LightingConstants.PointLights[LightingConstants.NumPointLights];
-			Data.Position = PointLight->GetWorldLocation();
-			Data.Radius = PointLight->GetAttenuationRadius();
-			Data.Color = PointLight->GetColor();
-			Data.Intensity = PointLight->GetIntensity();
-			Data.FalloffExtent = PointLight->GetLightFalloffExponent();
-			LightingConstants.NumPointLights++;
-		}
-		else if (auto* SpotLight = Cast<USpotLightComponent>(Light))
-		{
-			int Idx = LightingConstants.NumSpotLights;
-			LightingConstants.SpotLights[Idx] = SpotLight->GetSpotInfo();
-			LightingConstants.NumSpotLights++;
-		}
-	}
-	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLighting, LightingConstants);
-	Pipeline->SetConstantBuffer(3, false, ConstantBufferLighting);
 }
 
 void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride, uint32 InIndexBufferStride)
@@ -768,7 +717,6 @@ void URenderer::CreateConstantBuffers()
 	ConstantBufferModels = FRenderResourceFactory::CreateConstantBuffer<FModelConstants>();
 	ConstantBufferColor = FRenderResourceFactory::CreateConstantBuffer<FVector4>();
 	ConstantBufferViewProj = FRenderResourceFactory::CreateConstantBuffer<FCameraConstants>();
-	ConstantBufferLighting = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
 }
 
 void URenderer::CreateLightBuffers()
@@ -873,7 +821,6 @@ void URenderer::ReleaseConstantBuffers()
 	SafeRelease(ConstantBufferModels);
 	SafeRelease(ConstantBufferColor);
 	SafeRelease(ConstantBufferViewProj);
-	SafeRelease(ConstantBufferLighting);
 }
 
 void URenderer::ReleaseLightBuffers()

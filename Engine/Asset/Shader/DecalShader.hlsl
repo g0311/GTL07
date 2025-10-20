@@ -75,9 +75,10 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	DecalColor.a *= 1.0f - saturate(FadeProgress / (FadeValue + 1e-6));
 	
 	if (DecalColor.a < 0.001f) { discard; }
+    return DecalColor;
 	
 	// light
-    float3 N = normalize(Input.Normal.xyz);
+    /*float3 N = normalize(Input.Normal.xyz);
     float3 V = normalize(ViewWorldLocation - Input.WorldPos.xyz);
 	
     float3 kD = DecalColor.rgb; // Diffuse = decal base color
@@ -97,5 +98,5 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
     float3 finalColor = DecalColor.rgb * totalLight;
 	
     //return DecalColor;
-    return float4(finalColor, DecalColor.a);
+    return float4(finalColor, DecalColor.a);*/
 }

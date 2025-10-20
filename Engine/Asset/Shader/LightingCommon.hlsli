@@ -45,141 +45,28 @@ struct FSpotLightInfo
     float _padding;
 };
 
-cbuffer Lighting : register(b3)
+// Light Culling시스템에서 사용하는 라이트 구조체
+// LightCulling.hlsl과 동일한 구조체 사용
+struct Light
 {
-    int NumAmbientLights;
-    float3 _pad0;
-    FAmbientLightInfo AmbientLights[NUM_AMBIENT_LIGHT];
-    
-    int HasDirectionalLight;
-    float3 _pad1;
-    FDirectionalLightInfo DirectionalLight;
-    
-    int NumPointLights;
-    float3 _pad2;
-    FPointLightInfo PointLights[NUM_POINT_LIGHT];
-    
-    int NumSpotLights;
-    float3 _pad3;
-    FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
+    float4 position; // xyz: 월드 위치, w: 영향 반경
+    float4 color; // xyz: 색상, w: 강도
+    float4 direction; // xyz: 방향 (스포트라이트용), w: 광원 타입
+    float4 angles; // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
 };
 
-float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, float3 Ks, float3 LightColor, float Shininess)
+// Viewport Info for Tiled Lighting
+cbuffer TiledLightingParams : register(b3)
 {
-#if LIGHTING_MODEL_LAMBERT
-    return float3(0, 0, 0);
-#elif LIGHTING_MODEL_PHONG
-    float3 R = reflect(-LightDir, WorldNormal);
-    float VdotR = saturate(dot(R, ViewDir));
-    return Ks * LightColor * pow(VdotR, Shininess);
-#elif LIGHTING_MODEL_BLINNPHONG
-    float3 H = normalize(LightDir + ViewDir);
-    float NdotH = saturate(dot(WorldNormal, H));
-    return Ks * LightColor * pow(NdotH, Shininess);
-#else
-    return float3(0, 0, 0);
-#endif
-}
+    uint2 ViewportOffset; // viewport offset
+    uint2 ViewportSize; // viewport size
+    uint NumLights; // total number of lights in the scene (for Gouraud)
+    uint _padding; // Padding to align to 16 bytes
+};
 
-float4 CalculateAmbientLight(float4 InMaterialAmbient)
-{
-    // Light Ambient
-    float4 AccumulatedAmbientColor = float4(0, 0, 0, 0);
-    for (int i = 0; i < NumAmbientLights; i++)
-    {
-        // Light * Intensity
-        AccumulatedAmbientColor += AmbientLights[i].Color * AmbientLights[i].Intensity;
-    }
-    return InMaterialAmbient * AccumulatedAmbientColor;
-}
-
-float3 CalculateDirectionalLight(float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
-{
-    if (HasDirectionalLight <= 0)
-        return float3(0, 0, 0);
-
-    float3 LightDir = normalize(-DirectionalLight.Direction);
-    float3 LightColor = DirectionalLight.Color * DirectionalLight.Intensity;
-    
-    // Diffuse
-    float NdotL = saturate(dot(WorldNormal, LightDir));
-    float3 Diffuse = Kd * LightColor * NdotL;
-    
-    // Specular
-    float3 Specular = CalculateSpecular(LightDir, WorldNormal, ViewDir, Ks, LightColor, Shininess);
-    
-    return Diffuse + Specular;
-}
-
-float3 CalculatePointLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
-{
-    float3 AccumulatedPointlightColor;
-    for (int i = 0; i < NumPointLights; i++)
-    {
-        float3 LightVec = PointLights[i].Position - WorldPos;
-        float Distance = length(LightVec);
-
-        if (Distance > PointLights[i].Radius)
-            continue;
-        
-        float3 LightDir = LightVec / Distance;
-
-        float RangeAttenuation = saturate(1.0 - Distance / PointLights[i].Radius);
-        RangeAttenuation = pow(RangeAttenuation, max(PointLights[i].FalloffExtent, 0.0));
-        
-        // Light * Intensity
-        float3 PointlightColor = PointLights[i].Color.rgb * PointLights[i].Intensity * RangeAttenuation;
-
-        // Diffuse
-        float NdotL = saturate(dot(normalize(WorldNormal), LightDir));
-        float3 Diffuse = Kd * PointlightColor * NdotL; // Kd is Albedo
-        
-        // Specular
-        float3 Specular = CalculateSpecular(LightDir, WorldNormal, ViewDir, Ks, PointlightColor, Shininess);
-        AccumulatedPointlightColor += Diffuse + Specular;
-    }
-    return AccumulatedPointlightColor;
-}
-
-float3 CalculateSpotLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
-{
-    float3 AccumulatedSpotlightColor = 0;
-    for (int i = 0; i < NumSpotLights; i++)
-    {
-        float3 LightVec = SpotLights[i].Position - WorldPos;
-        float Distance = length(LightVec);
-        float3 LightDir = LightVec / Distance;
-
-        // Attenuation : Range & Cone(Cos)
-        float RangeAttenuation = saturate(1.0 - Distance * Distance * SpotLights[i].InvRange2);
-
-        // SpotLight Cone Attenuation
-        // SpotLightCos: angle between light direction and pixel direction
-        float SpotLightCos = dot(-LightDir, normalize(SpotLights[i].Direction));
-
-        // ConeWidth: CosInner > CosOuter (because InnerAngle < OuterAngle, cos is decreasing)
-        float ConeWidth = max(SpotLights[i].CosInner - SpotLights[i].CosOuter, 1e-5);
-
-        // SpotRatio: 0 when outside CosOuter, 1 when inside CosInner
-        float SpotRatio = saturate((SpotLightCos - SpotLights[i].CosOuter) / ConeWidth);
-        if (SpotRatio != 0)
-        {
-            SpotRatio = pow(SpotRatio, max(SpotLights[i].Falloff, 0.0)); // Falloff increase, light between outer~inner spread out 
-        }
-        
-        // Light * Intensity
-        float3 SpotlightColor = SpotLights[i].Color.rgb * SpotLights[i].Intensity * RangeAttenuation * SpotRatio;
-
-        // Diffuse
-        float NdotL = saturate(dot(WorldNormal, LightDir));
-        float3 Diffuse = Kd * SpotlightColor * NdotL; // Kd is Albedo
-
-        // Specular
-        float3 Specular = CalculateSpecular(LightDir, WorldNormal, ViewDir, Ks, SpotlightColor, Shininess);
-        AccumulatedSpotlightColor += Diffuse + Specular;
-    }
-
-    return AccumulatedSpotlightColor;
-}
+// Light Culling시스템에서 사용하는 Structured Buffer
+StructuredBuffer<Light> AllLights : register(t13); // 라이트 데이터 버퍼
+StructuredBuffer<uint> LightIndexBuffer : register(t14); // 타일별 라이트 인덱스
+StructuredBuffer<uint2> TileLightInfo : register(t15); // 타일 라이트 정보 (offset, count)
 
 #endif // LIGHTING_COMMON_HLSLI

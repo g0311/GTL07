@@ -22,6 +22,10 @@ public:
     void PostExecute(FRenderingContext& Context) override;
     void Release() override;
 
+	// Tiled Lighting
+    void SetUpTiledLighting(const FRenderingContext& Context);
+    void BindTiledLightingBuffers();
+
 private:
     // --- Octree Optimization ---
     void Query(FOctree* InOctree, UDecalComponent* InDecal, TArray<UPrimitiveComponent*>& OutPrimitives);
@@ -34,4 +38,5 @@ private:
 
     ID3D11Buffer* ConstantBufferDecal = nullptr;
     ID3D11Buffer* ConstantBufferPrim = nullptr;
+    ID3D11Buffer* ConstantBufferTiledLighting = nullptr;
 };
