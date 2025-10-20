@@ -11,6 +11,7 @@ class UPipeline;
 class FViewportClient;
 class FCopyPass;
 class FFXAAPass;
+class FRenderingContext;
 
 /**
  * @brief Rendering Pipeline 전반을 처리하는 클래스
@@ -94,6 +95,8 @@ public:
 	void SetIsResizing(bool isResizing) { bIsResizing = isResizing; }
 
 private:
+	void SetUpLightingForAllPasses(const FRenderingContext& Context);
+	
 	UPipeline* Pipeline = nullptr;
 	UDeviceResources* DeviceResources = nullptr;
 	TArray<UPrimitiveComponent*> PrimitiveComponents;
@@ -109,6 +112,7 @@ private:
 	ID3D11Buffer* ConstantBufferModels = nullptr;
 	ID3D11Buffer* ConstantBufferViewProj = nullptr;
 	ID3D11Buffer* ConstantBufferColor = nullptr;
+	ID3D11Buffer* ConstantBufferLighting = nullptr;
 
 	// Light Structured Buffers
 	

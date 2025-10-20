@@ -11,7 +11,6 @@ public:
     void PostExecute(FRenderingContext& Context) override;
     void Release() override;
 
-    void SetUpLighting(const FRenderingContext& Context);
     FMaterialConstants CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp);
     void BindMaterialTextures(UMaterial* Material);
 
@@ -23,5 +22,4 @@ private:
     ID3D11DepthStencilState* DS = nullptr;
 
     ID3D11Buffer* ConstantBufferMaterial = nullptr;
-	ID3D11Buffer* ConstantBufferLighting = nullptr;
 };
