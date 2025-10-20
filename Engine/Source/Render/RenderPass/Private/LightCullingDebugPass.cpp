@@ -158,7 +158,8 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
     }
 
     const uint32 TILE_SIZE = 32;
-    const uint32 globalNumTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
+    // 뷰포트 기준 타일 계산으로 변경
+    const uint32 viewportTilesX = (Context.Viewport.Width + TILE_SIZE - 1) / TILE_SIZE;
 
     struct TileInfo { uint32_t LightOffset; uint32_t LightCount; };
     const TileInfo* tileInfo = static_cast<const TileInfo*>(mappedResource.pData);
@@ -197,16 +198,14 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
 
     const uint32 numTilesX = (Context.Viewport.Width + TILE_SIZE - 1) / TILE_SIZE;
     const uint32 numTilesY = (Context.Viewport.Height + TILE_SIZE - 1) / TILE_SIZE;
-    const uint32 startTileX = (UINT)Context.Viewport.TopLeftX / TILE_SIZE;
-    const uint32 startTileY = (UINT)Context.Viewport.TopLeftY / TILE_SIZE;
 
     for (uint32 y = 0; y < numTilesY; ++y)
     {
         for (uint32 x = 0; x < numTilesX; ++x)
         {
-            uint32 globalTileX = startTileX + x;
-            uint32 globalTileY = startTileY + y;
-            uint32_t lightCount = tileInfo[globalTileY * globalNumTilesX + globalTileX].LightCount;
+            // 뷰포트 기준 타일 인덱스 계산 (LightCullingPass와 동일)
+            uint32_t tileArrayIndex = y * viewportTilesX + x;
+            uint32_t lightCount = tileInfo[tileArrayIndex].LightCount;
             
             // 뷰포트 내 상대 좌표로 렌더링 (뷰포트 오프셋 적용)
             float tileScreenX = Context.Viewport.TopLeftX + x * TILE_SIZE;

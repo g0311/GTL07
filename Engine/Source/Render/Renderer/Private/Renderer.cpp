@@ -380,9 +380,9 @@ void URenderer::ReleaseShader()
 
 	SafeRelease(TextureInputLayout);
 	SafeRelease(TextureVertexShader);
+	UberShaderVertexPermutations.Default = nullptr;
 	
 	// Release all UberShader permutations
-	UberShaderVertexPermutations.Default = nullptr;
 	SafeRelease(UberShaderVertexPermutations.Gouraud);
 	
 	SafeRelease(UberShaderPermutations.Unlit);
