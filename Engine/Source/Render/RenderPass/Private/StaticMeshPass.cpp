@@ -16,6 +16,7 @@ FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstant
 {
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
 	ConstantBufferLighting = FRenderResourceFactory::CreateConstantBuffer<FLightConstants>();
+	ConstantBufferTiledLighting = FRenderResourceFactory::CreateConstantBuffer<FTiledLightingParams>();
 }
 
 void FStaticMeshPass::PreExecute(FRenderingContext& Context)
@@ -103,9 +104,14 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
 
-				SetUpLighting(Context);
+				//SetUpLighting(Context);
 
 				BindMaterialTextures(Material);
+				
+				// Tiled Lighting 설정 및 Structured Buffer 바인딩
+				SetUpTiledLighting(Context);
+				BindTiledLightingBuffers();
+				
 				CurrentMaterial = Material;
 			}
 			Pipeline->DrawIndexed(Section.IndexCount, Section.StartIndex, 0);
@@ -115,18 +121,25 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 
 void FStaticMeshPass::PostExecute(FRenderingContext& Context)
 {
+	// Material Texture 언바인딩
 	Pipeline->SetTexture(0, false, nullptr);
 	Pipeline->SetTexture(1, false, nullptr);
 	Pipeline->SetTexture(2, false, nullptr);
 	Pipeline->SetTexture(3, false, nullptr);
 	Pipeline->SetTexture(4, false, nullptr);
 	Pipeline->SetTexture(5, false, nullptr);
+	
+	// Tiled Lighting Structured Buffer SRV 언바인딩
+	Pipeline->SetTexture(13, false, nullptr);
+	Pipeline->SetTexture(14, false, nullptr);
+	Pipeline->SetTexture(15, false, nullptr);
 }
 
 void FStaticMeshPass::Release()
 {
 	SafeRelease(ConstantBufferMaterial);
 	SafeRelease(ConstantBufferLighting);
+	SafeRelease(ConstantBufferTiledLighting);
 }
 
 void FStaticMeshPass::SetUpLighting(const FRenderingContext& Context)
@@ -213,4 +226,28 @@ void FStaticMeshPass::BindMaterialTextures(UMaterial* Material)
 	Bind(2, Material->GetSpecularTexture());
 	Bind(3, Material->GetNormalTexture());
 	Bind(4, Material->GetAlphaTexture());
+}
+
+void FStaticMeshPass::SetUpTiledLighting(const FRenderingContext& Context)
+{
+	// Tiled Lighting용 cbuffer 설정
+	FTiledLightingParams tiledParams = {};
+	tiledParams.ViewportOffset[0] = static_cast<uint32>(Context.Viewport.TopLeftX);
+	tiledParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
+	tiledParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
+	tiledParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
+	
+	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
+	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting); // b3 레지스터에 바인딩
+}
+
+void FStaticMeshPass::BindTiledLightingBuffers()
+{
+	// UberShader에서 사용할 Light Culling Structured Buffer SRV 바인딩
+	const auto& Renderer = URenderer::GetInstance();
+	
+	// AllLights: t13, LightIndexBuffer: t14, TileLightInfo: t15
+	Pipeline->SetTexture(13, false, Renderer.GetAllLightsSRV());
+	Pipeline->SetTexture(14, false, Renderer.GetLightIndexBufferSRV());
+	Pipeline->SetTexture(15, false, Renderer.GetTileLightInfoSRV());
 }

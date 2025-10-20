@@ -10,12 +10,6 @@
 // LightCulling.hlsl의 유틸리티 함수들을 포함
 #define TILE_SIZE 32
 
-// 스크린 픽셀 좌표에서 타일 인덱스 계산 (전역 화면 기준)
-uint2 GetTileIndexFromPixel(float2 screenPos)
-{
-    return uint2(floor(screenPos.x / TILE_SIZE), floor(screenPos.y / TILE_SIZE));
-}
-
 // 스크린 픽셀 좌표에서 타일 인덱스 계산 (뷰포트 기준)
 uint2 GetTileIndexFromPixelViewport(float2 screenPos, uint2 viewportOffset)
 {
@@ -23,16 +17,10 @@ uint2 GetTileIndexFromPixelViewport(float2 screenPos, uint2 viewportOffset)
     return uint2(floor(viewportRelativePos.x / TILE_SIZE), floor(viewportRelativePos.y / TILE_SIZE));
 }
 
-// SV_Position에서 뷰포트 기준 타일 인덱스 추출 (픽셀 셰이더용)
-uint2 GetCurrentTileIndex(float4 svPosition, uint2 viewportOffset)
-{
-    return GetTileIndexFromPixelViewport(svPosition.xy, viewportOffset);
-}
-
 // SV_Position에서 뷰포트 기준 타일 배열 인덱스 추출
 uint GetCurrentTileArrayIndex(float4 svPosition, uint2 viewportOffset, uint2 viewportSize)
 {
-    uint2 viewportTileIndex = GetCurrentTileIndex(svPosition, viewportOffset);
+    uint2 viewportTileIndex = GetTileIndexFromPixelViewport(svPosition, viewportOffset);
     uint tilesPerRow = (viewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
     return viewportTileIndex.y * tilesPerRow + viewportTileIndex.x;
 }
@@ -123,30 +111,16 @@ cbuffer MaterialConstants : register(b2) // b0, b1 is in VS
     float Time;
 };
 
-cbuffer Lighting : register(b3)
+// Tiled Lighting을 위한 뷰포트 정보
+cbuffer TiledLightingParams : register(b3)
 {
-    int NumAmbientLights;
-    float3 _pad0;
-    FAmbientLightInfo AmbientLights[NUM_AMBIENT_LIGHT];
-    
-    int HasDirectionalLight;
-    float3 _pad1;
-    FDirectionalLightInfo DirectionalLight;
-    
-    int NumPointLights;
-    float3 _pad2;
-    FPointLightInfo PointLights[NUM_POINT_LIGHT];
-    
-    int NumSpotLights;
-    float3 _pad3;
-    FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
+    uint2 ViewportOffset;   // 뷰포트 오프셋
+    uint2 ViewportSize;     // 뷰포트 크기
 };
-
 // Light Culling시스템에서 사용하는 Structured Buffer
 StructuredBuffer<Light> AllLights : register(t13);             // 라이트 데이터 버퍼
 StructuredBuffer<uint> LightIndexBuffer : register(t14);       // 타일별 라이트 인덱스
 StructuredBuffer<uint2> TileLightInfo : register(t15);         // 타일 라이트 정보 (offset, count)
-// 레지스터 번호 뒤에서 시작 => 기존 셰이더에서 인클루드 해도 문제 X
 
 Texture2D DiffuseTexture : register(t0);	// map_Kd
 Texture2D AmbientTexture : register(t1);	// map_Ka
@@ -191,6 +165,16 @@ struct PS_OUTPUT
     float4 SceneColor : SV_Target0;
     float4 NormalData : SV_Target1;
 };
+
+// 기존 cbuffer Lighting 대신 사용할 더미 변수들 (기존 함수들과의 호환성을 위해 유지)
+static const int NumAmbientLights = 0;
+static const int HasDirectionalLight = 0;
+static const int NumPointLights = 0;
+static const int NumSpotLights = 0;
+static FAmbientLightInfo AmbientLights[NUM_AMBIENT_LIGHT];
+static FDirectionalLightInfo DirectionalLight;
+static FPointLightInfo PointLights[NUM_POINT_LIGHT];
+static FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
 
 float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, float3 Ks, float3 LightColor, float Shininess)
 {
@@ -319,6 +303,176 @@ float3 CalculateSpotLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, 
 
     return AccumulatedSpotlightColor;
 }
+
+// ------------------------------------- Used ------------------------------------------//
+// Light 구조체를 기존 구조체로 변환하는 헬퍼 함수들
+FAmbientLightInfo ConvertToAmbientLight(Light light)
+{
+    FAmbientLightInfo ambientLight;
+    ambientLight.Color = light.color;
+    ambientLight.Intensity = light.color.w;
+    return ambientLight;
+}
+
+FDirectionalLightInfo ConvertToDirectionalLight(Light light)
+{
+    FDirectionalLightInfo directionalLight;
+    directionalLight.Direction = light.direction.xyz;
+    directionalLight.Color = light.color.rgb;
+    directionalLight.Intensity = light.color.w;
+    return directionalLight;
+}
+
+FPointLightInfo ConvertToPointLight(Light light)
+{
+    FPointLightInfo pointLight;
+    pointLight.Position = light.position.xyz;
+    pointLight.Radius = light.position.w;
+    pointLight.Color = light.color.rgb;
+    pointLight.Intensity = light.color.w;
+    pointLight.FalloffExtent = light.angles.z;
+    return pointLight;
+}
+
+FSpotLightInfo ConvertToSpotLight(Light light)
+{
+    FSpotLightInfo spotLight;
+    spotLight.Position = light.position.xyz;
+    spotLight.Direction = light.direction.xyz;
+    spotLight.Color = light.color;
+    spotLight.Intensity = light.color.w;
+    spotLight.CosInner = light.angles.x;
+    spotLight.CosOuter = light.angles.y;
+    spotLight.Falloff = light.angles.z;
+    spotLight.InvRange2 = light.angles.w;
+    return spotLight;
+}
+
+// 기존 함수들을 단일 라이트에 대해 호출할 수 있도록 오버로드
+float3 CalculateSingleAmbientLight(FAmbientLightInfo ambientLight, float3 Kd)
+{
+    return Kd * ambientLight.Color.rgb * ambientLight.Intensity;
+}
+
+float3 CalculateSingleDirectionalLight(FDirectionalLightInfo directionalLight, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
+{
+    float3 LightDir = normalize(-directionalLight.Direction);
+    float3 LightColor = directionalLight.Color * directionalLight.Intensity;
+    
+    // Diffuse
+    float NdotL = saturate(dot(WorldNormal, LightDir));
+    float3 Diffuse = Kd * LightColor * NdotL;
+    
+    // Specular
+    float3 Specular = CalculateSpecular(LightDir, WorldNormal, ViewDir, Ks, LightColor, Shininess);
+    
+    return Diffuse + Specular;
+}
+
+float3 CalculateSinglePointLight(FPointLightInfo pointLight, float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
+{
+    float3 LightVec = pointLight.Position - WorldPos;
+    float Distance = length(LightVec);
+
+    if (Distance > pointLight.Radius)
+        return float3(0, 0, 0);
+        
+    float3 LightDir = LightVec / Distance;
+
+    float RangeAttenuation = saturate(1.0 - Distance/pointLight.Radius);
+    RangeAttenuation = pow(RangeAttenuation, max(pointLight.FalloffExtent, 0.0));
+    
+    // Light * Intensity
+    float3 PointlightColor = pointLight.Color.rgb * pointLight.Intensity * RangeAttenuation;
+
+    // Diffuse
+    float NdotL = saturate(dot(normalize(WorldNormal), LightDir));
+    float3 Diffuse = Kd * PointlightColor * NdotL;
+    
+    // Specular
+    float3 Specular = CalculateSpecular(LightDir, WorldNormal, ViewDir, Ks, PointlightColor, Shininess);
+    
+    return Diffuse + Specular;
+}
+
+float3 CalculateSingleSpotLight(FSpotLightInfo spotLight, float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
+{
+    float3 LightVec = spotLight.Position - WorldPos;
+    float Distance = length(LightVec);
+    float3 LightDir = LightVec / Distance;
+
+    // Attenuation : Range & Cone(Cos)
+    float RangeAttenuation = saturate(1.0 - Distance * Distance * spotLight.InvRange2);
+
+    // SpotLight Cone Attenuation
+    float SpotLightCos = dot(-LightDir, normalize(spotLight.Direction));
+    float ConeWidth = max(spotLight.CosInner - spotLight.CosOuter, 1e-5);
+    float SpotRatio = saturate((SpotLightCos - spotLight.CosOuter) / ConeWidth);
+    
+    if (SpotRatio != 0)
+    {
+        SpotRatio = pow(SpotRatio, max(spotLight.Falloff, 0.0));
+    }
+    
+    // Light * Intensity
+    float3 SpotlightColor = spotLight.Color.rgb * spotLight.Intensity * RangeAttenuation * SpotRatio;
+
+    // Diffuse
+    float NdotL = saturate(dot(WorldNormal, LightDir));
+    float3 Diffuse = Kd * SpotlightColor * NdotL;
+
+    // Specular
+    float3 Specular = CalculateSpecular(LightDir, WorldNormal, ViewDir, Ks, SpotlightColor, Shininess);
+    
+    return Diffuse + Specular;
+}
+
+// Tiled Lighting 메인 계산 함수 (기존 함수들 재사용)
+float3 CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess, uint2 viewportOffset, uint2 viewportSize)
+{
+    float3 AccumulatedColor = float3(0, 0, 0);
+    
+    // 현재 픽셀이 속한 타일의 인덱스를 계산
+    uint tileArrayIndex = GetCurrentTileArrayIndex(svPosition, viewportOffset, viewportSize);
+    
+    // 타일의 라이트 정보 가져오기
+    uint2 tileLightInfo = TileLightInfo[tileArrayIndex];
+    uint lightIndexOffset = tileLightInfo.x;
+    uint lightCount = tileLightInfo.y;
+    
+    // 타일에 속한 모든 라이트를 순회하면서 계산
+    for (uint i = 0; i < lightCount; ++i)
+    {
+        uint lightIndex = LightIndexBuffer[lightIndexOffset + i];
+        Light light = AllLights[lightIndex];
+        
+        uint lightType = (uint)light.direction.w;
+        
+        if (lightType == LIGHT_TYPE_AMBIENT)
+        {
+            FAmbientLightInfo ambientLight = ConvertToAmbientLight(light);
+            AccumulatedColor += CalculateSingleAmbientLight(ambientLight, Kd);
+        }
+        else if (lightType == LIGHT_TYPE_DIRECTIONAL)
+        {
+            FDirectionalLightInfo directionalLight = ConvertToDirectionalLight(light);
+            AccumulatedColor += CalculateSingleDirectionalLight(directionalLight, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+        else if (lightType == LIGHT_TYPE_POINT)
+        {
+            FPointLightInfo pointLight = ConvertToPointLight(light);
+            AccumulatedColor += CalculateSinglePointLight(pointLight, WorldPos, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+        else if (lightType == LIGHT_TYPE_SPOT)
+        {
+            FSpotLightInfo spotLight = ConvertToSpotLight(light);
+            AccumulatedColor += CalculateSingleSpotLight(spotLight, WorldPos, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+    }
+    
+    return AccumulatedColor;
+}
+
 float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
 {
     float3 WorldNormal = Input.WorldNormal;
@@ -399,14 +553,11 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         return Output;
     }
 
-    // Light
-    float3 AmbientColor = CalculateAmbientLight(UV).rgb;
-    float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
-    float3 PointLightColor = CalculatePointLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
-    float3 SpotLightColor = CalculateSpotLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+    // Tiled Lighting 사용
+    float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, kD, kS, Ns, ViewportOffset, ViewportSize);
     
     float4 FinalColor;
-    FinalColor.rgb = AmbientColor + DirectionalColor + PointLightColor + SpotLightColor;
+    FinalColor.rgb = TiledLightColor;
     FinalColor.a = 1.0f;
 
     // Alpha handling
