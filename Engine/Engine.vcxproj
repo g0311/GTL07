@@ -771,17 +771,9 @@
     <ResourceCompile Include="Engine.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Asset\Shader\CommonBuffers.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Asset\Shader\LightingCommon.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Asset\Shader\MaterialCommon.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Asset\Shader\ShaderDefines.hlsli">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </None>
+    <None Include="Asset\Shader\CommonBuffers.hlsli" />
+    <None Include="Asset\Shader\LightingCommon.hlsli" />
+    <None Include="Asset\Shader\MaterialCommon.hlsli" />
+    <None Include="Asset\Shader\ShaderDefines.hlsli" />
   </ItemGroup>
 </Project>

@@ -1500,20 +1500,20 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Asset\Shader\CommonBuffers.hlsli">
-      <Filter>Asset\Shader</Filter>
-    </None>
-    <None Include="Asset\Shader\LightingCommon.hlsli">
-      <Filter>Asset\Shader</Filter>
-    </None>
+    <ResourceCompile Include="Engine.rc" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="Asset\Shader\MaterialCommon.hlsli">
       <Filter>Asset\Shader</Filter>
     </None>
     <None Include="Asset\Shader\ShaderDefines.hlsli">
       <Filter>Asset\Shader</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Engine.rc" />
+    <None Include="Asset\Shader\CommonBuffers.hlsli">
+      <Filter>Asset\Shader</Filter>
+    </None>
+    <None Include="Asset\Shader\LightingCommon.hlsli">
+      <Filter>Asset\Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

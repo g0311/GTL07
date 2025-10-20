@@ -175,7 +175,7 @@ float3 CalculateSinglePointLight(FPointLightInfo pointLight, float3 WorldPos, fl
         
     float3 LightDir = LightVec / Distance;
 
-    float RangeAttenuation = saturate(1.0 - Distance / pointLight.Radius);
+    float RangeAttenuation = saturate(1.0 - ((Distance * Distance) / (pointLight.Radius * pointLight.Radius)));
     RangeAttenuation = pow(RangeAttenuation, max(pointLight.FalloffExtent, 0.0));
     
     // Light * Intensity
@@ -223,6 +223,43 @@ float3 CalculateSingleSpotLight(FSpotLightInfo spotLight, float3 WorldPos, float
     return Diffuse + Specular;
 }
 
+// For Gouraud (no Tilled Culling)
+float3 CalculateAllLightsGouraud(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
+{
+    float3 AccumulatedColor = float3(0, 0, 0);
+
+    // 모든 라이트를 순회
+    for (uint i = 0; i < NumLights; ++i)
+    {
+        Light light = AllLights[i];
+        uint lightType = (uint) light.direction.w;
+
+        if (lightType == LIGHT_TYPE_AMBIENT)
+        {
+            FAmbientLightInfo ambientLight = ConvertToAmbientLight(light);
+            AccumulatedColor += CalculateSingleAmbientLight(ambientLight, Kd);
+        }
+        else if (lightType == LIGHT_TYPE_DIRECTIONAL)
+        {
+            FDirectionalLightInfo directionalLight = ConvertToDirectionalLight(light);
+            AccumulatedColor += CalculateSingleDirectionalLight(directionalLight, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+        else if (lightType == LIGHT_TYPE_POINT)
+        {
+            FPointLightInfo pointLight = ConvertToPointLight(light);
+            AccumulatedColor += CalculateSinglePointLight(pointLight, WorldPos, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+        else if (lightType == LIGHT_TYPE_SPOT)
+        {
+            FSpotLightInfo spotLight = ConvertToSpotLight(light);
+            AccumulatedColor += CalculateSingleSpotLight(spotLight, WorldPos, WorldNormal, ViewDir, Kd, Ks, Shininess);
+        }
+    }
+
+    return AccumulatedColor;
+}
+
+// Tiled Lighting (PS optimized)
 float3 CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess, uint2 viewportOffset, uint2 viewportSize)
 {
     float3 AccumulatedColor = float3(0, 0, 0);
