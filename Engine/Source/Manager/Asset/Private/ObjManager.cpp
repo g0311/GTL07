@@ -374,7 +374,7 @@ FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FName& PathFileName, cons
 		}
 	}
 
-	StaticMesh->BVH.Build(StaticMesh.get()); // 빠른 피킹용 BVH 구축
+	// StaticMesh->BVH.Build(StaticMesh.get()); // 빠른 피킹용 BVH 구축
 	ObjFStaticMeshMap.emplace(PathFileName, std::move(StaticMesh));
 
 	return ObjFStaticMeshMap[PathFileName].get();
