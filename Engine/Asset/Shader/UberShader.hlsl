@@ -161,16 +161,6 @@ struct PS_OUTPUT
     float4 NormalData : SV_Target1;
 };
 
-// 기존 cbuffer Lighting 대신 사용할 더미 변수들 (기존 함수들과의 호환성을 위해 유지)
-static const int NumAmbientLights = 0;
-static const int HasDirectionalLight = 0;
-static const int NumPointLights = 0;
-static const int NumSpotLights = 0;
-static FAmbientLightInfo AmbientLights[NUM_AMBIENT_LIGHT];
-static FDirectionalLightInfo DirectionalLight;
-static FPointLightInfo PointLights[NUM_POINT_LIGHT];
-static FSpotLightInfo SpotLights[NUM_SPOT_LIGHT];
-
 float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, float3 Ks, float3 LightColor, float Shininess)
 {
 #if LIGHTING_MODEL_LAMBERT

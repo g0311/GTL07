@@ -43,16 +43,9 @@ PS_INPUT mainVS(VS_INPUT Input)
 
 float4 mainPS(PS_INPUT Input) : SV_TARGET
 {
-    //return float4(1.0f, 0.0f, 1.0f, 1.0f);
+	// +-+-+ Decal Projection & Texture Sampling +-+-+
     float2 DecalUV;
 	
-	
-	// Normal Test
-	float4 DecalForward = mul(float4(1.0f, 0.0f, 0.0f, 0.0f), DecalWorld);
-	if (dot(DecalForward, Input.Normal) > 0.0f) {
-		//discard;
-	}
-
 	// Decal Local Transition
     float4 DecalLocalPos = mul(Input.WorldPos, DecalViewProjection);
     DecalLocalPos /= DecalLocalPos.w;
@@ -66,26 +59,30 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
         discard;
     }
 	
-	//UV Transition ([-0.5~0.5], [-0.5~0.5]) -> ([0~1.0], [1.0~0])
+	//UV Transition
+	// ([-0.5~0.5], [-0.5~0.5]) -> ([0~1.0], [1.0~0])
     DecalUV = ((DecalLocalPos.yz) * float2(0.5f, -0.5f) + 0.5f);
     
 	float4 DecalColor = DecalTexture.Sample(DecalSampler, DecalUV);
 
+	// +-+-+ Alpha & Fade Handling +-+-+
 	float FadeValue = FadeTexture.Sample(FadeSampler, DecalUV).r;
 	DecalColor.a *= 1.0f - saturate(FadeProgress / (FadeValue + 1e-6));
 	
 	if (DecalColor.a < 0.001f) { discard; }
-    return DecalColor;
+    //return DecalColor;
 	
-	// light
-    /*float3 N = normalize(Input.Normal.xyz);
+	// +-+-+ Lighting Calculation +-+-+
+    float3 N = normalize(Input.Normal.xyz);
     float3 V = normalize(ViewWorldLocation - Input.WorldPos.xyz);
 	
     float3 kD = DecalColor.rgb; // Diffuse = decal base color
     float3 kS = float3(0.1f, 0.1f, 0.1f); // Specular 약하게
     float Ns = 16.0f; // Roughness (빛 퍼짐 정도)
 	
-	// Ambient, Directional, Point, Spot 계산
+    float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPos.xyz, N, V, kD, kS, Ns, ViewportOffset, ViewportSize);
+	
+	/*// Ambient, Directional, Point, Spot 계산
     //float3 ambient = CalculateAmbientLight(DecalUV).rgb;
     float3 LitColor = AmbientLights[0].Color.rgb * AmbientLights[0].Intensity;
     float3 directional = CalculateDirectionalLight(N, V, kD, kS, Ns);
@@ -99,4 +96,7 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	
     //return DecalColor;
     return float4(finalColor, DecalColor.a);*/
+	
+    float3 finalColor = DecalColor.rgb * TiledLightColor;
+    return float4(finalColor, DecalColor.a);
 }
