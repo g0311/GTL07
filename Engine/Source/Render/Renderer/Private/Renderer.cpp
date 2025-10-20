@@ -550,13 +550,7 @@ void URenderer::RenderBegin() const
 
 	auto* SceneColorRenderTargetView = DeviceResources->GetSceneColorRenderTargetView();
 	GetDeviceContext()->ClearRenderTargetView(SceneColorRenderTargetView, ClearColor);
-
-
-    // Clear UAVs
-    const UINT clearValues[4] = { 0, 0, 0, 0 };
-    GetDeviceContext()->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
-    GetDeviceContext()->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
-
+	
     DeviceResources->UpdateViewport();
 }
 
@@ -832,8 +826,8 @@ void URenderer::CreateLightCullBuffers()
 	D3D11_SHADER_RESOURCE_VIEW_DESC lightIndexSRVDesc = {};
 	lightIndexSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
 	lightIndexSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-	lightIndexSRVDesc.Buffer.FirstElement = 1;
-	lightIndexSRVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES;
+	lightIndexSRVDesc.Buffer.FirstElement = 0;
+	lightIndexSRVDesc.Buffer.NumElements = MAX_TOTAL_LIGHT_INDICES + 1;
         
 	hr = DeviceResources->GetDevice()->CreateShaderResourceView(LightIndexBuffer, &lightIndexSRVDesc, &LightIndexBufferSRV);
 	assert(SUCCEEDED(hr) && "LightIndexBufferSRV 생성 실패");

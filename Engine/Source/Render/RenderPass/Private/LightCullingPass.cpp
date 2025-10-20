@@ -69,12 +69,19 @@ void FLightCullingPass::ReleaseResources()
 void FLightCullingPass::PreExecute(FRenderingContext& Context)
 {
     URenderer& Renderer = URenderer::GetInstance();
-    
+
     LightIndexBufferUAV = Renderer.GetLightIndexBufferUAV();
     TileLightInfoUAV = Renderer.GetTileLightInfoUAV();
     
     AllLightsBuffer = Renderer.GetAllLightsBuffer();
     AllLightsSRV = Renderer.GetAllLightsSRV();
+    
+    // Clear UAVs
+    ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
+    const UINT clearValues[4] = { 0, 0, 0, 0 };
+    DeviceContext->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
+    DeviceContext->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
+
 }
 
 void FLightCullingPass::Execute(FRenderingContext& Context)
