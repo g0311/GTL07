@@ -376,9 +376,10 @@ void URenderer::ReleaseShader()
 
 	SafeRelease(TextureInputLayout);
 	SafeRelease(TextureVertexShader);
+	UberShaderVertexPermutations.Default = nullptr;
 	
 	// Release all UberShader permutations
-	SafeRelease(UberShaderVertexPermutations.Default);
+	// SafeRelease(UberShaderVertexPermutations.Default); == TextureVertexShader
 	SafeRelease(UberShaderVertexPermutations.Gouraud);
 	
 	SafeRelease(UberShaderPermutations.Unlit);

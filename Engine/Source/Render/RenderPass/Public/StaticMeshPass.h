@@ -1,5 +1,12 @@
-﻿#pragma once
+#pragma once
 #include "Render/RenderPass/Public/RenderPass.h"
+
+// TiledLightingParams cbuffer에 대응하는 구조체
+struct FTiledLightingParams
+{
+    uint32 ViewportOffset[2];   // 뷰포트 오프셋
+    uint32 ViewportSize[2];     // 뷰포트 크기
+};
 
 class FStaticMeshPass : public FRenderPass
 {
@@ -14,6 +21,8 @@ public:
     void SetUpLighting(const FRenderingContext& Context);
     FMaterialConstants CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp);
     void BindMaterialTextures(UMaterial* Material);
+    void SetUpTiledLighting(const FRenderingContext& Context); // Tiled Lighting cbuffer 설정
+    void BindTiledLightingBuffers(); // Tiled Lighting을 위한 Structured Buffer SRV 바인딩
 
 private:
     ID3D11VertexShader* VS = nullptr;
@@ -24,4 +33,5 @@ private:
 
     ID3D11Buffer* ConstantBufferMaterial = nullptr;
 	ID3D11Buffer* ConstantBufferLighting = nullptr;
+	ID3D11Buffer* ConstantBufferTiledLighting = nullptr; // Tiled Lighting 용 cbuffer
 };
