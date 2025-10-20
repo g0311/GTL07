@@ -566,7 +566,6 @@ PS_INPUT mainVS(VS_INPUT Input)
     float3 kS = Ks.rgb;
 
     // Gouraud: 모든 라이트를 순회 (Tiled Culling 사용 안 함)
-    // 이것이 진정한 Gouraud Shading - 버텍스 단위로 계산하므로 밴딩 현상 발생
     float3 LightColor = CalculateAllLightsGouraud(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
 
     // 입력 버텍스 컬러와 라이팅 결과를 블렌드
