@@ -403,7 +403,7 @@ void UMainBarWidget::RenderShowFlagsMenu()
 
 		// Light Culling 표시 옵션
 		bool bShowLightCulling = (ShowFlags & EEngineShowFlags::SF_LightCulling) != 0;
-		if (ImGui::MenuItem("라이트 컬링 표시", nullptr, bShowLightCulling))
+		if (ImGui::MenuItem("라이트 컬링 적용", nullptr, bShowLightCulling))
 		{
 			if (bShowLightCulling)
 			{

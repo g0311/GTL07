@@ -111,8 +111,8 @@ struct Light
 {
     float4 position;    // xyz: 월드 위치, w: 영향 반경
     float4 color;       // xyz: 색상, w: 강도
-    float4 direction;   // xyz: 방향 (스포트라이트용), w: 광원 타입 (0=점, 1=스포트)
-    float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), zw: 사용 안함
+    float4 direction;   // xyz: 방향 (스포트라이트용), w: 광원 타입
+    float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
 };
 
 // Z 범위(Near/Far) 컬링을 수행하는 함수
@@ -134,11 +134,11 @@ cbuffer CullingParams : register(b0)
 {
     matrix View; // 뷰 행렬
     matrix Projection; // 투영 행렬
-    uint2 RenderTargetSize; // 전체 렌더 타겟 크기
     uint2 ViewportOffset; // 현재 뷰포트의 시작 오프셋
     uint2 ViewportSize; // 현재 뷰포트의 크기
     uint NumLights; // 씬에 있는 전체 광원 개수
-    uint Padding; // 16바이트 정렬을 위한 패딩
+    uint EnableCulling; // Light Culling 활성화 여부 (1=활성화, 0=모든라이트저장)
+    uint2 Padding; // 16바이트 정렬을 위한 패딩
 };
 
 // 출력용 UAV(Unordered Access View) 버퍼
@@ -219,144 +219,126 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     float3 bottomNormal = normalize(cross(c1.xyz, c2.xyz));
     frustumPlanes[3] = float4(bottomNormal, 0.0f);
     
-    // --- 2단계: 프러스텀과 광원 교차 검사 ---
+    // --- 2단계: Light Culling 활성화 여부에 따른 처리 ---
     
-    // 그룹 내 스레드들이 전체 광원 목록을 나누어 검사하도록 범위를 설정
+    // 그룹 내 스레드들이 전체 광원 목록을 나누어 처리하도록 범위 설정
     const uint threadsPerGroup = TILE_SIZE * TILE_SIZE;
     const uint lightsPerThread = (NumLights + threadsPerGroup - 1) / threadsPerGroup;
     const uint startLightIndex = GI * lightsPerThread;
     const uint endLightIndex = min(startLightIndex + lightsPerThread, NumLights);
     
-    // 각 스레드가 자신이 맡은 광원들을 순회하며 검사
-    for (uint lightIndex = startLightIndex; lightIndex < endLightIndex; ++lightIndex)
+    // Light Culling이 비활성화된 경우 모든 라이트를 타일에 저장
+    if (EnableCulling == 0)
     {
-        Light light = AllLights[lightIndex];
-        
-        // 광원 위치를 월드 공간에서 뷰 공간으로 변환
-        float4 lightPosView = mul(View, float4(light.position.xyz, 1.0));
-        float lightRadius = light.position.w;
-        uint lightType = (uint)light.direction.w;
-        
-        bool isVisible = true;
-        
-        if (lightType == LIGHT_TYPE_AMBIENT)
-        {
-            isVisible = true;     
-        }
-        else if (lightType == LIGHT_TYPE_DIRECTIONAL)
-        {
-            isVisible = true;
-        }
-        // 포인트 라이트: 구-프러스텀 교차 검사를 수행
-        else if (lightType == LIGHT_TYPE_POINT)
-        {
-            //반복 없이 풀어 쓰라는 키워드 => jump 배제로 성능 향상
-            [unroll]
-            for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
-            {
-                // 광원 중심과 평면 사이의 거리를 계산 거리가 반경보다 작으면 평면 뒤에 있음
-                float distance = dot(frustumPlanes[planeIndex].xyz, lightPosView.xyz) + frustumPlanes[planeIndex].w;
-                if (distance < -lightRadius)
-                {
-                    isVisible = false;
-                    break;
-                }
-            }
-
-            // Z-테스트는 Point/Spot 라이트에만 적용
-            if (isVisible)
-            {
-                isVisible = IsInZRange(lightPosView, lightRadius);
-            }
-        }
-        // 스포트 라이트: 원뿔-프러스텀 교차 검사를 수행
-        else if (lightType == LIGHT_TYPE_SPOT)
-        {
-            // 원뿔을 감싸는 바운딩 스피어로 근사하여 1차 검사를 수행
-            
-            // 뷰 공간에서 원뿔 지오메트리 계산
-            float3 lightDirView = normalize(mul(View, float4(light.direction.xyz, 0.0)).xyz); // 뷰 공간에서의 라이트 방향
-            float cosOuterAngle = light.angles.y; // 외부 원뿔 각도의 코사인 값 (미리 계산됨)
-            
-            // 각도와 반지름을 이용해 원뿔 끝점 계산
-            // 삼각함수 사용: 높이 = 밑변 / cos(각도), 여기서 밑변은 반지름
-            float coneHeight = lightRadius / cosOuterAngle;
-            // 원뿔 밑면 원의 중심 찾기
-            float3 coneEnd = lightPosView.xyz + lightDirView * coneHeight; // 밑면 중심의 뷰 공간 좌표
-            
-            // 원뿔을 감싸는 바운딩 스피어 계산
-            float3 sphereCenter = (lightPosView.xyz + coneEnd) * 0.5;
-            // 반지름은 피타고라스 정리를 사용해 정확히 계산
-            float halfHeight = length(lightPosView.xyz - coneEnd) * 0.5;
-            float sphereRadius = sqrt(halfHeight * halfHeight + lightRadius * lightRadius); // 피타고라스 정리
-            
-            [unroll]
-            for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
-            {
-                float distance = dot(frustumPlanes[planeIndex].xyz, sphereCenter) + frustumPlanes[planeIndex].w;
-                if (distance < -sphereRadius)
-                {
-                    isVisible = false;
-                    break;
-                }
-            }
-            
-            // 1차 검사를 통과했으면, 더 정확한 2차 검사를 수행
-            if (isVisible)
-            {
-                // 타일의 4개 코너 중 하나라도 스포트라이트 원뿔 범위 내에 있는지 검사
-                bool anyCornerInSpotlight = false;
-                
-                // c1: 좌하단 (Left-Bottom)
-                float3 cornerDir1 = normalize(c1.xyz);
-                if (dot(-lightDirView, cornerDir1) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
-                
-                // c2: 우하단 (Right-Bottom)
-                float3 cornerDir2 = normalize(c2.xyz);
-                if (dot(-lightDirView, cornerDir2) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
-                
-                // c3: 좌상단 (Left-Top)
-                float3 cornerDir3 = normalize(c3.xyz);
-                if (dot(-lightDirView, cornerDir3) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
-                
-                // c4: 우상단 (Right-Top)
-                float3 cornerDir4 = normalize(c4.xyz);
-                if (dot(-lightDirView, cornerDir4) >= cosOuterAngle)
-                {
-                    anyCornerInSpotlight = true;
-                }
-
-                if (!anyCornerInSpotlight)
-                {
-                    isVisible = false;
-                }
-            }
-
-            // Z-테스트는 Point/Spot 라이트에만 적용
-            if (isVisible)
-            {
-                isVisible = IsInZRange(lightPosView, lightRadius);
-            }
-        }
-        
-        // 최종적으로 보이는 광원이면, 공유 메모리에 해당 광원의 인덱스를 추가
-        if (isVisible)
+        // 모든 라이트를 타일에 저장 (Culling 없이)
+        for (uint lightIndex = startLightIndex; lightIndex < endLightIndex; ++lightIndex)
         {
             uint index;
-            // 여러 스레드가 동시에 접근할 수 있으므로 원자적 연산(InterlockedAdd)으로 카운터를 안전하게 증가
             InterlockedAdd(numVisibleLights, 1, index);
-            if (index < 1024) // 공유 메모리 크기를 넘지 않는지 확인
+            if (index < 1024)
             {
                 visibleLightIndices[index] = lightIndex;
+            }
+        }
+    }
+    else
+    {
+        // Light Culling 활성화: 기존 프러스텀 검사 로직 사용
+        for (uint lightIndex = startLightIndex; lightIndex < endLightIndex; ++lightIndex)
+        {
+            Light light = AllLights[lightIndex];
+            
+            // 광원 위치를 월드 공간에서 뷰 공간으로 변환
+            float4 lightPosView = mul(View, float4(light.position.xyz, 1.0));
+            float lightRadius = light.position.w;
+            uint lightType = (uint)light.direction.w;
+            
+            bool isVisible = true;
+            
+            if (lightType == LIGHT_TYPE_AMBIENT)
+            {
+                isVisible = true;     
+            }
+            else if (lightType == LIGHT_TYPE_DIRECTIONAL)
+            {
+                isVisible = true;
+            }
+            // 포인트 라이트: 구-프러스텀 교차 검사를 수행
+            else if (lightType == LIGHT_TYPE_POINT)
+            {
+                //반복 없이 풀어 쓰라는 키워드 => jump 배제로 성능 향상
+                [unroll]
+                for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
+                {
+                    // 광원 중심과 평면 사이의 거리를 계산 거리가 반지름보다 작으면 평면 뒤에 있음
+                    float distance = dot(frustumPlanes[planeIndex].xyz, lightPosView.xyz) + frustumPlanes[planeIndex].w;
+                    if (distance < -lightRadius)
+                    {
+                        isVisible = false;
+                        break;
+                    }
+                }
+
+                // Z-테스트는 Point/Spot 라이트에만 적용
+                if (isVisible)
+                {
+                    isVisible = IsInZRange(lightPosView, lightRadius);
+                }
+            }
+            // 스포트 라이트: 원뿔-프러스텀 교차 검사를 수행
+            else if (lightType == LIGHT_TYPE_SPOT)
+            {
+                // 원뿔을 감싸는 바운딩 스피어로 근사하여 검사
+                // 뷰 공간에서 원뿔 지오메트리 계산
+                float3 lightDirView = normalize(mul(View, float4(light.direction.xyz, 0.0)).xyz); // 뷰 공간에서의 라이트 방향
+                float cosOuterAngle = light.angles.y; // 외부 원뿔 각도의 코사인 값
+
+                // light.position.w (lightRadius)는 원뿔의 높이(range)
+                float coneHeight = lightRadius;
+                
+                // tan(angle) = sqrt(1 - cos^2) / cos
+                float tanOuterAngle = sqrt(1.0f - cosOuterAngle * cosOuterAngle) / cosOuterAngle;
+                float baseRadius = coneHeight * tanOuterAngle;
+
+                // 원뿔 밑면 원의 중심
+                float3 coneEnd = lightPosView.xyz + lightDirView * coneHeight;
+                
+                // 바운딩 스피어의 중심은 원뿔의 꼭짓점과 밑면 중심의 중간입니다.
+                float3 sphereCenter = (lightPosView.xyz + coneEnd) * 0.5f;
+                
+                // 바운딩 스피어의 반지름은 중심점에서 원뿔 꼭짓점까지의 거리와 같습니다.
+                // (피타고라스 정리로 계산)
+                float halfHeight = coneHeight * 0.5f;
+                float sphereRadius = sqrt(halfHeight * halfHeight + baseRadius * baseRadius);
+                
+                [unroll]
+                for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
+                {
+                    float distance = dot(frustumPlanes[planeIndex].xyz, sphereCenter) + frustumPlanes[planeIndex].w;
+                    if (distance < -sphereRadius)
+                    {
+                        isVisible = false;
+                        break;
+                    }
+                }
+
+                // Z-테스트는 Point/Spot 라이트에만 적용
+                if (isVisible)
+                {
+                    isVisible = IsInZRange(lightPosView, lightRadius);
+                }
+            }
+            
+            // 최종적으로 보이는 광원이면, 공유 메모리에 해당 광원의 인덱스를 추가
+            if (isVisible)
+            {
+                uint index;
+                // 여러 스레드가 동시에 접근할 수 있으므로 원자적 연산(InterlockedAdd)으로 카운터를 안전하게 증가
+                InterlockedAdd(numVisibleLights, 1, index);
+                if (index < 1024) // 공유 메모리 크기를 넘지 않는지 확인
+                {
+                    visibleLightIndices[index] = lightIndex;
+                }
             }
         }
     }
@@ -374,10 +356,9 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         InterlockedAdd(LightIndexBuffer[0], numVisibleLights, globalOffset);
         globalOffset += 1; // 0번 인덱스는 카운터이므로 1부터 실제 데이터 저장
         
-        uint globalTileX = (ViewportOffset.x / TILE_SIZE) + Gid.x;
-        uint globalTileY = (ViewportOffset.y / TILE_SIZE) + Gid.y;
-        uint globalWindowTileWidth = (RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE;
-        uint tileIndex = globalTileY * globalWindowTileWidth + globalTileX;
+        // 뷰포트 기준 타일 인덱스 계산 (Gid.xy는 이미 뷰포트 내에서의 타일 인덱스)
+        uint viewportTileWidth = (ViewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
+        uint tileIndex = Gid.y * viewportTileWidth + Gid.x;
 
         TileLightInfo[tileIndex] = uint2(globalOffset, min(numVisibleLights, 1024u));
     }
@@ -385,10 +366,9 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     // 그룹 내 모든 스레드가 협력하여 공유 메모리의 내용을 전역 버퍼(LightIndexBuffer)에 복사
     if (numVisibleLights > 0)
     {
-        uint globalTileX = (ViewportOffset.x / TILE_SIZE) + Gid.x;
-        uint globalTileY = (ViewportOffset.y / TILE_SIZE) + Gid.y;
-        uint globalWindowTileWidth = (RenderTargetSize.x + TILE_SIZE - 1) / TILE_SIZE;
-        uint tileIndex = globalTileY * globalWindowTileWidth + globalTileX;
+        // 뷰포트 기준 타일 인덱스 계산
+        uint viewportTileWidth = (ViewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
+        uint tileIndex = Gid.y * viewportTileWidth + Gid.x;
 
         uint globalOffset = TileLightInfo[tileIndex].x;
         uint actualCount = min(numVisibleLights, 1024u);

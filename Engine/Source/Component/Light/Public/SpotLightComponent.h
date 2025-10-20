@@ -19,6 +19,7 @@ public:
 	float GetRange() { return Range; }
 	float GetInnerConeAngleRad() { return InnerConeAngleRad; }
 	float GetOuterConeAngleRad() { return OuterConeAngleRad; }
+	float GetFallOff() {return Light.Falloff;}
 	
 	/* Todo : rename & 통일 Method name && set Dirty Bit*/
 	FSpotLightData GetSpotInfo()
