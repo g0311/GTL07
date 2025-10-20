@@ -205,29 +205,20 @@ float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, fl
 }
 float4 CalculateAmbientLight(float2 UV)
 {
-    float4 AmbientColor;
-    // Material Ambient(Albedo)
-    /*TODO : Apply DiffuseTexture for now, due to Binding AmbientTexture feature don't exist yet*/
-    if (MaterialFlags & HAS_AMBIENT_MAP)
-    {
-        AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
-    }
-    else if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        AmbientColor = DiffuseTexture.Sample(SamplerWrap, UV);
-    }
-    else
-    {
-        AmbientColor = Ka;
-    }
-    // Light Ambient
-    float4 AccumulatedAmbientColor = float4(0, 0, 0, 0);
+    // 기본 Albedo: map_Kd (DiffuseTexture)가 기본 색상
+    float4 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV) : Ka;
+
+    // Ambient용 Albedo: 별도로 AmbientTexture가 설정되었다면 override
+    float4 AmbientAlbedo = (MaterialFlags & HAS_AMBIENT_MAP) ? AmbientTexture.Sample(SamplerWrap, UV) : Albedo;
+
+    // Accumulated Ambient Light
+    float4 AccumulatedAmbientLight = float4(0, 0, 0, 0);
     for (int i = 0; i < NumAmbientLights; i++)
     {
-        // Light * Intensity
-        AccumulatedAmbientColor += AmbientLights[i].Color * AmbientLights[i].Intensity;
+        AccumulatedAmbientLight += AmbientLights[i].Color * AmbientLights[i].Intensity;
     }
-    return AmbientColor * AccumulatedAmbientColor;
+
+    return AmbientAlbedo * AccumulatedAmbientLight;
 }
 float3 CalculateDirectionalLight(float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
 {
@@ -423,9 +414,15 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float2 UV = Input.Tex;
     float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
-     
-    float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
-    float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
+
+    // 기본 Albedo: map_Kd (DiffuseTexture)가 물체의 기본 색상
+    float3 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd.rgb;
+
+    // Diffuse: 기본적으로 Albedo 사용
+    float3 kD = Albedo;
+
+    // Specular: 별도 SpecularTexture가 설정되었다면 사용, 아니면 Ks 상수
+    float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks.rgb;
      
     // Unlit 처리
     if (MaterialFlags & UNLIT)
