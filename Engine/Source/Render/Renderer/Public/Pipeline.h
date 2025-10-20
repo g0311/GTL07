@@ -1,5 +1,4 @@
 #pragma once
-
 struct FPipelineInfo
 {
 	ID3D11InputLayout* InputLayout;

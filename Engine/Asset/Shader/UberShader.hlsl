@@ -1,11 +1,3 @@
-#if !defined(UNLIT) && !defined(LIGHTING_MODEL_GOURAUD) && !defined(LIGHTING_MODEL_LAMBERT) && !defined(LIGHTING_MODEL_PHONG) && !defined(LIGHTING_MODEL_BLINNPHONG)
-#define LIGHTING_MODEL_PHONG 1
-#endif
-
-#if (defined(UNLIT) + defined(LIGHTING_MODEL_GOURAUD) + defined(LIGHTING_MODEL_LAMBERT) + defined(LIGHTING_MODEL_PHONG)) + defined(LIGHTING_MODEL_BLINNPHONG)!= 1
-#error "Exactly one of LIGHTING_MODEL_* must be defined."
-#endif
-
 // Light Culling에서 공유하는 헤더 파일 내용
 // LightCulling.hlsl의 유틸리티 함수들을 포함
 #define TILE_SIZE 32
@@ -158,6 +150,7 @@ struct PS_INPUT
     float2 Tex : TEXCOORD2;
     float3 WorldTangent : TEXCOORD3;
     float3 WorldBitangent : TEXCOORD4;
+    float4 Color : COLOR;
 };
 
 struct PS_OUTPUT
@@ -189,33 +182,27 @@ float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, fl
     float NdotH = saturate(dot(WorldNormal, H));
     return Ks * LightColor * pow(NdotH, Shininess);
 #else
-    return float3(0, 0, 0);
+    float3 H = normalize(LightDir + ViewDir);
+    float NdotH = saturate(dot(WorldNormal, H));
+    return Ks * LightColor * pow(NdotH, Shininess);
 #endif
 }
-
 float4 CalculateAmbientLight(float2 UV)
 {
-    float4 AmbientColor;
-    // Material Ambient(Albedo)
-    /*TODO : Apply DiffuseTexture for now, due to Binding AmbientTexture feature don't exist yet*/
-    // if (MaterialFlags & HAS_AMBIENT_MAP)
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        // AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
-        AmbientColor = DiffuseTexture.Sample(SamplerWrap, UV);
-    }
-    else
-    {
-        AmbientColor = Ka;
-    }
-    // Light Ambient
-    float4 AccumulatedAmbientColor = float4(0, 0, 0, 0);
+    // 기본 Albedo: map_Kd (DiffuseTexture)가 기본 색상
+    float4 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV) : Ka;
+
+    // Ambient용 Albedo: 별도로 AmbientTexture가 설정되었다면 override
+    float4 AmbientAlbedo = (MaterialFlags & HAS_AMBIENT_MAP) ? AmbientTexture.Sample(SamplerWrap, UV) : Albedo;
+
+    // Accumulated Ambient Light
+    float4 AccumulatedAmbientLight = float4(0, 0, 0, 0);
     for (int i = 0; i < NumAmbientLights; i++)
     {
-        // Light * Intensity
-        AccumulatedAmbientColor += AmbientLights[i].Color * AmbientLights[i].Intensity;
+        AccumulatedAmbientLight += AmbientLights[i].Color * AmbientLights[i].Intensity;
     }
-    return AmbientColor * AccumulatedAmbientColor;
+
+    return AmbientAlbedo * AccumulatedAmbientLight;
 }
 float3 CalculateDirectionalLight(float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
 {
@@ -236,7 +223,7 @@ float3 CalculateDirectionalLight(float3 WorldNormal, float3 ViewDir, float3 Kd, 
 }
 float3 CalculatePointLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
 {
-    float3 AccumulatedPointlightColor;
+    float3 AccumulatedPointlightColor = 0;
     for (int i = 0; i < NumPointLights; i++)
     {
         float3 LightVec = PointLights[i].Position - WorldPos;
@@ -348,7 +335,48 @@ FSpotLightInfo ConvertToSpotLight(Light light)
     return spotLight;
 }
 
-// 기존 함수들을 단일 라이트에 대해 호출할 수 있도록 오버로드
+float3 CalculateWorldNormal(PS_INPUT Input)
+{
+    float3 WorldNormal = Input.WorldNormal;
+    
+    // Safety check: if normal is zero, use a default up vector
+    if (length(WorldNormal) < 0.001f)
+    {
+        WorldNormal = float3(0.0f, 0.0f, 1.0f);
+    }
+    else
+    {
+        WorldNormal = normalize(WorldNormal);
+    }
+    
+    // Sample normal map (tangent space)
+    if (MaterialFlags & HAS_NORMAL_MAP)
+    {
+        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, Input.Tex).rgb;
+        // Decode from [0,1] to [-1,1]
+        TangentNormal = TangentNormal * 2.0f - 1.0f;
+
+        // Construct TBN matrix (Tangent, Bitangent, Normal)
+        float3 N = WorldNormal;
+        float3 T = Input.WorldTangent;
+        float3 B = Input.WorldBitangent;
+
+        // Safety check for tangent and bitangent
+        if (length(T) > 0.001f && length(B) > 0.001f)
+        {
+            T = normalize(T);
+            B = normalize(B);
+            // Transform tangent space normal to world space
+            WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
+        }
+    }
+    
+    return WorldNormal;
+}
+
+//==================================================//
+//====================Tile Light Calc====================//
+//==================================================//
 float3 CalculateSingleAmbientLight(FAmbientLightInfo ambientLight, float3 Kd)
 {
     return Kd * ambientLight.Color.rgb * ambientLight.Intensity;
@@ -473,44 +501,6 @@ float3 CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNo
     return AccumulatedColor;
 }
 
-float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
-{
-    float3 WorldNormal = Input.WorldNormal;
-    
-    // Safety check: if normal is zero, use a default up vector
-    if (length(WorldNormal) < 0.001f)
-    {
-        WorldNormal = float3(0.0f, 0.0f, 1.0f);
-    }
-    else
-    {
-        WorldNormal = normalize(WorldNormal);
-    }
-    
-    // Sample normal map (tangent space)
-    if (MaterialFlags & HAS_NORMAL_MAP)
-    {
-        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
-        // Decode from [0,1] to [-1,1]
-        TangentNormal = TangentNormal * 2.0f - 1.0f;
-
-        // Construct TBN matrix (Tangent, Bitangent, Normal)
-        float3 N = WorldNormal;
-        float3 T = Input.WorldTangent;
-        float3 B = Input.WorldBitangent;
-
-        // Safety check for tangent and bitangent
-        if (length(T) > 0.001f && length(B) > 0.001f)
-        {
-            T = normalize(T);
-            B = normalize(B);
-            // Transform tangent space normal to world space
-            WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
-        }
-    }
-    
-    return WorldNormal;
-}
 PS_INPUT mainVS(VS_INPUT Input)
 {
     PS_INPUT Output;
@@ -528,9 +518,21 @@ PS_INPUT mainVS(VS_INPUT Input)
     Output.WorldBitangent = mul(Input.Bitangent, (float3x3)WorldInverseTranspose);
 
     Output.Tex = Input.Tex;
-
+    Output.Color = Input.Color;
 #if LIGHTING_MODEL_GOURAUD
-          
+    float3 Normal = normalize(Output.WorldNormal);
+    float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
+
+    // Vertex Shader에서는 텍스처 샘플링 불가 - Material 상수만 사용
+    float3 kD = Kd.rgb;
+    float3 kS = Ks.rgb;
+
+    // Tiled Lighting 계산 (버텍스 셰이더에서)
+    float3 TiledLightColor = CalculateTiledLighting(Output.Position, Output.WorldPosition, Normal, ViewDir, kD, kS, Ns, ViewportOffset, ViewportSize);
+
+    // 입력 버텍스 컬러와 라이팅 결과를 블렌드
+    Output.Color.rgb = Input.Color.rgb * TiledLightColor;
+    Output.Color.a = Input.Color.a;
 #endif
     return Output;
 }
@@ -538,13 +540,37 @@ PS_INPUT mainVS(VS_INPUT Input)
 PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
-    float2 UV = Input.Tex; 
+#if LIGHTING_MODEL_GOURAUD
+    Output.SceneColor = Input.Color;
+    // 텍스처가 있다면 곱하기
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
+        Output.SceneColor.rgb *= TexColor.rgb;
+        Output.SceneColor.a = TexColor.a;
+    };
+#elif LIGHTING_MODEL_UNLIT
+    // TODO : 원래는 Albedo로 해야하지만, 현재는 DiffuseTexture = Albedo임
+    Output.SceneColor= float4(0.5, 0.5, 0.5, 1);
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
+        Output.SceneColor= TexColor;
+    };
+#else
+    float2 UV = Input.Tex;
     float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
 
-    float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
-    float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
+    // 기본 Albedo: map_Kd (DiffuseTexture)가 물체의 기본 색상
+    float3 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd.rgb;
 
+    // Diffuse: 기본적으로 Albedo 사용
+    float3 kD = Albedo;
+
+    // Specular: 별도 SpecularTexture가 설정되었다면 사용, 아니면 Ks 상수
+    float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks.rgb;
+     
     // Unlit 처리
     if (MaterialFlags & UNLIT)
     {
@@ -556,22 +582,35 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     // Tiled Lighting 사용
     float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, kD, kS, Ns, ViewportOffset, ViewportSize);
     
+     
+    // Light
+    // float3 AmbientColor = CalculateAmbientLight(UV).rgb;
+    // float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
+    // float3 PointLightColor = CalculatePointLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+    // float3 SpotLightColor = CalculateSpotLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+         
     float4 FinalColor;
     FinalColor.rgb = TiledLightColor;
     FinalColor.a = 1.0f;
-
+     
     // Alpha handling
     /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    if (MaterialFlags & HAS_ALPHA_MAP)
+    {
+        float alpha = AlphaTexture.Sample(SamplerWrap, UV).w;
+        FinalColor.a = D * alpha;
+    }
+    else if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
         float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
         FinalColor.a = D * alpha;
     }
     Output.SceneColor = FinalColor;
-
+#endif
+    
     // Normal
     // Calculate World Normal for Normal Buffer
-    float3 WorldNormal = CalculateWorldNormal(Input, UV);
+    float3 WorldNormal = CalculateWorldNormal(Input);
     
     // Encode world normal to [0,1] range for storage
     float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
