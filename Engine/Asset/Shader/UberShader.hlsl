@@ -390,7 +390,7 @@ float3 CalculateSinglePointLight(FPointLightInfo pointLight, float3 WorldPos, fl
         
     float3 LightDir = LightVec / Distance;
 
-    float RangeAttenuation = saturate(1.0 - Distance/pointLight.Radius);
+    float RangeAttenuation = saturate(1.0 - ((Distance * Distance)/(pointLight.Radius*pointLight.Radius)));
     RangeAttenuation = pow(RangeAttenuation, max(pointLight.FalloffExtent, 0.0));
     
     // Light * Intensity
