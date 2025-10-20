@@ -214,7 +214,7 @@ void UMainBarWidget::RenderViewMenu()
 		bool bIsWorldNormal = (CurrentMode == EViewModeIndex::VMI_WorldNormal);
 
 		// Lit 메뉴 (서브메뉴로 Lighting Model 선택 가능)
-		if (ImGui::BeginMenu("조명 적용(Lit)", bIsLit))
+		if (ImGui::BeginMenu("조명 적용(Lit)", true))
 		{
 			ELightingModel CurrentLightingModel = RendererInstance.GetLightingModel();
 
