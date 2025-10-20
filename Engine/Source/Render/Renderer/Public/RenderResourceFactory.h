@@ -10,6 +10,7 @@ public:
 	static void CreateVertexShaderAndInputLayout(const wstring& InFilePath,
 		const TArray<D3D11_INPUT_ELEMENT_DESC>& InInputLayoutDescs, ID3D11VertexShader** OutVertexShader,
 		ID3D11InputLayout** OutInputLayout, const D3D_SHADER_MACRO* InDefines =nullptr);
+	static void CreateVertexShader(const wstring& InFilePath, ID3D11VertexShader** OutVertexShader, const D3D_SHADER_MACRO* InDefines = nullptr);
 	static void CreatePixelShader(const wstring& InFilePath, ID3D11PixelShader** InPixelShader, const D3D_SHADER_MACRO* InDefines = nullptr);
 	static ID3D11SamplerState* CreateSamplerState(D3D11_FILTER InFilter, D3D11_TEXTURE_ADDRESS_MODE InAddressMode);
 	static ID3D11SamplerState* CreateFXAASamplerState();

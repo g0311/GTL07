@@ -61,6 +61,29 @@ void FRenderResourceFactory::CreateVertexShaderAndInputLayout(const wstring& InF
 	SafeRelease(VertexShaderBlob);	
 }
 
+void FRenderResourceFactory::CreateVertexShader(const wstring& InFilePath, ID3D11VertexShader** OutVertexShader, const D3D_SHADER_MACRO* InDefines)
+{
+	ID3DBlob* VertexShaderBlob = nullptr;
+	ID3DBlob* ErrorBlob = nullptr;
+
+	// Debug flags for shader compilation
+	UINT CompileFlags = 0;
+#if defined(_DEBUG)
+	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
+	HRESULT Result = D3DCompileFromFile(InFilePath.data(), InDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", CompileFlags, 0, &VertexShaderBlob, &ErrorBlob);
+	if (FAILED(Result))
+	{
+		if (ErrorBlob) { OutputDebugStringA(static_cast<char*>(ErrorBlob->GetBufferPointer())); SafeRelease(ErrorBlob); }
+		SafeRelease(VertexShaderBlob);
+		return;
+	}
+
+	URenderer::GetInstance().GetDevice()->CreateVertexShader(VertexShaderBlob->GetBufferPointer(), VertexShaderBlob->GetBufferSize(), nullptr, OutVertexShader);
+	SafeRelease(VertexShaderBlob);	
+}
+
 void FRenderResourceFactory::CreatePixelShader(const wstring& InFilePath, ID3D11PixelShader** OutPixelShader, const D3D_SHADER_MACRO* InDefines)
 {
 	ID3DBlob* PixelShaderBlob = nullptr;

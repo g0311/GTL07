@@ -204,7 +204,8 @@ void UMainBarWidget::RenderViewMenu()
 		}
 
 		EViewModeIndex CurrentMode = EditorInstance->GetViewMode();
-
+		URenderer& RendererInstance = URenderer::GetInstance();
+		
 		// ViewMode 메뉴 아이템
 		bool bIsLit = (CurrentMode == EViewModeIndex::VMI_Lit);
 		bool bIsUnlit = (CurrentMode == EViewModeIndex::VMI_Unlit);
@@ -213,9 +214,8 @@ void UMainBarWidget::RenderViewMenu()
 		bool bIsWorldNormal = (CurrentMode == EViewModeIndex::VMI_WorldNormal);
 
 		// Lit 메뉴 (서브메뉴로 Lighting Model 선택 가능)
-		if (ImGui::BeginMenu("조명 적용(Lit)", true))
+		if (ImGui::BeginMenu("조명 적용(Lit)", bIsLit))
 		{
-			URenderer& RendererInstance = URenderer::GetInstance();
 			ELightingModel CurrentLightingModel = RendererInstance.GetLightingModel();
 
 			bool bIsGouraud = (CurrentLightingModel == ELightingModel::Gouraud);
@@ -266,18 +266,21 @@ void UMainBarWidget::RenderViewMenu()
 		if (ImGui::MenuItem("와이어프레임(Wireframe)", nullptr, bIsWireframe) && !bIsWireframe)
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_Wireframe);
+			RendererInstance.SetLightingModel(ELightingModel::None);
 			UE_LOG("MainBarWidget: ViewMode를 Wireframe으로 변경");
 		}
 
 		if (ImGui::MenuItem("씬 뎁스(SceneDepth)", nullptr, bIsSceneDepth) && !bIsSceneDepth)
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_SceneDepth);
+			RendererInstance.SetLightingModel(ELightingModel::None);
 			UE_LOG("MainBarWidget: ViewMode를 SceneDepth으로 변경");
 		}
 
 		if (ImGui::MenuItem("월드 노멀(WorldNormal)", nullptr, bIsWorldNormal) && !bIsWorldNormal)
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_WorldNormal);
+			RendererInstance.SetLightingModel(ELightingModel::None);
 			UE_LOG("MainBarWidget: ViewMode를 WorldNormal으로 변경");
 		}
 

@@ -236,8 +236,7 @@ void URenderer::CreateTextureShader()
 		{ nullptr, nullptr }
 	};
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Gouraud, GouraudDefines);
-	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/UberShader.hlsl", TextureLayout, &UberShaderVertexPermutations.Gouraud,
-		&UberShaderVertexPermutations.InputLayout, GouraudDefines);
+	FRenderResourceFactory::CreateVertexShader(L"Asset/Shader/UberShader.hlsl", &UberShaderVertexPermutations.Gouraud, GouraudDefines);
 
 	D3D_SHADER_MACRO GouraudNormalDefines[] = {
 		{ "LIGHTING_MODEL_GOURAUD", "1" },
@@ -381,7 +380,6 @@ void URenderer::ReleaseShader()
 	// Release all UberShader permutations
 	SafeRelease(UberShaderVertexPermutations.Default);
 	SafeRelease(UberShaderVertexPermutations.Gouraud);
-	SafeRelease(UberShaderVertexPermutations.InputLayout);
 	
 	SafeRelease(UberShaderPermutations.Unlit);
 	SafeRelease(UberShaderPermutations.Gouraud);

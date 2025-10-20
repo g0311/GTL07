@@ -317,33 +317,36 @@ PS_INPUT mainVS(VS_INPUT Input)
     Output.WorldBitangent = mul(Input.Bitangent, (float3x3)WorldInverseTranspose);
 
     Output.Tex = Input.Tex;
-
 #if LIGHTING_MODEL_GOURAUD
+    float3 Normal = normalize(Output.WorldNormal);
+    float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
+
+    // Vertex Shader에서는 텍스처 샘플링 불가 - Material 상수만 사용
+    float3 kD = Kd.rgb;
+    float3 kS = Ks.rgb;
+
+    // Ambient Light 계산
+    float3 MaterialAmbient = Ka.rgb;
+    float3 AccumulatedAmbientColor = float3(0, 0, 0);
+    for (int i = 0; i < NumAmbientLights; i++)
     {
-        float3 Normal = normalize(Output.WorldNormal);
-        float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
-
-        // 텍스처 없이 Material 상수만 사용
-        float3 kD = Kd.rgb;
-        float3 kS = Ks.rgb;
-    
-        float3 AmbientColor = Ka.rgb; // 상수만
-        float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
-        float3 PointLightColor = CalculatePointLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
-        float3 SpotLightColor = CalculateSpotLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
-
-        Output.Color.rgb = AmbientColor + DirectionalColor + PointLightColor + SpotLightColor;
-        Output.Color.a = 1.0f;
+        AccumulatedAmbientColor += AmbientLights[i].Color.rgb * AmbientLights[i].Intensity;
     }
+    float3 AmbientColor = MaterialAmbient * AccumulatedAmbientColor;
+
+    float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
+    float3 PointLightColor = CalculatePointLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+    float3 SpotLightColor = CalculateSpotLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+
+    Output.Color.rgb = AmbientColor + DirectionalColor + PointLightColor + SpotLightColor;
+    Output.Color.a = 1.0f;
 #endif
-    
     return Output;
 }
 
 PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
-
 #if LIGHTING_MODEL_GOURAUD
     Output.SceneColor = Input.Color;
     // 텍스처가 있다면 곱하기

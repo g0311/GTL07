@@ -168,7 +168,6 @@ private:
 	{
 		ID3D11VertexShader* Default = nullptr;
 		ID3D11VertexShader* Gouraud = nullptr;
-		ID3D11InputLayout* InputLayout = nullptr;
 	} UberShaderVertexPermutations;
 	
 	struct FUberShaderPixelPermutations

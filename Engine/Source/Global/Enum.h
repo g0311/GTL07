@@ -167,7 +167,8 @@ enum class ELightingModel : uint32
 	Gouraud,
 	Lambert,
 	Phong,
-	BlinnPhong
+	BlinnPhong,
+	None
 };
 /**
  * @brief Level Show Flag Enum

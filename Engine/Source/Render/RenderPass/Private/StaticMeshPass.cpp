@@ -108,6 +108,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				FMaterialConstants MaterialConstants = CreateMaterialConstants(Material, MeshComp);
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
+				Pipeline->SetConstantBuffer(2, true, ConstantBufferMaterial);
 
 				SetUpLighting(Context);
 
@@ -178,6 +179,7 @@ void FStaticMeshPass::SetUpLighting(const FRenderingContext& Context)
 	}
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLighting, LightingConstants);
 	Pipeline->SetConstantBuffer(3, false, ConstantBufferLighting);
+	Pipeline->SetConstantBuffer(3, true, ConstantBufferLighting);
 }
 
 FMaterialConstants FStaticMeshPass::CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp)
