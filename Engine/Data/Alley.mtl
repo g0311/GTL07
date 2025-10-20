@@ -1,7 +1,7 @@
 # Blender 4.5.2 LTS MTL File: 'None'
 # www.blender.org
 
-newmtl Light
+newmtl Material_Alley_Light
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
@@ -9,9 +9,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd Image_12.jpg
+map_Kd Texture/Alley_Light.jpg
 
-newmtl Pipe
+newmtl Material_Alley_Pipe
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
@@ -19,9 +19,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd Image_6.jpg
+map_Kd Texture/Alley_Pipe.jpg
 
-newmtl Street
+newmtl Material_Alley_Street
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
@@ -29,9 +29,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd Image_0.png
+map_Kd Texture/Alley_Street.png
 
-newmtl Wall
+newmtl Material_Alley_Wall
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
@@ -39,9 +39,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd Image_3.jpg
+map_Kd Texture/Alley_Wall.jpg
 
-newmtl material
+newmtl Material_Alley_Rock
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
@@ -49,4 +49,4 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd Image_9.jpg
+map_Kd Texture/Alley_Rock.jpg

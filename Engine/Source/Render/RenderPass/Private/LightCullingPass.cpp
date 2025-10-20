@@ -8,6 +8,8 @@
 #include "Render/Renderer/Public/RenderResourceFactory.h"
 #include "Render/Renderer/Public/DeviceResources.h"
 #include "Render/RenderPass/Public/FogPass.h"
+#include <Component/Light/Public/DirectionalLightComponent.h>
+#include <Component/Light/Public/AmbientLightComponent.h>
 
 FLightCullingPass::FLightCullingPass(UPipeline* InPipeline, UDeviceResources* InDeviceResources)
     : FRenderPass(InPipeline, nullptr, nullptr)
@@ -25,6 +27,12 @@ void FLightCullingPass::CreateResources()
 {
     HRESULT hr;
     ID3DBlob* pBlobCS = nullptr;
+
+    // Debug flags for shader compilation
+    UINT CompileFlags = 0;
+#if defined(_DEBUG)
+    CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
     
     // 셰이더 컴파일
     hr = D3DCompileFromFile(
@@ -33,7 +41,7 @@ void FLightCullingPass::CreateResources()
         nullptr,
         "CSMain",
         "cs_5_0",
-        0,
+        CompileFlags,
         0,
         &pBlobCS,
         nullptr);
@@ -72,11 +80,6 @@ void FLightCullingPass::PreExecute(FRenderingContext& Context)
 
 void FLightCullingPass::Execute(FRenderingContext& Context)
 {
-    if (!(Context.ShowFlags & EEngineShowFlags::SF_LightCulling))
-    {
-        return;
-    }
-
     TIME_PROFILE(LightCullingPass)
     
     ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
@@ -85,49 +88,70 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     FCullingParams cullingParams;
     cullingParams.View = Context.CurrentCamera->GetFViewProjConstants().View;
     cullingParams.Projection = Context.CurrentCamera->GetFViewProjConstants().Projection;
-    // 전체 렌더 타겟 크기는 리소스 버퍼 크기와 일치
-    cullingParams.RenderTargetSize[0] = DeviceResources->GetWidth();
-    cullingParams.RenderTargetSize[1] = DeviceResources->GetHeight();
     // 뷰포트 오프셋 및 크기 전달
     cullingParams.ViewportOffset[0] = static_cast<uint32>(Context.Viewport.TopLeftX);
     cullingParams.ViewportOffset[1] = static_cast<uint32>(Context.Viewport.TopLeftY);
     cullingParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
     cullingParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
     // 리소스 크기 체크 및 라이트 데이터 준비
-    const uint32 totalLights = static_cast<uint32>(Context.PointLights.size() + Context.SpotLights.size());
+    const uint32 totalLights = static_cast<uint32>(Context.Lights.size());
     cullingParams.NumLights = totalLights;
+    
+    // Light Culling 활성화 여부 설정 (ShowFlags에 따라 결정)
+    cullingParams.EnableCulling = (Context.ShowFlags & EEngineShowFlags::SF_LightCulling) ? 1u : 0u;
+    
+    // 패딩 필드 초기화
+    cullingParams.Padding[0] = 0;
+    cullingParams.Padding[1] = 0;
     
     // 라이트 데이터 배열 준비 (AllLights 버퍼용)
     TArray<FLightParams> allLights;
     allLights.reserve(totalLights);
     
     // 포인트 라이트 추가
-    for (const auto& pointLight : Context.PointLights)
+    for (const auto& Light : Context.Lights)
     {
         FLightParams lightData;
-        FVector worldPos = pointLight->GetWorldLocation();
-        lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, pointLight->GetSourceRadius());
-        lightData.Color = FVector4(pointLight->GetLightColor().X, pointLight->GetLightColor().Y, pointLight->GetLightColor().Z, 1.f);
-        lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Point));
-        lightData.Angles = FVector4(0, 0, 0, 0);
-        allLights.push_back(lightData);
-    }
-    
-    // 스포 라이트 추가
-    for (const auto& spotLight : Context.SpotLights)
-    {
-        FLightParams lightData;
-        FVector worldPos = spotLight->GetWorldLocation();
-        FVector forwardDir = {1,0,0} /*spotLight->GetForwardVector()*/;
+        FVector worldPos = Light->GetWorldLocation();
+        lightData.Color = FVector4(Light->GetColor().X, Light->GetColor().Y, Light->GetColor().Z, Light->GetIntensity());
         
-        lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, 100.0f); // 기본 반지름
-        lightData.Color = FVector4(1.0f, 1.0f, 1.0f, 1.0f); // 기본 색상
-        lightData.Direction = FVector4(forwardDir.X, forwardDir.Y, forwardDir.Z, static_cast<float>(ELightType::Spot));
-        // 기본 컨 각도 (30도 inner, 45도 outer)
-        lightData.Angles = FVector4(cosf(30.0f * 3.14159f / 180.0f), cosf(45.0f * 3.14159f / 180.0f), 0, 0);
+        if (UAmbientLightComponent* Ambient = Cast<UAmbientLightComponent>(Light))
+        {
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, -1.f);
+            lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Ambient));
+            lightData.Angles = FVector4(0, 0, 0, 0);
+        }
+        else if (UDirectionalLightComponent* Directional = Cast<UDirectionalLightComponent>(Light))
+        {
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, -1.f);
+            lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Directional));
+            lightData.Angles = FVector4(0, 0, 0, 0);
+        }
+        else if (UPointLightComponent* Point = Cast<UPointLightComponent>(Light))
+        {
+            lightData.Position = FVector4(worldPos.X, worldPos.Y, worldPos.Z, Point->GetAttenuationRadius());
+            lightData.Direction = FVector4(0, 0, 0, static_cast<float>(ELightType::Point));
+            // Point Light: z에 falloff extent 저장, w는 사용하지 않음
+            float falloffExtent = Point->GetLightFalloffExponent(); // Point Light의 falloff extent 가져오기
+            lightData.Angles = FVector4(0, 0, falloffExtent, 0);
+        }
+        else if (USpotLightComponent* Spot = Cast<USpotLightComponent>(Light))
+        {
+            // 스포트 라이트 컴포넌트의 GetSpotInfo() 메서드 사용
+            FSpotLightData spotInfo = Spot->GetSpotInfo();
+            
+            lightData.Position = FVector4(spotInfo.Position.X, spotInfo.Position.Y, spotInfo.Position.Z, Spot->GetRange());
+            lightData.Direction = FVector4(spotInfo.Direction.X, spotInfo.Direction.Y, spotInfo.Direction.Z, static_cast<float>(ELightType::Spot));
+            
+            // Spot Light: z에 falloff, w에 InvRange2 저장
+            float falloff = Spot->GetFallOff(); // Spot Light의 falloff 가져오기
+            float range = Spot->GetRange();
+            float invRange2 = (range > 0) ? (1.0f / (range * range)) : 0.0f;
+            
+            lightData.Angles = FVector4(spotInfo.CosInner, spotInfo.CosOuter, falloff, invRange2);
+        }
         allLights.push_back(lightData);
     }
-
     FRenderResourceFactory::UpdateConstantBufferData(CullingParamsCB, cullingParams);
     
     // 라이트 데이터 업데이트 (DYNAMIC 버퍼 사용)

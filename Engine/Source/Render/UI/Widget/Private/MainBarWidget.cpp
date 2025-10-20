@@ -2,6 +2,7 @@
 #include "Render/UI/Widget/Public/MainBarWidget.h"
 #include "Manager/UI/Public/UIManager.h"
 #include "Render/UI/Window/Public/UIWindow.h"
+#include "Render/Renderer/Public/Renderer.h"
 #include "Level/Public/Level.h"
 #include <shobjidl.h>
 
@@ -203,7 +204,8 @@ void UMainBarWidget::RenderViewMenu()
 		}
 
 		EViewModeIndex CurrentMode = EditorInstance->GetViewMode();
-
+		URenderer& RendererInstance = URenderer::GetInstance();
+		
 		// ViewMode 메뉴 아이템
 		bool bIsLit = (CurrentMode == EViewModeIndex::VMI_Lit);
 		bool bIsUnlit = (CurrentMode == EViewModeIndex::VMI_Unlit);
@@ -211,33 +213,74 @@ void UMainBarWidget::RenderViewMenu()
 		bool bIsSceneDepth = (CurrentMode == EViewModeIndex::VMI_SceneDepth);
 		bool bIsWorldNormal = (CurrentMode == EViewModeIndex::VMI_WorldNormal);
 
-		if (ImGui::MenuItem("조명 적용(Lit)", nullptr, bIsLit) && !bIsLit)
+		// Lit 메뉴 (서브메뉴로 Lighting Model 선택 가능)
+		if (ImGui::BeginMenu("조명 적용(Lit)", bIsLit))
 		{
-			EditorInstance->SetViewMode(EViewModeIndex::VMI_Lit);
-			UE_LOG("MainBarWidget: ViewMode를 Lit으로 변경");
-		}
+			ELightingModel CurrentLightingModel = RendererInstance.GetLightingModel();
 
+			bool bIsGouraud = (CurrentLightingModel == ELightingModel::Gouraud);
+			bool bIsLambert = (CurrentLightingModel == ELightingModel::Lambert);
+			bool bIsPhong = (CurrentLightingModel == ELightingModel::Phong);
+			bool bIsBlinnPhong = (CurrentLightingModel == ELightingModel::BlinnPhong);
+
+			if (ImGui::MenuItem("Gouraud", nullptr, bIsGouraud))
+			{
+				EditorInstance->SetViewMode(EViewModeIndex::VMI_Lit);
+				RendererInstance.SetLightingModel(ELightingModel::Gouraud);
+				UE_LOG("MainBarWidget: Lighting Model을 Gouraud로 변경");
+			}
+
+			if (ImGui::MenuItem("Lambert", nullptr, bIsLambert))
+			{
+				EditorInstance->SetViewMode(EViewModeIndex::VMI_Lit);
+				RendererInstance.SetLightingModel(ELightingModel::Lambert);
+				UE_LOG("MainBarWidget: Lighting Model을 Lambert로 변경");
+			}
+
+			if (ImGui::MenuItem("Phong", nullptr, bIsPhong))
+			{
+				EditorInstance->SetViewMode(EViewModeIndex::VMI_Lit);
+				RendererInstance.SetLightingModel(ELightingModel::Phong);
+				UE_LOG("MainBarWidget: Lighting Model을 Phong으로 변경");
+			}
+
+			if (ImGui::MenuItem("Blinn-Phong", nullptr, bIsBlinnPhong))
+			{
+				EditorInstance->SetViewMode(EViewModeIndex::VMI_Lit);
+				RendererInstance.SetLightingModel(ELightingModel::BlinnPhong);
+				UE_LOG("MainBarWidget: Lighting Model을 Blinn-Phong으로 변경");
+			}
+
+			ImGui::EndMenu();
+		}
+		
 		if (ImGui::MenuItem("조명 비적용(Unlit)", nullptr, bIsUnlit) && !bIsUnlit)
 		{
+			URenderer& RendererInstance = URenderer::GetInstance();
+			
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_Unlit);
-			UE_LOG("MainBarWidget: ViewMode를 Unlit으로 변경");
+			RendererInstance.SetLightingModel(ELightingModel::Unlit);
+			UE_LOG("MainBarWidget: Lighting Model을 Unlit로 변경");
 		}
 
 		if (ImGui::MenuItem("와이어프레임(Wireframe)", nullptr, bIsWireframe) && !bIsWireframe)
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_Wireframe);
+			RendererInstance.SetLightingModel(ELightingModel::None);
 			UE_LOG("MainBarWidget: ViewMode를 Wireframe으로 변경");
 		}
 
 		if (ImGui::MenuItem("씬 뎁스(SceneDepth)", nullptr, bIsSceneDepth) && !bIsSceneDepth)
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_SceneDepth);
+			RendererInstance.SetLightingModel(ELightingModel::None);
 			UE_LOG("MainBarWidget: ViewMode를 SceneDepth으로 변경");
 		}
 
 		if (ImGui::MenuItem("월드 노멀(WorldNormal)", nullptr, bIsWorldNormal) && !bIsWorldNormal)
 		{
 			EditorInstance->SetViewMode(EViewModeIndex::VMI_WorldNormal);
+			RendererInstance.SetLightingModel(ELightingModel::None);
 			UE_LOG("MainBarWidget: ViewMode를 WorldNormal으로 변경");
 		}
 
@@ -403,7 +446,7 @@ void UMainBarWidget::RenderShowFlagsMenu()
 
 		// Light Culling 표시 옵션
 		bool bShowLightCulling = (ShowFlags & EEngineShowFlags::SF_LightCulling) != 0;
-		if (ImGui::MenuItem("라이트 컬링 표시", nullptr, bShowLightCulling))
+		if (ImGui::MenuItem("라이트 컬링 적용", nullptr, bShowLightCulling))
 		{
 			if (bShowLightCulling)
 			{

@@ -12,3 +12,4 @@ UClass* AStaticMeshActor::GetDefaultRootComponent()
 {
 	return UStaticMeshComponent::StaticClass();
 }
+

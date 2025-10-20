@@ -161,6 +161,15 @@ enum class EViewModeIndex : uint32
 	VMI_WorldNormal
 };
 
+enum class ELightingModel : uint32
+{
+	Unlit,
+	Gouraud,
+	Lambert,
+	Phong,
+	BlinnPhong,
+	None
+};
 /**
  * @brief Level Show Flag Enum
  */
