@@ -226,7 +226,7 @@ void URenderer::CreateTextureShader()
 	UE_LOG("URenderer: Compiling UberShader permutations...");
 
 	D3D_SHADER_MACRO UnlitDefines[] = {
-		{ "UNLIT", "1" },
+		{ "LIGHTING_MODEL_UNLIT", "1" },
 		{ nullptr, nullptr }
 	};
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/UberShader.hlsl", &UberShaderPermutations.Unlit, UnlitDefines);

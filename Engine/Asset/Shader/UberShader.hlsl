@@ -1,11 +1,3 @@
-#if !defined(UNLIT) && !defined(LIGHTING_MODEL_GOURAUD) && !defined(LIGHTING_MODEL_LAMBERT) && !defined(LIGHTING_MODEL_PHONG) && !defined(LIGHTING_MODEL_BLINNPHONG)
-#define LIGHTING_MODEL_PHONG 1
-#endif
-
-#if (defined(UNLIT) + defined(LIGHTING_MODEL_GOURAUD) + defined(LIGHTING_MODEL_LAMBERT) + defined(LIGHTING_MODEL_PHONG)) + defined(LIGHTING_MODEL_BLINNPHONG)!= 1
-#error "Exactly one of LIGHTING_MODEL_* must be defined."
-#endif
-
 // Light Culling에서 공유하는 헤더 파일 내용
 // LightCulling.hlsl의 유틸리티 함수들을 포함
 #define TILE_SIZE 32
@@ -211,7 +203,6 @@ float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, fl
     return Ks * LightColor * pow(NdotH, Shininess);
 #endif
 }
-
 float4 CalculateAmbientLight(float2 UV)
 {
     float4 AmbientColor;
@@ -362,6 +353,7 @@ float3 CalculateWorldNormal(PS_INPUT Input)
     
     return WorldNormal;
 }
+
 PS_INPUT mainVS(VS_INPUT Input)
 {
     PS_INPUT Output;
@@ -379,6 +371,7 @@ PS_INPUT mainVS(VS_INPUT Input)
     Output.WorldBitangent = mul(Input.Bitangent, (float3x3)WorldInverseTranspose);
 
     Output.Tex = Input.Tex;
+    Output.Color = Input.Color;
 #if LIGHTING_MODEL_GOURAUD
     float3 Normal = normalize(Output.WorldNormal);
     float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
@@ -414,10 +407,17 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     // 텍스처가 있다면 곱하기
     if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
-        
         float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
         Output.SceneColor.rgb *= TexColor.rgb;
         Output.SceneColor.a = TexColor.a;
+    };
+#elif LIGHTING_MODEL_UNLIT
+    // TODO : 원래는 Albedo로 해야하지만, 현재는 DiffuseTexture = Albedo임
+    Output.SceneColor= float4(0.5, 0.5, 0.5, 1);
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
+        Output.SceneColor= TexColor;
     };
 #else
     float2 UV = Input.Tex;
