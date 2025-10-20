@@ -41,6 +41,18 @@ struct PS_OUTPUT
     float4 NormalData : SV_Target1;
 };
 
+cbuffer Material : register(b2) // b0, b1 is in VS
+{
+    float4 Ka;      // Ambient color
+    float4 Kd;      // Diffuse color
+    float4 Ks;      // Specular color
+    float Ns;       // Specular exponent (Shineness)
+    float Ni;       // Index of refraction
+    float D;        // Dissolve factor
+    uint MaterialFlags;
+    float Time;
+};
+
 float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
 {
     float3 WorldNormal = Input.WorldNormal;

@@ -45,7 +45,15 @@ struct FSpotLightInfo
     float _padding;
 };
 
-#define TILE_SIZE 32
+// Light Culling시스템에서 사용하는 라이트 구조체
+// LightCulling.hlsl과 동일한 구조체 사용
+struct Light
+{
+    float4 position; // xyz: 월드 위치, w: 영향 반경
+    float4 color; // xyz: 색상, w: 강도
+    float4 direction; // xyz: 방향 (스포트라이트용), w: 광원 타입
+    float4 angles; // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
+};
 
 // 스크린 픽셀 좌표에서 타일 인덱스 계산 (뷰포트 기준)
 uint2 GetTileIndexFromPixelViewport(float2 screenPos, uint2 viewportOffset)
@@ -61,22 +69,6 @@ uint GetCurrentTileArrayIndex(float4 svPosition, uint2 viewportOffset, uint2 vie
     uint tilesPerRow = (viewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
     return viewportTileIndex.y * tilesPerRow + viewportTileIndex.x;
 }
-
-// Light Culling시스템에서 사용하는 라이트 구조체
-// LightCulling.hlsl과 동일한 구조체 사용
-struct Light
-{
-    float4 position; // xyz: 월드 위치, w: 영향 반경
-    float4 color; // xyz: 색상, w: 강도
-    float4 direction; // xyz: 방향 (스포트라이트용), w: 광원 타입
-    float4 angles; // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
-};
-
-// 광원 타입 정의 (C++ ELightType enum과 동일한 순서)
-#define LIGHT_TYPE_AMBIENT 0
-#define LIGHT_TYPE_DIRECTIONAL 1
-#define LIGHT_TYPE_POINT 2
-#define LIGHT_TYPE_SPOT 3
 
 // Viewport Info for Tiled Lighting
 cbuffer TiledLightingParams : register(b3)

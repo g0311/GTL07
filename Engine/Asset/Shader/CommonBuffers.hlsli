@@ -19,16 +19,4 @@ cbuffer Camera : register(b1)
     float FarClip;
 };
 
-cbuffer Material : register(b2) // b0, b1 is in VS
-{
-    float4 Ka;      // Ambient color
-    float4 Kd;      // Diffuse color
-    float4 Ks;      // Specular color
-    float Ns;       // Specular exponent (Shineness)
-    float Ni;       // Index of refraction
-    float D;        // Dissolve factor
-    uint MaterialFlags;
-    float Time;
-};
-
 #endif  // COMMON_BUFFERS_HLSLI

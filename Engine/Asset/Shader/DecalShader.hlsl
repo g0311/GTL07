@@ -82,21 +82,6 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	
     float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPos.xyz, N, V, kD, kS, Ns, ViewportOffset, ViewportSize);
 	
-	/*// Ambient, Directional, Point, Spot °è»ê
-    //float3 ambient = CalculateAmbientLight(DecalUV).rgb;
-    float3 LitColor = AmbientLights[0].Color.rgb * AmbientLights[0].Intensity;
-    float3 directional = CalculateDirectionalLight(N, V, kD, kS, Ns);
-    float3 pointlight = CalculatePointLights(Input.WorldPos.xyz, N, V, kD, kS, Ns);
-    float3 spotlight = CalculateSpotLights(Input.WorldPos.xyz, N, V, kD, kS, Ns);
-	
-    float3 totalLight = LitColor + directional + pointlight + spotlight;
-	
-
-    float3 finalColor = DecalColor.rgb * totalLight;
-	
-    //return DecalColor;
-    return float4(finalColor, DecalColor.a);*/
-	
     float3 finalColor = DecalColor.rgb * TiledLightColor;
     return float4(finalColor, DecalColor.a);
 }

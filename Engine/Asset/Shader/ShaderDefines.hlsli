@@ -43,4 +43,21 @@
 #define HAS_BUMP_MAP      (1 << 5)
 #define UNLIT             (1 << 6)
 
+// ============================================================================
+// LIGHT TYPES
+// ============================================================================
+// Corresponds to ELightType enum in C++
+
+#define LIGHT_TYPE_AMBIENT     0
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_POINT       2
+#define LIGHT_TYPE_SPOT        3
+
+// ============================================================================
+// TILED LIGHTING / LIGHT CULLING
+// ============================================================================
+// Defines the screen tile size for the light culling algorithm.
+
+#define TILE_SIZE 32
+
 #endif // SHADER_DEFINES_HLSLI
