@@ -4,6 +4,11 @@
 
 IMPLEMENT_CLASS(UAmbientLightComponent, ULightComponent)
 
+UAmbientLightComponent::UAmbientLightComponent()
+{
+	Intensity = 0.1f;
+}
+
 UClass* UAmbientLightComponent::GetSpecificWidgetClass() const
 {
     return UAmbientComponentWidget::StaticClass();

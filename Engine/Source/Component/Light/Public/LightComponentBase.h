@@ -16,7 +16,6 @@ public:
 
 	void SetColor(FVector4 InColor) { Color = InColor;}
 	FVector4 GetColor() { return Color;}
-
 	
 protected:
 	float Intensity =  1.0f;

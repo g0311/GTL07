@@ -8,7 +8,6 @@ class UPointLightComponent : public ULightComponent
 	DECLARE_CLASS(UPointLightComponent, ULightComponent)
 
 public:
-	virtual UClass* GetSpecificWidgetClass() const override;
     UPointLightComponent();
     virtual ~UPointLightComponent() override;
 
@@ -16,6 +15,8 @@ public:
     float GetLightFalloffExponent() const { return LightFalloffExponent; }
     void SetAttenuationRadius(float InRadius) { AttenuationRadius = InRadius; }
     void SetLightFalloffExponent(float InExponent) { LightFalloffExponent = InExponent; }
+
+	virtual UClass* GetSpecificWidgetClass() const override;
 
 private:
 	float AttenuationRadius;

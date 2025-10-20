@@ -8,5 +8,7 @@ class UAmbientLightComponent : public ULightComponent
 	DECLARE_CLASS(UAmbientLightComponent, ULightComponent)
 
 public:
+	UAmbientLightComponent();
+
 	UClass* GetSpecificWidgetClass() const override;
 };

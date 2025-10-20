@@ -40,9 +40,6 @@
     <FxCompile Include="Asset\Shader\TextureVS.hlsl">
       <Filter>Asset\Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Asset\Shader\NewDecalShader.hlsl">
-      <Filter>Asset\Shader</Filter>
-    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Utility\Private\ScopeCycleCounter.cpp">
