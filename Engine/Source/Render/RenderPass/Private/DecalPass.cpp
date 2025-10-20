@@ -200,14 +200,14 @@ void FDecalPass::Execute(FRenderingContext& Context)
 
         if (UTexture* DecalTexture = Decal->GetTexture())
         {
-            Pipeline->SetTexture(6, false, DecalTexture->GetTextureSRV());
-            Pipeline->SetSamplerState(1, false, DecalTexture->GetTextureSampler());
+            Pipeline->SetTexture(0, false, DecalTexture->GetTextureSRV());
+            Pipeline->SetSamplerState(0, false, DecalTexture->GetTextureSampler());
         }
         
         if (UTexture* FadeTexture = Decal->GetFadeTexture())
         {
-            Pipeline->SetTexture(7, false, FadeTexture->GetTextureSRV());
-            Pipeline->SetSamplerState(2, false, FadeTexture->GetTextureSampler());
+            Pipeline->SetTexture(1, false, FadeTexture->GetTextureSRV());
+            Pipeline->SetSamplerState(1, false, FadeTexture->GetTextureSampler());
         }
 
         TArray<UPrimitiveComponent*> Primitives;

@@ -123,7 +123,20 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     }
 
     // Light
-    float3 AmbientColor = CalculateAmbientLight(UV).rgb;
+    float4 Albedo;
+    // Material Ambient(Albedo)
+    /*TODO : Apply DiffuseTexture for now, due to Binding AmbientTexture feature don't exist yet*/
+    // if (MaterialFlags & HAS_AMBIENT_MAP)
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        // AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
+        Albedo = DiffuseTexture.Sample(SamplerWrap, UV);
+    }
+    else
+    {
+        Albedo = Ka;
+    }
+    float3 AmbientColor = CalculateAmbientLight(Albedo).rgb;
     float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
     float3 PointLightColor = CalculatePointLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
     float3 SpotLightColor = CalculateSpotLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);

@@ -6,7 +6,6 @@
 
 #include "ShaderDefines.hlsli"
 #include "CommonBuffers.hlsli"
-#include "MaterialCommon.hlsli"
 
 struct FAmbientLightInfo
 {
@@ -82,21 +81,8 @@ float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, fl
 #endif
 }
 
-float4 CalculateAmbientLight(float2 UV)
+float4 CalculateAmbientLight(float4 InMaterialAmbient)
 {
-    float4 AmbientColor;
-    // Material Ambient(Albedo)
-    /*TODO : Apply DiffuseTexture for now, due to Binding AmbientTexture feature don't exist yet*/
-    // if (MaterialFlags & HAS_AMBIENT_MAP)
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        // AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
-        AmbientColor = DiffuseTexture.Sample(SamplerWrap, UV);
-    }
-    else
-    {
-        AmbientColor = Ka;
-    }
     // Light Ambient
     float4 AccumulatedAmbientColor = float4(0, 0, 0, 0);
     for (int i = 0; i < NumAmbientLights; i++)
@@ -104,7 +90,7 @@ float4 CalculateAmbientLight(float2 UV)
         // Light * Intensity
         AccumulatedAmbientColor += AmbientLights[i].Color * AmbientLights[i].Intensity;
     }
-    return AmbientColor * AccumulatedAmbientColor;
+    return InMaterialAmbient * AccumulatedAmbientColor;
 }
 
 float3 CalculateDirectionalLight(float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)

@@ -7,11 +7,11 @@ cbuffer DecalConstants : register(b2)
 	float FadeProgress;
 };
 
-Texture2D DecalTexture : register(t6);
-SamplerState DecalSampler : register(s1);
+Texture2D DecalTexture : register(t0);
+SamplerState DecalSampler : register(s0);
 
-Texture2D FadeTexture : register(t7);
-SamplerState FadeSampler : register(s2);
+Texture2D FadeTexture : register(t1);
+SamplerState FadeSampler : register(s1);
 
 struct VS_INPUT
 {
