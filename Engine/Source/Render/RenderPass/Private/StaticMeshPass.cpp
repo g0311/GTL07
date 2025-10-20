@@ -27,6 +27,12 @@ void FStaticMeshPass::PreExecute(FRenderingContext& Context)
 	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
 	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
 	Pipeline->SetRenderTargets(2, RTVs, DSV);
+
+	// TODO : Set Normal map version
+	ID3D11PixelShader* InPS = Renderer.GetPixelShaderForLightingModel(false);
+	ID3D11VertexShader* InVS = Renderer.GetVertexShaderForLightingModel();
+	PS = InPS;
+	VS = InVS;
 }
 
 void FStaticMeshPass::Execute(FRenderingContext& Context)
@@ -102,6 +108,7 @@ void FStaticMeshPass::Execute(FRenderingContext& Context)
 				FMaterialConstants MaterialConstants = CreateMaterialConstants(Material, MeshComp);
 				FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferMaterial, MaterialConstants);
 				Pipeline->SetConstantBuffer(2, false, ConstantBufferMaterial);
+				Pipeline->SetConstantBuffer(2, true, ConstantBufferMaterial);
 
 				SetUpLighting(Context);
 
@@ -172,6 +179,7 @@ void FStaticMeshPass::SetUpLighting(const FRenderingContext& Context)
 	}
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferLighting, LightingConstants);
 	Pipeline->SetConstantBuffer(3, false, ConstantBufferLighting);
+	Pipeline->SetConstantBuffer(3, true, ConstantBufferLighting);
 }
 
 FMaterialConstants FStaticMeshPass::CreateMaterialConstants(UMaterial* Material, UStaticMeshComponent* MeshComp)

@@ -184,6 +184,7 @@ struct PS_INPUT
     float2 Tex : TEXCOORD2;
     float3 WorldTangent : TEXCOORD3;
     float3 WorldBitangent : TEXCOORD4;
+    float4 Color : COLOR;
 };
 
 struct PS_OUTPUT
@@ -205,7 +206,9 @@ float3 CalculateSpecular(float3 LightDir, float3 WorldNormal, float3 ViewDir, fl
     float NdotH = saturate(dot(WorldNormal, H));
     return Ks * LightColor * pow(NdotH, Shininess);
 #else
-    return float3(0, 0, 0);
+    float3 H = normalize(LightDir + ViewDir);
+    float NdotH = saturate(dot(WorldNormal, H));
+    return Ks * LightColor * pow(NdotH, Shininess);
 #endif
 }
 
@@ -214,10 +217,12 @@ float4 CalculateAmbientLight(float2 UV)
     float4 AmbientColor;
     // Material Ambient(Albedo)
     /*TODO : Apply DiffuseTexture for now, due to Binding AmbientTexture feature don't exist yet*/
-    // if (MaterialFlags & HAS_AMBIENT_MAP)
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    if (MaterialFlags & HAS_AMBIENT_MAP)
     {
-        // AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
+        AmbientColor = AmbientTexture.Sample(SamplerWrap, UV);
+    }
+    else if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
         AmbientColor = DiffuseTexture.Sample(SamplerWrap, UV);
     }
     else
@@ -252,7 +257,7 @@ float3 CalculateDirectionalLight(float3 WorldNormal, float3 ViewDir, float3 Kd, 
 }
 float3 CalculatePointLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float3 Kd, float3 Ks, float Shininess)
 {
-    float3 AccumulatedPointlightColor;
+    float3 AccumulatedPointlightColor = 0;
     for (int i = 0; i < NumPointLights; i++)
     {
         float3 LightVec = PointLights[i].Position - WorldPos;
@@ -319,7 +324,7 @@ float3 CalculateSpotLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, 
 
     return AccumulatedSpotlightColor;
 }
-float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
+float3 CalculateWorldNormal(PS_INPUT Input)
 {
     float3 WorldNormal = Input.WorldNormal;
     
@@ -336,7 +341,7 @@ float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
     // Sample normal map (tangent space)
     if (MaterialFlags & HAS_NORMAL_MAP)
     {
-        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
+        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, Input.Tex).rgb;
         // Decode from [0,1] to [-1,1]
         TangentNormal = TangentNormal * 2.0f - 1.0f;
 
@@ -374,9 +379,29 @@ PS_INPUT mainVS(VS_INPUT Input)
     Output.WorldBitangent = mul(Input.Bitangent, (float3x3)WorldInverseTranspose);
 
     Output.Tex = Input.Tex;
-
 #if LIGHTING_MODEL_GOURAUD
-          
+    float3 Normal = normalize(Output.WorldNormal);
+    float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
+
+    // Vertex Shader에서는 텍스처 샘플링 불가 - Material 상수만 사용
+    float3 kD = Kd.rgb;
+    float3 kS = Ks.rgb;
+
+    // Ambient Light 계산
+    float3 MaterialAmbient = Ka.rgb;
+    float3 AccumulatedAmbientColor = float3(0, 0, 0);
+    for (int i = 0; i < NumAmbientLights; i++)
+    {
+        AccumulatedAmbientColor += AmbientLights[i].Color.rgb * AmbientLights[i].Intensity;
+    }
+    float3 AmbientColor = MaterialAmbient * AccumulatedAmbientColor;
+
+    float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
+    float3 PointLightColor = CalculatePointLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+    float3 SpotLightColor = CalculateSpotLights(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+
+    Output.Color.rgb = AmbientColor + DirectionalColor + PointLightColor + SpotLightColor;
+    Output.Color.a = 1.0f;
 #endif
     return Output;
 }
@@ -384,13 +409,24 @@ PS_INPUT mainVS(VS_INPUT Input)
 PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
-    float2 UV = Input.Tex; 
+#if LIGHTING_MODEL_GOURAUD
+    Output.SceneColor = Input.Color;
+    // 텍스처가 있다면 곱하기
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        
+        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
+        Output.SceneColor.rgb *= TexColor.rgb;
+        Output.SceneColor.a = TexColor.a;
+    };
+#else
+    float2 UV = Input.Tex;
     float3 Normal  = normalize(Input.WorldNormal);
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
-
+     
     float3 kD = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd;
     float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks;
-
+     
     // Unlit 처리
     if (MaterialFlags & UNLIT)
     {
@@ -398,29 +434,35 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         Output.NormalData = float4(Normal * 0.5f + 0.5f, 1.0);
         return Output;
     }
-
+     
     // Light
     float3 AmbientColor = CalculateAmbientLight(UV).rgb;
     float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
     float3 PointLightColor = CalculatePointLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
     float3 SpotLightColor = CalculateSpotLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
-    
+         
     float4 FinalColor;
     FinalColor.rgb = AmbientColor + DirectionalColor + PointLightColor + SpotLightColor;
     FinalColor.a = 1.0f;
-
+     
     // Alpha handling
     /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    if (MaterialFlags & HAS_ALPHA_MAP)
+    {
+        float alpha = AlphaTexture.Sample(SamplerWrap, UV).w;
+        FinalColor.a = D * alpha;
+    }
+    else if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
         float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
         FinalColor.a = D * alpha;
     }
     Output.SceneColor = FinalColor;
-
+#endif
+    
     // Normal
     // Calculate World Normal for Normal Buffer
-    float3 WorldNormal = CalculateWorldNormal(Input, UV);
+    float3 WorldNormal = CalculateWorldNormal(Input);
     
     // Encode world normal to [0,1] range for storage
     float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;

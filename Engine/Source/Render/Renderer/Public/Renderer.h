@@ -13,7 +13,7 @@ class FCopyPass;
 class FFXAAPass;
 
 /**
- * @brief Rendering Pipeline 전반을 처리하는 클래스
+ * @brief Rendering Pipeline ?�반??처리?�는 ?�래??
  */
 UCLASS()
 class URenderer : public UObject
@@ -46,7 +46,7 @@ public:
 	void ReleaseConstantBuffers();
 	void ReleaseLightBuffers();
 	void ReleaseLightCullBuffers();
-	void ReleaseDefaultShader();
+	void ReleaseShader();
 	void ReleaseDepthStencilState();
 	void ReleaseBlendState();
 	void ReleaseSamplerState();
@@ -90,8 +90,14 @@ public:
 	ID3D11ShaderResourceView* GetTileLightInfoSRV() const { return TileLightInfoSRV; }
 	ID3D11Buffer* GetAllLightsBuffer() const { return AllLightsBuffer; }
 	ID3D11ShaderResourceView* GetAllLightsSRV() const { return AllLightsSRV; }
-	
+
 	void SetIsResizing(bool isResizing) { bIsResizing = isResizing; }
+
+	// Lighting Model
+	ELightingModel GetLightingModel() const { return CurrentLightingModel; }
+	void SetLightingModel(ELightingModel InModel) { CurrentLightingModel = InModel; }
+	ID3D11VertexShader* GetVertexShaderForLightingModel() const;
+	ID3D11PixelShader* GetPixelShaderForLightingModel(bool bHasNormalMap) const;
 
 private:
 	UPipeline* Pipeline = nullptr;
@@ -121,10 +127,10 @@ private:
 	ID3D11UnorderedAccessView* TileLightInfoUAV = nullptr;
 	ID3D11ShaderResourceView* TileLightInfoSRV = nullptr;
     
-	// 라이트 데이터 버퍼 (고정 크기)
+	// ?�이???�이??버퍼 (고정 ?�기)
 	ID3D11Buffer* AllLightsBuffer = nullptr;
 	ID3D11ShaderResourceView* AllLightsSRV = nullptr;
-	static constexpr uint32 MAX_LIGHTS = 1024; // 최대 라이트 개수
+	static constexpr uint32 MAX_LIGHTS = 1024; // 최�? ?�이??개수
 
 	
 	FLOAT ClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -156,6 +162,31 @@ private:
 	ID3D11PixelShader* TexturePixelShader = nullptr;
 	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
 	ID3D11InputLayout* TextureInputLayout = nullptr;
+
+	// UberShader Permutations - All lighting models pre-compiled
+	struct FUberShaderVertexPermutations
+	{
+		ID3D11VertexShader* Default = nullptr;
+		ID3D11VertexShader* Gouraud = nullptr;
+	} UberShaderVertexPermutations;
+	
+	struct FUberShaderPixelPermutations
+	{
+		ID3D11PixelShader* Unlit = nullptr;
+		
+		ID3D11PixelShader* Gouraud = nullptr;
+		ID3D11PixelShader* Lambert = nullptr;
+		ID3D11PixelShader* Phong = nullptr;
+		ID3D11PixelShader* BlinnPhong = nullptr;
+
+		ID3D11PixelShader* GouraudWithNormalMap = nullptr;
+		ID3D11PixelShader* LambertWithNormalMap = nullptr;
+		ID3D11PixelShader* PhongWithNormalMap = nullptr;
+		ID3D11PixelShader* BlinnPhongWithNormalMap = nullptr;
+	} UberShaderPermutations;
+
+	// Current Lighting Model
+	ELightingModel CurrentLightingModel = ELightingModel::BlinnPhong;
 
 	// Decal Shaders
 	ID3D11VertexShader* DecalVertexShader = nullptr;
