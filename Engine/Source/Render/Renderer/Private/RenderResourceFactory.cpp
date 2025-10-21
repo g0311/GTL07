@@ -46,6 +46,7 @@ void FRenderResourceFactory::CreateVertexShaderAndInputLayout(const wstring& InF
 	CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
+	// TODO: 데칼 터짐(셰이더가 컴파일 안됨)
 	HRESULT Result = D3DCompileFromFile(InFilePath.data(), InDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", CompileFlags, 0, &VertexShaderBlob, &ErrorBlob);
 	if (FAILED(Result))
 	{

@@ -12,6 +12,7 @@ class FViewportClient;
 class FCopyPass;
 class FFXAAPass;
 class FRenderingContext;
+class FShaderHotReload;
 
 /**
  * @brief Rendering Pipeline ?�반??처리?�는 ?�래??
@@ -102,6 +103,19 @@ public:
 	
 	void SetUpTiledLighting(const FRenderingContext& Context);
 	void BindTiledLightingBuffers();
+
+	// Shader Hot Reload
+	void InitializeShaderHotReload();
+	void CheckShaderHotReload();
+	void ReloadUberShader();
+	void ReloadDecalShader();
+	void ReloadPointLightShader();
+	void ReloadFogShader();
+	void ReloadCopyShader();
+	void ReloadFXAAShader();
+	void ReloadBillboardShader();
+	void ReloadDefaultShader();
+	void ReloadLightCullingShader();
 
 private:
 	UPipeline* Pipeline = nullptr;
@@ -224,4 +238,7 @@ private:
 	FCopyPass* CopyPass = nullptr;
 	FFXAAPass* FXAAPass = nullptr;
 	class FLightCullingDebugPass* LightCullingDebugPass = nullptr;
+
+	// Shader Hot Reload System
+	FShaderHotReload* ShaderHotReload = nullptr;
 };
