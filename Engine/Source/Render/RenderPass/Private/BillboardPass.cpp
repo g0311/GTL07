@@ -21,6 +21,7 @@ void FBillboardPass::PreExecute(FRenderingContext& Context)
 	ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
 	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
 	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
+    // TODO: Set VS and PS from Renderer
 	Pipeline->SetRenderTargets(2, RTVs, DSV);
 }
 

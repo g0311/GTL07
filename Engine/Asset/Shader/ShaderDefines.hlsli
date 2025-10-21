@@ -38,7 +38,7 @@
 #define HAS_DIFFUSE_MAP   (1 << 0)
 #define HAS_AMBIENT_MAP   (1 << 1)
 #define HAS_SPECULAR_MAP  (1 << 2)
-#define HAS_NORMAL_MAP    (1 << 3)
+
 #define HAS_ALPHA_MAP     (1 << 4)
 #define HAS_BUMP_MAP      (1 << 5)
 #define UNLIT             (1 << 6)
