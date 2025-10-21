@@ -1,6 +1,17 @@
 #pragma once
 #include "Component/Light/Public/LightComponent.h"
 
+/**
+ * USpotLightComponent
+ *
+ * Represents a spotlight source that emits light within a conical shape.
+ * a spotlight combines both direction and range.
+ *
+ * Key Property:
+ *		- Inner/Outer cone angles control the intensity gradient of the light cone.
+ *      - The light intensity decreases with distance (attenuation) and falloff.
+ *		- Direction is determined by the light’s world rotation (forward vector).
+ */
 UCLASS()
 class UClass;
 class USpotLightComponent : public ULightComponent
