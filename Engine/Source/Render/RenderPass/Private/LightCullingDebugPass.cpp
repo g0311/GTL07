@@ -164,6 +164,9 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
     struct TileInfo { uint32_t LightOffset; uint32_t LightCount; };
     const TileInfo* tileInfo = static_cast<const TileInfo*>(mappedResource.pData);
 
+    // Get total light count for debugging
+    uint32 totalLightCount = Context.Lights.size();
+
     IDXGISurface* surface = nullptr;
     hr = renderer.GetSwapChain()->GetBuffer(0, __uuidof(IDXGISurface), (void**)&surface);
     if (FAILED(hr))
@@ -199,6 +202,9 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
     const uint32 numTilesX = (Context.Viewport.Width + TILE_SIZE - 1) / TILE_SIZE;
     const uint32 numTilesY = (Context.Viewport.Height + TILE_SIZE - 1) / TILE_SIZE;
 
+    // Light Culling 활성화 여부 확인
+    bool bLightCullingEnabled = (Context.ShowFlags & EEngineShowFlags::SF_LightCulling) ? true : false;
+    
     for (uint32 y = 0; y < numTilesY; ++y)
     {
         for (uint32 x = 0; x < numTilesX; ++x)
@@ -206,6 +212,9 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
             // 뷰포트 기준 타일 인덱스 계산 (LightCullingPass와 동일)
             uint32_t tileArrayIndex = y * viewportTilesX + x;
             uint32_t lightCount = tileInfo[tileArrayIndex].LightCount;
+            
+            // Light Culling 활성화 여부에 따라 표시할 라이트 개수 결정
+            uint32_t displayCount = bLightCullingEnabled ? lightCount : totalLightCount;
             
             // 뷰포트 내 상대 좌표로 렌더링 (뷰포트 오프셋 적용)
             float tileScreenX = Context.Viewport.TopLeftX + x * TILE_SIZE;
@@ -216,7 +225,7 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
             TextBrush->SetColor(D2D1::ColorF(0.3f, 0.3f, 0.3f, 0.5f));
             D2DContext->DrawRectangle(&rect, TextBrush, 0.5f);
 
-            if (lightCount > 0)
+            if (displayCount > 0)
             {
                 TextBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
             }
@@ -224,7 +233,7 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
             {
                 TextBrush->SetColor(D2D1::ColorF(0.5f, 0.5f, 0.5f, 0.8f));
             }
-            std::wstring wtext = std::to_wstring(lightCount);
+            std::wstring wtext = std::to_wstring(displayCount);
             D2DContext->DrawTextW(wtext.c_str(), wtext.length(), TextFormat, &rect, TextBrush);
         }
     }

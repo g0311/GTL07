@@ -69,6 +69,7 @@ void FLightCullingPass::ReleaseResources()
 void FLightCullingPass::PreExecute(FRenderingContext& Context)
 {
     URenderer& Renderer = URenderer::GetInstance();
+    ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
 
     LightIndexBufferUAV = Renderer.GetLightIndexBufferUAV();
     TileLightInfoUAV = Renderer.GetTileLightInfoUAV();
@@ -77,25 +78,11 @@ void FLightCullingPass::PreExecute(FRenderingContext& Context)
     AllLightsSRV = Renderer.GetAllLightsSRV();
     
     // Clear UAVs
-    ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
     const UINT clearValues[4] = { 0, 0, 0, 0 };
     DeviceContext->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
     DeviceContext->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
-
-}
-
-void FLightCullingPass::Execute(FRenderingContext& Context)
-{
-    TIME_PROFILE(LightCullingPass)
     
-    ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
-
-    // 0. UAV 버퍼 초기화 (이전 프레임 데이터 클리어)
-    uint32 clearValues[4] = {0, 0, 0, 0};
-    DeviceContext->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
-    DeviceContext->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
-
-    // 1. 상수 버퍼 업데이트
+    // 상수 버퍼 업데이트
     FCullingParams cullingParams;
     cullingParams.View = Context.CurrentCamera->GetFViewProjConstants().View;
     cullingParams.Projection = Context.CurrentCamera->GetFViewProjConstants().Projection;
@@ -108,12 +95,10 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     const uint32 totalLights = static_cast<uint32>(Context.Lights.size());
     cullingParams.NumLights = totalLights;
     
-    // Light Culling 활성화 여부 설정 (ShowFlags에 따라 결정)
-    cullingParams.EnableCulling = (Context.ShowFlags & EEngineShowFlags::SF_LightCulling) ? 1u : 0u;
-    
     // 패딩 필드 초기화
     cullingParams.Padding[0] = 0;
     cullingParams.Padding[1] = 0;
+    cullingParams.Padding[2] = 0;
     
     // 라이트 데이터 배열 준비 (AllLights 버퍼용)
     TArray<FLightParams> allLights;
@@ -158,7 +143,6 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
         }
         allLights.push_back(lightData);
     }
-    FRenderResourceFactory::UpdateConstantBufferData(CullingParamsCB, cullingParams);
     
     // 라이트 데이터 업데이트 (DYNAMIC 버퍼 사용)
     if (totalLights > 0 && totalLights <= MAX_LIGHTS)
@@ -187,27 +171,39 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
         UE_LOG_WARNING("라이트 개수가 최대치를 초과했습니다: %d > %d", static_cast<int>(totalLights), static_cast<int>(MAX_LIGHTS));
         cullingParams.NumLights = MAX_LIGHTS; // 최대치로 제한
     }
+    
+    // 상수 버퍼 데이터 업데이트
+    FRenderResourceFactory::UpdateConstantBufferData(CullingParamsCB, cullingParams);
 
-    // 2. 리소스 바인딩
+}
+
+void FLightCullingPass::Execute(FRenderingContext& Context)
+{
+    // Light Culling 플래그 확인
+    if (!(Context.ShowFlags & EEngineShowFlags::SF_LightCulling))
+    {
+        return;
+    }
+
+    TIME_PROFILE(LightCullingPass)
+    ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
+
+    // 리소스 바인딩
     DeviceContext->CSSetShader(CullingCS, nullptr, 0);
     DeviceContext->CSSetConstantBuffers(0, 1, &CullingParamsCB);
-
-    // 라이트 데이터 SRV 바인딩 (버퍼는 항상 존재)
     DeviceContext->CSSetShaderResources(0, 1, &AllLightsSRV);
 
     // UAVs 바인딩
     DeviceContext->CSSetUnorderedAccessViews(0, 1, &LightIndexBufferUAV, nullptr);
     DeviceContext->CSSetUnorderedAccessViews(1, 1, &TileLightInfoUAV, nullptr);
 
-    // 3. 컴퓨트 셰이더 디스패치 (뷰포트 크기 기반)
+    // 컴퓨트 셰이더 디스패치 (뷰포트 크기 기반)
     const uint32 TILE_SIZE = 32;
-
     const uint32 viewportWidth = static_cast<uint32>(Context.Viewport.Width);
     const uint32 viewportHeight = static_cast<uint32>(Context.Viewport.Height);
     
     const uint32 numTilesX = (viewportWidth + TILE_SIZE - 1) / TILE_SIZE;
     const uint32 numTilesY = (viewportHeight + TILE_SIZE - 1) / TILE_SIZE;
-        //소수점 버리기를 제거하기 위해 TILE_SIZE - 1을 더한 후 나눗셈
 
     DeviceContext->Dispatch(numTilesX, numTilesY, 1);
 }

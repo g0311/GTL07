@@ -559,7 +559,8 @@ void URenderer::SetUpTiledLighting(const FRenderingContext& Context)
 	tiledParams.ViewportSize[0] = static_cast<uint32>(Context.Viewport.Width);
 	tiledParams.ViewportSize[1] = static_cast<uint32>(Context.Viewport.Height);
 	tiledParams.NumLights = static_cast<uint32>(Context.Lights.size());  // Gouraud용 전체 라이트 개수
-	tiledParams._padding = 0;
+	// Light Culling 활성화 여부 설정 (ShowFlags에 따라 결정)
+	tiledParams.EnableCulling = (Context.ShowFlags & EEngineShowFlags::SF_LightCulling) ? 1u : 0u;
 
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
 	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting);
@@ -780,7 +781,7 @@ void URenderer::CreateLightCullBuffers()
 	const uint32 numTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
 	const uint32 numTilesY = (DeviceResources->GetHeight() + TILE_SIZE - 1) / TILE_SIZE;
 	const uint32 MAX_TILES = numTilesX * numTilesY;
-	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 32;
+	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 64;
         
 	// LightIndexBuffer 생성
 	D3D11_BUFFER_DESC lightIndexBufferDesc = {};

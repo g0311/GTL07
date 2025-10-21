@@ -76,7 +76,7 @@ cbuffer TiledLightingParams : register(b3)
     uint2 ViewportOffset; // viewport offset
     uint2 ViewportSize; // viewport size
     uint NumLights; // total number of lights in the scene (for Gouraud)
-    uint _padding; // Padding to align to 16 bytes
+    uint EnableCulling; // Light Culling 활성화 여부 (1=활성화, 0=모든라이트렌더)
 };
 
 // Light Culling�ý��ۿ��� ����ϴ� Structured Buffer
@@ -280,6 +280,13 @@ float3 CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNo
 {
     float3 AccumulatedColor = float3(0, 0, 0);
 
+    // Light Culling이 비활성화된 경우 모든 라이트를 렌더링
+    if (EnableCulling == 0)
+    {
+        return CalculateAllLightsGouraud(WorldPos, WorldNormal, ViewDir, InKa, InKd, InKs, Shininess);
+    }
+
+    // Light Culling 활성화: 타일 기반 렌더링
     // Current pixel's tile index
     uint tileArrayIndex = GetCurrentTileArrayIndex(svPosition, viewportOffset, viewportSize);
 
