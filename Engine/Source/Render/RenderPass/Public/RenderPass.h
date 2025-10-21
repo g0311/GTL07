@@ -2,15 +2,6 @@
 #include "Render/RenderPass/Public/RenderingContext.h"
 #include <d3d11.h> // For ID3D11RenderTargetView, ID3D11DepthStencilView
 
-// TiledLightingParams cbuffer에 대응하는 구조체
-struct FTiledLightingParams
-{
-    uint32 ViewportOffset[2];   // 뷰포트 오프셋
-    uint32 ViewportSize[2];     // 뷰포트 크기
-    uint32 NumLights;           // 씬의 전체 라이트 개수 (Gouraud용)
-    uint32 EnableCulling;       // Light Culling 활성화 여부 (1=활성화, 0=모든라이트렌더)
-};
-
 class UPipeline;
 
 /**
