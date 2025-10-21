@@ -81,7 +81,6 @@ private:
 	UGizmo Gizmo;
 	UAxis Axis;
 	UBatchLines BatchLines;
-	USpotLightDirectionGizmo SpotLightDirectionGizmo;
 	UDirectionalLightDirectionGizmo DirectionalLightDirectionGizmo;
 
 	SSplitterV RootSplitter;

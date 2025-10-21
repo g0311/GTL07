@@ -65,7 +65,6 @@ void UEditor::RenderEditor()
 {
 	if (GEditor->IsPIESessionActive()) { return; }
 	BatchLines.Render();
-	SpotLightDirectionGizmo.Render();
 	DirectionalLightDirectionGizmo.Render();
 	Axis.Render();
 }
@@ -164,7 +163,6 @@ void UEditor::InitializeLayout()
 void UEditor::UpdateBatchLines()
 {
 	uint64 ShowFlags = GWorld->GetLevel()->GetShowFlags();
-	SpotLightDirectionGizmo.Clear();
 	DirectionalLightDirectionGizmo.Clear();
 
 	if (ShowFlags & EEngineShowFlags::SF_Octree)
@@ -208,7 +206,6 @@ void UEditor::UpdateBatchLines()
 			if (ShowFlags & EEngineShowFlags::SF_Bounds)
 			{
 				BatchLines.UpdateSpotLightConeVertices(SpotLightComp);
-				SpotLightDirectionGizmo.UpdateFromSpotLight(SpotLightComp);
 				return;
 			}
 		}
@@ -232,7 +229,6 @@ void UEditor::UpdateBatchLines()
 	}
 
 	BatchLines.DisableRenderBoundingBox();
-	SpotLightDirectionGizmo.Clear();
 	DirectionalLightDirectionGizmo.Clear();
 }
 

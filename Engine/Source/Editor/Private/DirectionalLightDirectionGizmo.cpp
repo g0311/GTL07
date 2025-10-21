@@ -11,7 +11,7 @@
 namespace
 {
 	constexpr float GizmoScaleFactor = 1.0f / 3.0f;
-	constexpr float BaseArrowLength = 20.0f;
+	constexpr float BaseArrowLength = 18.0f;
 	constexpr float BaseArrowThickness = 15.0f;
 }
 
@@ -21,7 +21,7 @@ UDirectionalLightDirectionGizmo::UDirectionalLightDirectionGizmo()
 	Primitive.VertexBuffer = AssetManager.GetVertexbuffer(EPrimitiveType::Arrow);
 	Primitive.NumVertices = AssetManager.GetNumVertices(EPrimitiveType::Arrow);
 	Primitive.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	Primitive.Color = FVector4(0.3f, 0.7f, 1.0f, 1.0f);
+	Primitive.Color = FVector4(0.8f, 0.8f, 0.8f, 1.0f);
 	Primitive.Location = FVector::ZeroVector();
 	Primitive.Rotation = FQuaternion::Identity();
 	Primitive.Scale = FVector(BaseArrowLength * GizmoScaleFactor, BaseArrowThickness * GizmoScaleFactor, BaseArrowThickness * GizmoScaleFactor);
