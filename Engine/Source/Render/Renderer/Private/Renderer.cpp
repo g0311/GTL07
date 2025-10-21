@@ -33,6 +33,7 @@
 #include "Render/RenderPass/Public/SceneDepthPass.h"
 #include "Render/RenderPass/Public/WorldNormalPass.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
+#include "Render/Renderer/Public/ShaderHotReload.h"
 
 IMPLEMENT_SINGLETON_CLASS(URenderer, UObject)
 
@@ -49,7 +50,8 @@ void URenderer::Init(HWND InWindowHandle)
 	CreateDepthStencilState();
 	CreateBlendState();
 	CreateSamplerState();
-	
+
+	// TODO: 셰이더 생성 부분을 전부 패스 안으로 이동
 	CreateDefaultShader();
 	CreateTextureShader();
 	CreateDecalShader();
@@ -69,7 +71,7 @@ void URenderer::Init(HWND InWindowHandle)
 	RenderPasses.push_back(LightCullPass);
 	
 	FStaticMeshPass* StaticMeshPass = new FStaticMeshPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
-		TextureVertexShader, TexturePixelShader, TexturePixelShaderWithNormalMap, TextureInputLayout, DefaultDepthStencilState);
+		TextureInputLayout, DefaultDepthStencilState);
 	RenderPasses.push_back(StaticMeshPass);
 
 	FDecalPass* DecalPass = new FDecalPass(Pipeline, ConstantBufferViewProj,
@@ -104,6 +106,9 @@ void URenderer::Init(HWND InWindowHandle)
 		LightCullingDebugPass = new FLightCullingDebugPass(Pipeline, DeviceResources);
 		RenderPasses.push_back(LightCullingDebugPass);
 	}
+
+	// Shader Hot Reload 초기화
+	InitializeShaderHotReload();
 }
 
 void URenderer::Release()
@@ -122,7 +127,8 @@ void URenderer::Release()
 		RenderPass->Release();
 		SafeDelete(RenderPass);
 	}
-	
+
+	SafeDelete(ShaderHotReload);
 	SafeDelete(ViewportClient);
 	SafeDelete(Pipeline);
 	SafeDelete(DeviceResources);
@@ -486,6 +492,9 @@ void URenderer::ReleaseSamplerState()
 
 void URenderer::Update()
 {
+    // 매 프레임 셰이더 핫 리로드 체크
+    CheckShaderHotReload();
+
     RenderBegin();
 
     for (FViewportClient& ViewportClient : ViewportClient->GetViewports())
@@ -864,6 +873,172 @@ void URenderer::ReleaseLightCullBuffers()
 	SafeRelease(TileLightInfoBuffer);
 	SafeRelease(TileLightInfoUAV);
 	SafeRelease(TileLightInfoSRV);
+}
+
+// ========================================
+// Shader Hot Reload System
+// ========================================
+
+void URenderer::InitializeShaderHotReload()
+{
+	ShaderHotReload = new FShaderHotReload();
+
+	// 모든 셰이더 파일 등록
+	ShaderHotReload->RegisterShader(L"Asset/Shader/UberShader.hlsl", "UberShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/DecalShader.hlsl", "DecalShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/PointLightShader.hlsl", "PointLightShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/HeightFogShader.hlsl", "FogShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/Copy.hlsl", "CopyShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/FXAAShader.hlsl", "FXAAShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/BillboardShader.hlsl", "BillboardShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/SampleShader.hlsl", "DefaultShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/LightCulling.hlsl", "LightCullingShader");
+
+	UE_LOG("ShaderHotReload: Initialized and tracking shader files");
+}
+
+void URenderer::CheckShaderHotReload()
+{
+	if (ShaderHotReload)
+	{
+		ShaderHotReload->CheckForChanges(this);
+	}
+}
+
+void URenderer::ReloadUberShader()
+{
+	UE_LOG("ShaderHotReload: Reloading UberShader...");
+
+	// 기존 셰이더 릴리즈
+	SafeRelease(TextureVertexShader);
+	// SafeRelease(TextureInputLayout);
+	UberShaderVertexPermutations.Default = nullptr;
+	SafeRelease(UberShaderVertexPermutations.Gouraud);
+	SafeRelease(UberShaderPermutations.Unlit);
+	SafeRelease(UberShaderPermutations.Gouraud);
+	SafeRelease(UberShaderPermutations.Lambert);
+	SafeRelease(UberShaderPermutations.Phong);
+	SafeRelease(UberShaderPermutations.BlinnPhong);
+	SafeRelease(UberShaderPermutations.GouraudWithNormalMap);
+	SafeRelease(UberShaderPermutations.LambertWithNormalMap);
+	SafeRelease(UberShaderPermutations.PhongWithNormalMap);
+	SafeRelease(UberShaderPermutations.BlinnPhongWithNormalMap);
+
+	// 재컴파일
+	CreateTextureShader();
+
+	UE_LOG("ShaderHotReload: UberShader reloaded successfully!");
+}
+
+void URenderer::ReloadDecalShader()
+{
+	UE_LOG("ShaderHotReload: Reloading DecalShader...");
+
+	SafeRelease(DecalVertexShader);
+	SafeRelease(DecalPixelShader);
+	SafeRelease(DecalInputLayout);
+
+	CreateDecalShader();
+
+	UE_LOG("ShaderHotReload: DecalShader reloaded successfully!");
+}
+
+void URenderer::ReloadPointLightShader()
+{
+	UE_LOG("ShaderHotReload: Reloading PointLightShader...");
+
+	SafeRelease(PointLightVertexShader);
+	SafeRelease(PointLightPixelShader);
+	SafeRelease(PointLightInputLayout);
+
+	CreatePointLightShader();
+
+	UE_LOG("ShaderHotReload: PointLightShader reloaded successfully!");
+}
+
+void URenderer::ReloadFogShader()
+{
+	UE_LOG("ShaderHotReload: Reloading FogShader...");
+
+	SafeRelease(FogVertexShader);
+	SafeRelease(FogPixelShader);
+	SafeRelease(FogInputLayout);
+
+	CreateFogShader();
+
+	UE_LOG("ShaderHotReload: FogShader reloaded successfully!");
+}
+
+void URenderer::ReloadCopyShader()
+{
+	UE_LOG("ShaderHotReload: Reloading CopyShader...");
+
+	SafeRelease(CopyVertexShader);
+	SafeRelease(CopyPixelShader);
+	SafeRelease(CopyInputLayout);
+
+	CreateCopyShader();
+
+	UE_LOG("ShaderHotReload: CopyShader reloaded successfully!");
+}
+
+void URenderer::ReloadFXAAShader()
+{
+	UE_LOG("ShaderHotReload: Reloading FXAAShader...");
+
+	SafeRelease(FXAAVertexShader);
+	SafeRelease(FXAAPixelShader);
+	SafeRelease(FXAAInputLayout);
+
+	CreateFXAAShader();
+
+	UE_LOG("ShaderHotReload: FXAAShader reloaded successfully!");
+}
+
+void URenderer::ReloadBillboardShader()
+{
+	UE_LOG("ShaderHotReload: Reloading BillboardShader...");
+
+	SafeRelease(BillboardVertexShader);
+	SafeRelease(BillboardPixelShader);
+	SafeRelease(BillboardInputLayout);
+
+	CreateBillboardShader();
+
+	UE_LOG("ShaderHotReload: BillboardShader reloaded successfully!");
+}
+
+void URenderer::ReloadDefaultShader()
+{
+	UE_LOG("ShaderHotReload: Reloading DefaultShader...");
+
+	SafeRelease(DefaultVertexShader);
+	SafeRelease(DefaultPixelShader);
+	SafeRelease(DefaultInputLayout);
+
+	CreateDefaultShader();
+
+	UE_LOG("ShaderHotReload: DefaultShader reloaded successfully!");
+}
+
+void URenderer::ReloadLightCullingShader()
+{
+	UE_LOG("ShaderHotReload: Reloading LightCullingShader...");
+
+	// LightCullingPass에서 컴파일하므로 해당 패스를 찾아서 재로드
+	for (auto RenderPass : RenderPasses)
+	{
+		FLightCullingPass* LightCullPass = dynamic_cast<FLightCullingPass*>(RenderPass);
+		if (LightCullPass)
+		{
+			// LightCullingPass의 재로드 메서드 호출 필요
+			// 현재는 로그만 출력
+			UE_LOG("ShaderHotReload: Found LightCullingPass - manual reload required");
+			break;
+		}
+	}
+
+	UE_LOG("ShaderHotReload: LightCullingShader reload requested!");
 }
 
 

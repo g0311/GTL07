@@ -11,8 +11,8 @@
 #include "Texture/Public/Texture.h"
 
 FStaticMeshPass::FStaticMeshPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCamera, ID3D11Buffer* InConstantBufferModel,
-	ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11PixelShader* InPSWithNormalMap, ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS)
-	: FRenderPass(InPipeline, InConstantBufferCamera, InConstantBufferModel), VS(InVS), PS(InPS), PSWithNormalMap(InPSWithNormalMap), InputLayout(InLayout), DS(InDS)
+	ID3D11InputLayout* InLayout, ID3D11DepthStencilState* InDS)
+	: FRenderPass(InPipeline, InConstantBufferCamera, InConstantBufferModel), InputLayout(InLayout), DS(InDS)
 {
 	ConstantBufferMaterial = FRenderResourceFactory::CreateConstantBuffer<FMaterialConstants>();
 }
@@ -26,11 +26,12 @@ void FStaticMeshPass::PreExecute(FRenderingContext& Context)
 	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
 	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
 	Pipeline->SetRenderTargets(2, RTVs, DSV);
-
-	// TODO : Set Normal map version
+	
 	ID3D11PixelShader* InPS = Renderer.GetPixelShaderForLightingModel(false);
+	ID3D11PixelShader* InNormalPS = Renderer.GetPixelShaderForLightingModel(true);
 	ID3D11VertexShader* InVS = Renderer.GetVertexShaderForLightingModel();
 	PS = InPS;
+	PSWithNormalMap = InNormalPS;
 	VS = InVS;
 }
 
@@ -190,7 +191,7 @@ FMaterialConstants FStaticMeshPass::CreateMaterialConstants(UMaterial* Material,
 	if (Material->GetDiffuseTexture())	Constants.MaterialFlags |= HAS_DIFFUSE_MAP;
 	if (Material->GetAmbientTexture())	Constants.MaterialFlags |= HAS_AMBIENT_MAP;
 	if (Material->GetSpecularTexture())	Constants.MaterialFlags |= HAS_SPECULAR_MAP;
-	if (Material->GetNormalTexture())	Constants.MaterialFlags |= HAS_NORMAL_MAP;
+	// if (Material->GetNormalTexture())	Constants.MaterialFlags |= HAS_NORMAL_MAP;
 	if (Material->GetAlphaTexture())	Constants.MaterialFlags |= HAS_ALPHA_MAP;
 	if (Material->GetBumpTexture())		Constants.MaterialFlags |= HAS_BUMP_MAP;
 

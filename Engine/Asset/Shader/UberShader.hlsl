@@ -159,30 +159,29 @@ float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
     {
         WorldNormal = normalize(WorldNormal);
     }
-    
+
+#ifdef HAS_NORMAL_MAP
     // Sample normal map (tangent space) - UV 파라미터 사용
-    if (MaterialFlags & HAS_NORMAL_MAP)
+    float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
+    // Decode from [0,1] to [-1,1]
+    TangentNormal = TangentNormal * 2.0f - 1.0f;
+    // DirectX 텍스처 좌표계 보정: X축 반전
+    TangentNormal.x = -TangentNormal.x;
+
+    // Construct TBN matrix (Tangent, Bitangent, Normal)
+    float3 N = WorldNormal;
+    float3 T = Input.WorldTangent;
+    float3 B = Input.WorldBitangent;
+
+    // Safety check for tangent and bitangent
+    if (length(T) > 0.001f && length(B) > 0.001f)
     {
-        float3 TangentNormal = NormalTexture.Sample(SamplerWrap, UV).rgb;
-        // Decode from [0,1] to [-1,1]
-        TangentNormal = TangentNormal * 2.0f - 1.0f;
-        // DirectX 텍스처 좌표계 보정: X축 반전
-        TangentNormal.x = -TangentNormal.x;
-
-        // Construct TBN matrix (Tangent, Bitangent, Normal)
-        float3 N = WorldNormal;
-        float3 T = Input.WorldTangent;
-        float3 B = Input.WorldBitangent;
-
-        // Safety check for tangent and bitangent
-        if (length(T) > 0.001f && length(B) > 0.001f)
-        {
-            T = normalize(T);
-            B = normalize(B);
-            // Transform tangent space normal to world space
-            WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
-        }
+        T = normalize(T);
+        B = normalize(B);
+        // Transform tangent space normal to world space
+        WorldNormal = normalize(TangentNormal.x * T + TangentNormal.y * B + TangentNormal.z * N);
     }
+#endif
 
     return WorldNormal;
 }
@@ -233,6 +232,11 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     // Gouraud: VS에서 계산된 라이팅을 그대로 사용
     Output.SceneColor = Input.Color;
 
+    // Normal 데이터 출력
+    float3 Normal = CalculateWorldNormal(Input, Input.Tex);
+    float3 EncodedNormal = Normal * 0.5f + 0.5f;
+    Output.NormalData = float4(EncodedNormal, 1.0f);
+    
     // 텍스처가 있다면 곱하기
     if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
@@ -241,10 +245,6 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         Output.SceneColor.a = TexColor.a;
     }
 
-    // Normal 데이터 출력
-    float3 Normal = CalculateWorldNormal(Input, Input.Tex);
-    float3 EncodedNormal = Normal * 0.5f + 0.5f;
-    Output.NormalData = float4(EncodedNormal, 1.0f);
 #elif LIGHTING_MODEL_UNLIT
     // TODO : 원래는 Albedo로 해야하지만, 현재는 DiffuseTexture = Albedo임
     Output.SceneColor= float4(0.5, 0.5, 0.5, 1);
