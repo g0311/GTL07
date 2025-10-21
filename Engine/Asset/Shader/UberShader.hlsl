@@ -205,16 +205,19 @@ PS_INPUT mainVS(VS_INPUT Input)
 
     Output.Tex = Input.Tex;
     Output.Color = Input.Color;
+
 #if LIGHTING_MODEL_GOURAUD
     float3 Normal = normalize(Output.WorldNormal);
     float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
 
     // Vertex Shader에서는 텍스처 샘플링 불가 - Material 상수만 사용
+    // Ka가 0이면 Kd 사용, Ks가 0이면 white(1,1,1) 사용
+    float3 kA = all(Ka.rgb == 0.0) ? Kd.rgb : Ka.rgb;
     float3 kD = Kd.rgb;
-    float3 kS = Ks.rgb;
+    float3 kS = all(Ks.rgb == 0.0) ? float3(1, 1, 1) : Ks.rgb;
 
     // Gouraud: 모든 라이트를 순회 (Tiled Culling 사용 안 함)
-    float3 LightColor = CalculateAllLightsGouraud(Output.WorldPosition, Normal, ViewDir, kD, kS, Ns);
+    float3 LightColor = CalculateAllLightsGouraud(Output.WorldPosition, Normal, ViewDir, kA, kD, kS, Ns);
 
     // 입력 버텍스 컬러와 라이팅 결과를 블렌드
     Output.Color.rgb = LightColor;
@@ -274,39 +277,76 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float3 EncodedNormal = Normal * 0.5f + 0.5f;
     Output.NormalData = float4(EncodedNormal, 1.0f);
 
-    // 기본 Albedo: map_Kd (DiffuseTexture)가 물체의 기본 색상 (POM UV 사용)
-    float3 Albedo = (MaterialFlags & HAS_DIFFUSE_MAP) ? DiffuseTexture.Sample(SamplerWrap, UV).rgb : Kd.rgb;
+    // ===== Material Property Setup =====
 
-    // Diffuse: 기본적으로 Albedo 사용
-    float3 kD = Albedo;
+    // Ambient: Use AmbientTexture if available, otherwise fallback to DiffuseTexture or Ka constant
+    float3 kA;
+    if (MaterialFlags & HAS_AMBIENT_MAP)
+    {
+        kA = AmbientTexture.Sample(SamplerWrap, UV).rgb;
+    }
+    else if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        kA = DiffuseTexture.Sample(SamplerWrap, UV).rgb;  // Fallback to diffuse texture
+    }
+    else
+    {
+        if (Ka.r == 0.0 && Ka.b == 0.0 && Ka.r == 0.0)
+            kA = float3(1.0f, 1.0f, 1.0f);
+        else
+            kA = Ka.rgb;
+    }
 
-    // Specular: 별도 SpecularTexture가 설정되었다면 사용, 아니면 Ks 상수
-    float3 kS = (MaterialFlags & HAS_SPECULAR_MAP) ? SpecularTexture.Sample(SamplerWrap, UV).rgb : Ks.rgb;
-     
-    // Unlit 처리
+    // Diffuse: Use DiffuseTexture if available, otherwise Kd constant
+    float3 kD;
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        kD = DiffuseTexture.Sample(SamplerWrap, UV).rgb;
+    }
+    else
+    {
+        if (Kd.r == 0.0 && Kd.b == 0.0 && Kd.r == 0.0)
+            kD = float3(1.0f, 1.0f, 1.0f);
+        else
+            kD = Kd.rgb;
+    }
+
+    // Specular: Use SpecularTexture if available, otherwise fallback to DiffuseTexture or Ks constant
+    float3 kS;
+    if (MaterialFlags & HAS_SPECULAR_MAP)
+    {
+        kS = SpecularTexture.Sample(SamplerWrap, UV).rgb;
+    }
+    else if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        kS = DiffuseTexture.Sample(SamplerWrap, UV).rgb;  // Fallback to diffuse texture
+    }
+    else
+    {
+        if (Ks.r == 0.0 && Ks.b == 0.0 && Ks.r == 0.0)
+            kS = float3(1.0f, 1.0f, 1.0f);
+        else
+            kS = Ks.rgb;
+    }
+
+    float Shininess = 1.0f;
+    if (Ns != 0)
+        Shininess = Ns;
+    
     if (MaterialFlags & UNLIT)
     {
         Output.SceneColor = float4(kD, 1.0);
         Output.NormalData = float4(Normal * 0.5f + 0.5f, 1.0);
         return Output;
     }
-
-    // Tiled Lighting 사용
-    float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, kD, kS, Ns, ViewportOffset, ViewportSize);
     
-     
-    // Light
-    // float3 AmbientColor = CalculateAmbientLight(UV).rgb;
-    // float3 DirectionalColor = CalculateDirectionalLight(Normal, ViewDir, kD, kS, Ns);
-    // float3 PointLightColor = CalculatePointLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
-    // float3 SpotLightColor = CalculateSpotLights(Input.WorldPosition, Normal, ViewDir, kD, kS, Ns);
-         
+    float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, kA, kD, kS, Shininess, ViewportOffset, ViewportSize);
+    
     float4 FinalColor;
     FinalColor.rgb = TiledLightColor;
     FinalColor.a = 1.0f;
      
     // Alpha handling
-    /*TODO : Apply DiffuseTexture for now, due to Binding AlphaTexture feature don't exist yet*/
     if (MaterialFlags & HAS_ALPHA_MAP)
     {
         float alpha = AlphaTexture.Sample(SamplerWrap, UV).w;
@@ -320,13 +360,5 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     Output.SceneColor = FinalColor;
 #endif
     
-    // // Normal
-    // // Calculate World Normal for Normal Buffer
-    // float3 WorldNormal = CalculateWorldNormal(Input);
-    //
-    // // Encode world normal to [0,1] range for storage
-    // float3 EncodedNormal = WorldNormal * 0.5f + 0.5f;
-    // Output.NormalData = float4(EncodedNormal, 1.0f);
-
     return Output;
 };
