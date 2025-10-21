@@ -39,7 +39,7 @@ struct FSpotLightInfo
     float3 Position;
     float3 Direction;
     float InvRange2;    // 1/(Range*Range) : Spotlight Range
-    float Falloff;      // Inner Cone���� Outer Cone���� ������ ������
+    float Falloff;      // Inner Cone ~ Outer Cone 사이 보간, 높을수록 급격히 떨어짐
     float CosOuter;     // cos(OuterAngle)
     float CosInner;     // cos(InnerAngle) - (InnerAngle < OuterAngle)
     float _padding;
@@ -79,10 +79,10 @@ cbuffer TiledLightingParams : register(b3)
     uint EnableCulling; // Light Culling 활성화 여부 (1=활성화, 0=모든라이트렌더)
 };
 
-// Light Culling�ý��ۿ��� ����ϴ� Structured Buffer
-StructuredBuffer<Light> AllLights : register(t13); // ����Ʈ ������ ����
-StructuredBuffer<uint> LightIndexBuffer : register(t14); // Ÿ�Ϻ� ����Ʈ �ε���
-StructuredBuffer<uint2> TileLightInfo : register(t15); // Ÿ�� ����Ʈ ���� (offset, count)
+// Light Culling용 Structured Buffer
+StructuredBuffer<Light> AllLights : register(t13);
+StructuredBuffer<uint> LightIndexBuffer : register(t14);
+StructuredBuffer<uint2> TileLightInfo : register(t15); // (offset, count)
 
 FAmbientLightInfo ConvertToAmbientLight(Light light)
 {
