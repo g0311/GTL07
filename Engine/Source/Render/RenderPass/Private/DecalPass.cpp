@@ -255,6 +255,13 @@ void FDecalPass::Execute(FRenderingContext& Context)
 
 void FDecalPass::PostExecute(FRenderingContext& Context)
 {
+    // Tiled Lighting Structured Buffer SRV 언바인딩 (VS와 PS 모두)
+    Pipeline->SetTexture(13, true, nullptr);
+    Pipeline->SetTexture(13, false, nullptr);
+    Pipeline->SetTexture(14, true, nullptr);
+    Pipeline->SetTexture(14, false, nullptr);
+    Pipeline->SetTexture(15, true, nullptr);
+    Pipeline->SetTexture(15, false, nullptr);
 }
 
 void FDecalPass::Release()

@@ -16,9 +16,9 @@ UGizmo::UGizmo()
 	/* *
 	* @brief 0: Forward(x), 1: Right(y), 2: Up(z)
 	*/
-	GizmoColor[0] = FVector4(1, 0, 0, 1);
-	GizmoColor[1] = FVector4(0, 1, 0, 1);
-	GizmoColor[2] = FVector4(0, 0, 1, 1);
+	GizmoColor[0] = FVector4(0.73f, 0.015f, 0.0f, 1.0f);
+	GizmoColor[1] = FVector4(0.18f, 0.51f, 0.0f, 1.0f);
+	GizmoColor[2] = FVector4(0.026f, 0.246f, 1.0f, 1.0f);
 
 	/* *
 	* @brief Translation Setting
@@ -186,7 +186,12 @@ FVector4 UGizmo::ColorFor(EGizmoDirection InAxis) const
 	//UE_LOG("InAxis: %d, Idx: %d, Dir: %d, base color: %.f, %.f, %.f, bHighLight: %d", InAxis, Idx, GizmoDirection, BaseColor.X, BaseColor.Y, BaseColor.Z, bIsHighlight);
 
 	if (bIsDragging)
-		return BaseColor;
+	{
+		if (bIsHighlight)
+			return FVector4(1, 1, 0, 1);
+		else
+			return BaseColor;
+	}
 	else
 		return Paint;
 }
