@@ -251,11 +251,7 @@ float3 CalculateSpotLight(FSpotLightInfo SpotLight, float3 WorldPos)
     // SpotLight Cone Attenuation
     float CurCos = dot(-normalize(LightVec), normalize(SpotLight.Direction));
     float DirectionAttenuation = saturate((CurCos - SpotLight.CosOuter) / max(SpotLight.CosInner - SpotLight.CosOuter, 1e-5));
-    if (DirectionAttenuation != 0) 
-    {
-        DirectionAttenuation = pow(DirectionAttenuation, max(SpotLight.Falloff, 0.0));
-    }
-    
+        
     // Light * Intensity
     return SpotLight.Color.rgb * SpotLight.Intensity * RangeAttenuation * DirectionAttenuation;
 }
