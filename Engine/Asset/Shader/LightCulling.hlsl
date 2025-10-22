@@ -251,6 +251,8 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         TileLightInfo[tileIndex] = uint2(globalOffset, min(numVisibleLights, 1024u));
     }
     
+    GroupMemoryBarrierWithGroupSync();
+
     // 그룹 내 모든 스레드가 협력하여 공유 메모리의 내용을 전역 버퍼(LightIndexBuffer)에 복사
     if (numVisibleLights > 0)
     {

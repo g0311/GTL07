@@ -790,7 +790,7 @@ void URenderer::CreateLightCullBuffers()
 	const uint32 numTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
 	const uint32 numTilesY = (DeviceResources->GetHeight() + TILE_SIZE - 1) / TILE_SIZE;
 	const uint32 MAX_TILES = numTilesX * numTilesY;
-	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 64;
+	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 256;
         
 	// LightIndexBuffer 생성
 	D3D11_BUFFER_DESC lightIndexBufferDesc = {};
