@@ -79,9 +79,9 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
     float3 V = normalize(ViewWorldLocation - Input.WorldPos.xyz);
 	
     float3 kD = DecalColor.rgb; // Diffuse = decal base color
-    float3 kS = float3(0.1f, 0.1f, 0.1f); // Specular
-	float3 kA = float3(0.1f, 0.1f, 0.1f); // Ambient
-    float Ns = 16.0f; // Roughness
+    float3 kS = float3(1.0f, 1.0f, 1.0f); // Specular
+	float3 kA = float3(1.0f, 1.0f, 1.0f); // Ambient
+    float Ns = 16.0f; // Shininess 
 	
     FLightSegment TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPos.xyz, N, V, Ns,
     	ViewportOffset, ViewportSize);
