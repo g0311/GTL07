@@ -78,7 +78,7 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	{
 		discard;
 	}
-
+	
 	// ===== Sample G-Buffer Normal =====
 	// Calculate screen-space UV from SV_POSITION
 	float2 ScreenUV = Input.Position.xy / DecalViewportSize;

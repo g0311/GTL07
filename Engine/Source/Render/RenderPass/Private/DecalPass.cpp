@@ -281,6 +281,14 @@ void FDecalPass::PostExecute(FRenderingContext& Context)
     Pipeline->SetTexture(15, false, nullptr);
 }
 
+void FDecalPass::UpdateShaders(ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout)
+{
+    VS = InVS;
+    PS = InPS;
+    InputLayout = InLayout;
+    UE_LOG("DecalPass: Shaders updated for hot reload");
+}
+
 void FDecalPass::Release()
 {
     SafeRelease(ConstantBufferPrim);

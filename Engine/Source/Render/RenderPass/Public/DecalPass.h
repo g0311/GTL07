@@ -23,6 +23,9 @@ public:
     void PostExecute(FRenderingContext& Context) override;
     void Release() override;
 
+	// Shader Hot Reload
+    void UpdateShaders(ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout);
+
 	// Tiled Lighting
     void SetUpTiledLighting(const FRenderingContext& Context);
     void BindTiledLightingBuffers();
