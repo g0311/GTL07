@@ -15,8 +15,8 @@ SamplerState DecalSampler : register(s0);
 Texture2D FadeTexture : register(t1);
 SamplerState FadeSampler : register(s1);
 
-Texture2D GBufferNormal : register(t3);
-SamplerState GBufferNormalSampler : register(s3);
+Texture2D GBufferNormal : register(t2);
+SamplerState GBufferNormalSampler : register(s2);
 
 struct VS_INPUT
 {
@@ -85,16 +85,6 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 
 	// Sample the normal from G-Buffer (underlying mesh normal)
 	float4 GBufferNormalData = GBufferNormal.Sample(GBufferNormalSampler, ScreenUV);
-
-	// ===== DEBUG OPTIONS (uncomment one to visualize) =====
-	// 1. Visualize raw G-Buffer Normal data (encoded [0,1])
-	// return float4(GBufferNormalData.rgb, DecalColor.a);
-
-	// 2. Visualize G-Buffer alpha channel (should be 1.0 where geometry exists)
-	// return float4(GBufferNormalData.aaa, DecalColor.a);
-
-	// 3. Visualize screen UV coordinates
-	// return float4(ScreenUV, 0.0f, DecalColor.a);
 
 	// If GBuffer has valid normal (alpha > 0 means geometry was rendered there), use it; otherwise fallback to decal mesh normal
 	float3 N;

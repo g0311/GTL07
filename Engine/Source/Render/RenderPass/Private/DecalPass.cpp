@@ -221,9 +221,9 @@ void FDecalPass::Execute(FRenderingContext& Context)
             Pipeline->SetSamplerState(1, false, FadeTexture->GetTextureSampler());
         }
 
-        // --- Bind G-Buffer Normal (using slot 3 to avoid conflict with Decal/Fade textures) ---
-        Pipeline->SetTexture(3, false, DeviceResources->GetNormalSRV());
-        Pipeline->SetSamplerState(3, false, GBufferSamplerState);
+        // --- Bind G-Buffer Normal ---
+        Pipeline->SetTexture(2, false, DeviceResources->GetNormalSRV());
+        Pipeline->SetSamplerState(2, false, GBufferSamplerState);
 
         TArray<UPrimitiveComponent*> Primitives;
         // --- Enable Octree Optimization --- 
@@ -269,8 +269,8 @@ void FDecalPass::Execute(FRenderingContext& Context)
 void FDecalPass::PostExecute(FRenderingContext& Context)
 {
     // Unbind G-Buffer Normal texture
-    Pipeline->SetTexture(3, false, nullptr);
-    Pipeline->SetSamplerState(3, false, nullptr);
+    Pipeline->SetTexture(2, false, nullptr);
+    Pipeline->SetSamplerState(2, false, nullptr);
 
     // Tiled Lighting Structured Buffer SRV 언바인딩 (VS와 PS 모두)
     Pipeline->SetTexture(13, true, nullptr);
