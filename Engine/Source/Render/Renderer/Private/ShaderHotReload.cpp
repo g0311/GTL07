@@ -115,7 +115,12 @@ void FShaderHotReload::RecompileShader(const FString& InShaderName)
 	{
 		Renderer.ReloadLightCullingShader();
 	}
-
+	else if (InShaderName == "LightCommon")
+	{
+		Renderer.ReloadUberShader();
+		Renderer.ReloadDecalShader();
+	}
+	
 	// 타임스탬프 갱신
 	auto It = ShaderFiles.find(InShaderName);
 	if (It != ShaderFiles.end())

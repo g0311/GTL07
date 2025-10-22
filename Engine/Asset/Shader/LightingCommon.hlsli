@@ -117,6 +117,8 @@ cbuffer TiledLightingParams : register(b3)
     uint2 ViewportSize;   // viewport size
     uint NumLights;       // total number of lights in the scene (for Gouraud)
     uint EnableCulling;   // Light Culling 활성화 여부 (1=활성화, 0=모든라이트렌더)
+    uint EnableCullingDebug; // Light Culling Debug 모드 활성화 여부 (1=활성화, 0=비활성화)
+    uint Padding;
 };
 
 // Light Culling용 Structured Buffer
@@ -124,54 +126,59 @@ StructuredBuffer<FLight> AllLights : register(t13);
 StructuredBuffer<uint> LightIndexBuffer : register(t14);
 StructuredBuffer<uint2> ClusterLightInfo : register(t15); // (offset, count)
 
-FAmbientLightInfo ConvertToAmbientLight(FLight light)
+FAmbientLightInfo ConvertToAmbientLight(FLight Light)
 {
-    FAmbientLightInfo ambientLight;
-    ambientLight.Color = float4(light.Color.rgb, 1.0); // Only RGB, no intensity in color
-    ambientLight.Intensity = light.Color.w; // Intensity stored separately
-    return ambientLight;
+    FAmbientLightInfo AmbientLight;
+    AmbientLight.Color = float4(Light.Color.rgb, 1.0); // Only RGB, no intensity in color
+    AmbientLight.Intensity = Light.Color.w; // Intensity stored separately
+    return AmbientLight;
 }
 
-FDirectionalLightInfo ConvertToDirectionalLight(FLight light)
+FDirectionalLightInfo ConvertToDirectionalLight(FLight Light)
 {
-    FDirectionalLightInfo directionalLight;
-    directionalLight.Direction = light.Direction.xyz;
-    directionalLight.Color = light.Color.rgb;
-    directionalLight.Intensity = light.Color.w;
-    return directionalLight;
+    FDirectionalLightInfo DirectionalLight;
+    DirectionalLight.Direction = Light.Direction.xyz;
+    DirectionalLight.Color = Light.Color.rgb;
+    DirectionalLight.Intensity = Light.Color.w;
+    return DirectionalLight;
 }
 
-FPointLightInfo ConvertToPointLight(FLight light)
+FPointLightInfo ConvertToPointLight(FLight Light)
 {
-    FPointLightInfo pointLight;
-    pointLight.Position = light.Position.xyz;
-    pointLight.Radius = light.Position.w;
-    pointLight.Color = light.Color.rgb;
-    pointLight.Intensity = light.Color.w;
-    pointLight.FalloffExtent = light.Angles.z;
-    return pointLight;
+    FPointLightInfo PointLight;
+    PointLight.Position = Light.Position.xyz;
+    PointLight.Radius = Light.Position.w;
+    PointLight.Color = Light.Color.rgb;
+    PointLight.Intensity = Light.Color.w;
+    PointLight.FalloffExtent = Light.Angles.z;
+    return PointLight;
 }
 
-FSpotLightInfo ConvertToSpotLight(FLight light)
+FSpotLightInfo ConvertToSpotLight(FLight Light)
 {
-    FSpotLightInfo spotLight;
-    spotLight.Position = light.Position.xyz;
-    spotLight.Direction = light.Direction.xyz;
-    spotLight.Color = light.Color;
-    spotLight.Intensity = light.Color.w;
-    spotLight.CosInner = light.Angles.x;
-    spotLight.CosOuter = light.Angles.y;
-    spotLight.Falloff = light.Angles.z;
-    spotLight.InvRange2 = light.Angles.w;
-    return spotLight;
+    FSpotLightInfo SpotLight;
+    SpotLight.Position = Light.Position.xyz;
+    SpotLight.Direction = Light.Direction.xyz;
+    SpotLight.Color = Light.Color;
+    SpotLight.Intensity = Light.Color.w;
+    SpotLight.CosInner = Light.Angles.x;
+    SpotLight.CosOuter = Light.Angles.y;
+    SpotLight.Falloff = Light.Angles.z;
+    SpotLight.InvRange2 = Light.Angles.w;
+    return SpotLight;
 }
+
+#ifndef PI
+#define PI 3.14159265358979323846
+#endif
+static const float INV_PI = 1.0 / PI;
 
 float3 CalculateDiffuse(float3 LightColor, float3 WorldNormal, float3 LightDir)
 {
     WorldNormal = normalize(WorldNormal); /* Defensive Normalize*/
     LightDir = normalize(LightDir);       /* Defensive Normalize*/
-    float NdotL = saturate(dot(WorldNormal, LightDir));
-    return LightColor * NdotL;
+    float NdotL = dot(WorldNormal, LightDir);
+    return LightColor * NdotL * INV_PI;;
 }
 
 float3 CalculateSpecular(float3 LightColor, float3 WorldNormal, float3 LightDir, float3 ViewDir, float Shininess)
@@ -184,6 +191,7 @@ float3 CalculateSpecular(float3 LightColor, float3 WorldNormal, float3 LightDir,
     WorldNormal = normalize(WorldNormal); /* Defensive Normalize*/
     LightDir = normalize(LightDir);       /* Defensive Normalize*/
     ViewDir = normalize(ViewDir);         /* Defensive Normalize*/
+
 #if LIGHTING_MODEL_LAMBERT
     return float3(0, 0, 0);
 #elif LIGHTING_MODEL_PHONG
@@ -193,7 +201,6 @@ float3 CalculateSpecular(float3 LightColor, float3 WorldNormal, float3 LightDir,
     if (VdotR <= EPS )
         return 0;
     return LightColor * pow(VdotR, Shininess);
-    
 #elif LIGHTING_MODEL_BLINNPHONG
     float3 H = normalize(LightDir + ViewDir);
     float NdotH = saturate(dot(WorldNormal, H));
@@ -205,9 +212,9 @@ float3 CalculateSpecular(float3 LightColor, float3 WorldNormal, float3 LightDir,
 #endif
 }
 
-float3 CalculateAmbientLight(FAmbientLightInfo ambientLight)
+float3 CalculateAmbientLight(FAmbientLightInfo AmbientLight)
 {
-    return ambientLight.Color.rgb * ambientLight.Intensity;
+    return AmbientLight.Color.rgb * AmbientLight.Intensity;
 }
 
 float3 CalculateDirectionalLight(FDirectionalLightInfo DirectionalLight)
@@ -229,32 +236,36 @@ float3 CalculatePointLight(FPointLightInfo PointLight, float3 WorldPos)
     return PointLight.Color.rgb * PointLight.Intensity * RangeAttenuation;
 }
 
-float3 CalculateSpotLight(FSpotLightInfo spotLight, float3 WorldPos)
+float3 CalculateSpotLight(FSpotLightInfo SpotLight, float3 WorldPos)
 {
-    float3 LightVec = spotLight.Position - WorldPos;
+    float3 LightVec = SpotLight.Position - WorldPos;
     float Distance = length(LightVec);
 
     // Attenuation : Range & Cone(Cos)
-    float RangeAttenuation = saturate(1.0 - Distance * Distance * spotLight.InvRange2);
-
-    // SpotLight Cone Attenuation
-    float CurCos = dot(-normalize(LightVec), normalize(spotLight.Direction));
-    float DirectionAttenuation = saturate((CurCos - spotLight.CosOuter) / max(spotLight.CosInner - spotLight.CosOuter, 1e-5));
-    if (DirectionAttenuation != 0) 
+    float RangeAttenuation = saturate(1.0 - Distance * Distance * SpotLight.InvRange2);
+    if (RangeAttenuation != 0)
     {
-        DirectionAttenuation = pow(DirectionAttenuation, max(spotLight.Falloff, 0.0));
+        RangeAttenuation = pow(RangeAttenuation, max(SpotLight.Falloff, 0.0));
     }
 
+    // SpotLight Cone Attenuation
+    float CurCos = dot(-normalize(LightVec), normalize(SpotLight.Direction));
+    float DirectionAttenuation = saturate((CurCos - SpotLight.CosOuter) / max(SpotLight.CosInner - SpotLight.CosOuter, 1e-5));
+    if (DirectionAttenuation != 0) 
+    {
+        DirectionAttenuation = pow(DirectionAttenuation, max(SpotLight.Falloff, 0.0));
+    }
+    
     // Light * Intensity
-    return spotLight.Color.rgb * spotLight.Intensity * RangeAttenuation * DirectionAttenuation;
+    return SpotLight.Color.rgb * SpotLight.Intensity * RangeAttenuation * DirectionAttenuation;
 }
 
 float3 CalculateLight(FLight Light, uint LightType, float3 WorldPos)
 {
     if (LightType == LIGHT_TYPE_AMBIENT)
     {
-        FAmbientLightInfo ambientLight = ConvertToAmbientLight(Light);
-        return CalculateAmbientLight(ambientLight);
+        FAmbientLightInfo AmbientLight = ConvertToAmbientLight(Light);
+        return CalculateAmbientLight(AmbientLight);
     }
     else if (LightType == LIGHT_TYPE_DIRECTIONAL)
     {
@@ -302,7 +313,7 @@ FLightSegment CalculateAllLights(float3 WorldPos, float3 WorldNormal, float3 Vie
             }
             else
             {
-                LightDir = Light.Position.xyz - WorldPos;
+                LightDir = normalize(Light.Position.xyz - WorldPos);
             }
             
             AccumulatedColor.Diffuse += CalculateDiffuse(LightColor, WorldNormal, LightDir);
@@ -352,10 +363,42 @@ FLightSegment CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 
         }
         else
         {
-            float3 LightDir = Light.Position.xyz - WorldPos;
+            float3 LightDir = normalize(Light.Position.xyz - WorldPos);
             LightColor.Diffuse += CalculateDiffuse(AccumulatedColor, WorldNormal, LightDir);
             LightColor.Specular += CalculateSpecular(AccumulatedColor, WorldNormal, LightDir, ViewDir, Shininess);   
         }
+    }
+    
+    // 컬링 디버그 모드 활성화 시 라이트 개수에 따라 색깔 설정
+    if (EnableCullingDebug == 1)
+    {
+        float t = saturate((float)LightCount / 20.0); // 20개 라이트 기준으로 정규화
+        
+        // Heat map 색상: 파란색(0) -> 초록색 -> 노란색 -> 빨간색(많음)
+        float3 debugColor;
+        if (t < 0.25)
+        {
+            // 파란색 -> 하늘색
+            debugColor = lerp(float3(0.0, 0.0, 1.0), float3(0.0, 1.0, 1.0), t * 4.0);
+        }
+        else if (t < 0.5)
+        {
+            // 하늘색 -> 초록색
+            debugColor = lerp(float3(0.0, 1.0, 1.0), float3(0.0, 1.0, 0.0), (t - 0.25) * 4.0);
+        }
+        else if (t < 0.75)
+        {
+            // 초록색 -> 노란색
+            debugColor = lerp(float3(0.0, 1.0, 0.0), float3(1.0, 1.0, 0.0), (t - 0.5) * 4.0);
+        }
+        else
+        {
+            // 노란색 -> 빨간색
+            debugColor = lerp(float3(1.0, 1.0, 0.0), float3(1.0, 0.0, 0.0), (t - 0.75) * 4.0);
+        }
+        
+        // 기존 라이팅 결과를 디버그 색상으로 덮어쓰기
+        LightColor.Diffuse = debugColor;
     }
     
     return LightColor;

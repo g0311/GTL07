@@ -29,7 +29,6 @@
 #include "Render/Renderer/Public/Pipeline.h"
 #include "Render/RenderPass/Public/FXAAPass.h"
 #include "Render/RenderPass/Public/LightCullingPass.h"
-#include "Render/RenderPass/Public/LightCullingDebugPass.h"
 #include "Render/RenderPass/Public/SceneDepthPass.h"
 #include "Render/RenderPass/Public/WorldNormalPass.h"
 #include "Render/UI/Overlay/Public/StatOverlay.h"
@@ -103,9 +102,6 @@ void URenderer::Init(HWND InWindowHandle)
 	
 		FXAAPass = new FFXAAPass(Pipeline, DeviceResources, FXAAVertexShader, FXAAPixelShader, FXAAInputLayout, FXAASamplerState);
 		RenderPasses.push_back(FXAAPass);
-
-		LightCullingDebugPass = new FLightCullingDebugPass(Pipeline, DeviceResources);
-		RenderPasses.push_back(LightCullingDebugPass);
 	}
 
 	// Shader Hot Reload 초기화
@@ -597,6 +593,8 @@ void URenderer::SetUpTiledLighting(const FRenderingContext& Context)
 	tiledParams.NumLights = static_cast<uint32>(Context.Lights.size());  // Gouraud용 전체 라이트 개수
 	// Light Culling 활성화 여부 설정 (ShowFlags에 따라 결정)
 	tiledParams.EnableCulling = (Context.ShowFlags & EEngineShowFlags::SF_LightCulling) ? 1u : 0u;
+	// Light Culling Debug 활성화 여부 설정
+	tiledParams.EnableCullingDebug = (Context.ShowFlags & EEngineShowFlags::SF_LightCullingDebug) ? 1u : 0u;
 
 	FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferTiledLighting, tiledParams);
 	Pipeline->SetConstantBuffer(3, false, ConstantBufferTiledLighting);
@@ -934,6 +932,7 @@ void URenderer::InitializeShaderHotReload()
 	ShaderHotReload->RegisterShader(L"Asset/Shader/BillboardShader.hlsl", "BillboardShader");
 	ShaderHotReload->RegisterShader(L"Asset/Shader/SampleShader.hlsl", "DefaultShader");
 	ShaderHotReload->RegisterShader(L"Asset/Shader/LightCulling.hlsl", "LightCullingShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/LightingCommon.hlsli", "LightCommon");
 
 	UE_LOG("ShaderHotReload: Initialized and tracking shader files");
 }
