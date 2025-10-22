@@ -313,17 +313,10 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     };
 #else
     FLightSegment LightColor;
-    // Light Culling 비활성화 : 모든 라이트를 렌더링
-    if (EnableCulling == 0)
-    {
-        LightColor = CalculateAllLights(Input.WorldPosition, Normal, ViewDir, Shininess);
-    }
-    else
-    {
-        LightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, Shininess,
-            ViewportOffset, ViewportSize);
-    }
-
+    
+    LightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, Shininess,
+        ViewportOffset, ViewportSize);
+    
     float3 AccumulatedLightWithMaterial = float3(0, 0, 0);
     AccumulatedLightWithMaterial += LightColor.Ambient * MaterialAmbient;
     AccumulatedLightWithMaterial += LightColor.Diffuse * MaterialDiffuse;

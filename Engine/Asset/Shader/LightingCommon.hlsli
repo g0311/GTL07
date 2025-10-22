@@ -279,6 +279,12 @@ FLightSegment CalculateAllLights(float3 WorldPos, float3 WorldNormal, float3 Vie
 FLightSegment CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 WorldNormal, float3 ViewDir, float Shininess,
     uint2 viewportOffset, uint2 viewportSize)
 {
+    // Light Culling 비활성화 : 모든 라이트를 렌더링
+    if (EnableCulling == 0)
+    {
+        return CalculateAllLights(WorldPos, WorldNormal, ViewDir, Shininess);    
+    }
+    
     // ===== Tile Setup =====
     // Current pixel's tile index
     uint TileArrayIndex = GetCurrentTileArrayIndex(svPosition, viewportOffset, viewportSize);
