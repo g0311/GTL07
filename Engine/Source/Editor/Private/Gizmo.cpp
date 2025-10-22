@@ -16,14 +16,17 @@ UGizmo::UGizmo()
 	/* *
 	* @brief 0: Forward(x), 1: Right(y), 2: Up(z)
 	*/
-	GizmoColor[0] = FVector4(0.73f, 0.015f, 0.0f, 1.0f);
-	GizmoColor[1] = FVector4(0.18f, 0.51f, 0.0f, 1.0f);
-	GizmoColor[2] = FVector4(0.026f, 0.246f, 1.0f, 1.0f);
+	GizmoColor[0] = FVector4(0.84f, 0.03f, 0.01f, 1.0f);	// Red axis
+	GizmoColor[1] = FVector4(0.22f, 0.65f, 0.03f, 1.0f);	// Green axis
+	GizmoColor[2] = FVector4(0.026f, 0.25f, 1.0f, 1.0f);	// Blue axis
 
 	/* *
 	* @brief Translation Setting
 	*/
 	const float ScaleT = TranslateCollisionConfig.Scale;
+	Primitives[0].VertexShader = URenderer::GetInstance().GetGizmoVertexShader();
+	Primitives[0].PixelShader = URenderer::GetInstance().GetGizmoPixelShader();
+	Primitives[0].InputLayout = URenderer::GetInstance().GetGizmoInputLayout();
 	Primitives[0].VertexBuffer = ResourceManager.GetVertexbuffer(EPrimitiveType::Arrow);
 	Primitives[0].NumVertices = ResourceManager.GetNumVertices(EPrimitiveType::Arrow);
 	Primitives[0].Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -42,6 +45,9 @@ UGizmo::UGizmo()
 	/* *
 	* @brief Scale Setting
 	*/
+	Primitives[2].VertexShader = URenderer::GetInstance().GetGizmoVertexShader();
+	Primitives[2].PixelShader = URenderer::GetInstance().GetGizmoPixelShader();
+	Primitives[2].InputLayout = URenderer::GetInstance().GetGizmoInputLayout();
 	Primitives[2].VertexBuffer = ResourceManager.GetVertexbuffer(EPrimitiveType::CubeArrow);
 	Primitives[2].NumVertices = ResourceManager.GetNumVertices(EPrimitiveType::CubeArrow);
 	Primitives[2].Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -98,6 +104,19 @@ void UGizmo::RenderGizmo(UCamera* InCamera)
 	}
 
 	URenderer& Renderer = URenderer::GetInstance();
+
+	// Save current render targets and depth stencil view
+	ID3D11RenderTargetView* pOrigRTV = nullptr;
+	ID3D11DepthStencilView* pOrigDSV = nullptr;
+	Renderer.GetDeviceContext()->OMGetRenderTargets(1, &pOrigRTV, &pOrigDSV);
+
+	// Set main RTV and Gizmo DSV
+	ID3D11RenderTargetView* mainRTV = Renderer.GetDeviceResources()->GetFrameBufferRTV(); // assume main rtv
+	Renderer.GetDeviceContext()->OMSetRenderTargets(1, &mainRTV, Renderer.GetDeviceResources()->GetGizmoDSV());
+
+	// Clear the Gizmo DSV
+	Renderer.GetDeviceContext()->ClearDepthStencilView(Renderer.GetDeviceResources()->GetGizmoDSV(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
 	const int Mode = static_cast<int>(GizmoMode);
 	auto& P = Primitives[Mode];
 	P.Location = TargetComponent->GetWorldLocation();
@@ -119,21 +138,26 @@ void UGizmo::RenderGizmo(UCamera* InCamera)
 		LocalRot = bIsWorld ? FQuaternion::Identity() : TargetComponent->GetWorldRotationAsQuaternion();
 	}
 	FVector LocalRotEuler = LocalRot.ToEuler();
-	
+
 	// X축 (Forward) - 빨간색
 	P.Rotation = FQuaternion::Identity() * LocalRot;
 	P.Color = ColorFor(EGizmoDirection::Forward);
-	Renderer.RenderEditorPrimitive(P, RenderState);
+	Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
 	
 	// Y축 (Right) - 초록색 (Z축 주위로 -90도 회전)
 	P.Rotation =  FQuaternion::FromAxisAngle(FVector::UpVector(), -90.0f * (PI / 180.0f)) * LocalRot;
 	P.Color = ColorFor(EGizmoDirection::Right);
-	Renderer.RenderEditorPrimitive(P, RenderState);
+	Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
 	
 	// Z축 (Up) - 파란색 (Y축 주위로 90도 회전)
 	P.Rotation =  FQuaternion::FromAxisAngle(FVector::RightVector(), 90.0f * (PI / 180.0f)) * LocalRot;
 	P.Color = ColorFor(EGizmoDirection::Up);
-	Renderer.RenderEditorPrimitive(P, RenderState);
+	Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+
+	// Restore original render targets and depth stencil view
+	Renderer.GetDeviceContext()->OMSetRenderTargets(1, &pOrigRTV, pOrigDSV);
+	SafeRelease(pOrigRTV);
+	SafeRelease(pOrigDSV);
 }
 
 void UGizmo::ChangeGizmoMode()

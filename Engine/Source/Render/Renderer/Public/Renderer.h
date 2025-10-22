@@ -39,6 +39,7 @@ public:
 	void CreateCopyShader();
 	void CreateFXAAShader();
 	void CreateBillboardShader();
+	void CreateGizmoShader();
 
 	void CreateConstantBuffers();
 	void CreateLightBuffers();
@@ -58,7 +59,7 @@ public:
 	void RenderBegin() const;
 	void RenderLevel(FViewportClient& InViewportClient);
 	void RenderEnd() const;
-	void RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride = 0, uint32 InIndexBufferStride = 0);
+	void RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride = 0, uint32 InIndexBufferStride = 0, bool bKeepCurrentTargets = false);
 
 	void OnResize(uint32 Inwidth = 0, uint32 InHeight = 0);
 
@@ -80,9 +81,13 @@ public:
 
 	ID3D11DepthStencilState* GetDefaultDepthStencilState() const { return DefaultDepthStencilState; }
 	ID3D11DepthStencilState* GetDisabledDepthStencilState() const { return DisabledDepthStencilState; }
+	ID3D11DepthStencilState* GetGizmoDepthState() const { return GizmoDepthState; }
 	ID3D11BlendState* GetAlphaBlendState() const { return AlphaBlendState; }
 	ID3D11Buffer* GetConstantBufferModels() const { return ConstantBufferModels; }
 	ID3D11Buffer* GetConstantBufferViewProj() const { return ConstantBufferViewProj; }
+	ID3D11VertexShader* GetGizmoVertexShader() const { return GizmoVertexShader; }
+	ID3D11PixelShader* GetGizmoPixelShader() const { return GizmoPixelShader; }
+	ID3D11InputLayout* GetGizmoInputLayout() const { return GizmoInputLayout; }
 
 	ID3D11Buffer* GetLightIndexBuffer() const { return LightIndexBuffer; }
 	ID3D11UnorderedAccessView* GetLightIndexBufferUAV() const { return LightIndexBufferUAV; }
@@ -126,6 +131,7 @@ private:
 	ID3D11DepthStencilState* DefaultDepthStencilState = nullptr;
 	ID3D11DepthStencilState* DecalDepthStencilState = nullptr;
 	ID3D11DepthStencilState* DisabledDepthStencilState = nullptr;
+	ID3D11DepthStencilState* GizmoDepthState = nullptr;
 	ID3D11BlendState* AlphaBlendState = nullptr;
 	ID3D11BlendState* AdditiveBlendState = nullptr;
 	
@@ -179,6 +185,11 @@ private:
 	ID3D11PixelShader* TexturePixelShader = nullptr;
 	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
 	ID3D11InputLayout* TextureInputLayout = nullptr;
+
+	// Gizmo Shaders
+	ID3D11VertexShader* GizmoVertexShader = nullptr;
+	ID3D11PixelShader* GizmoPixelShader = nullptr;
+	ID3D11InputLayout* GizmoInputLayout = nullptr;
 
 	// UberShader Permutations - All lighting models pre-compiled
 	struct FUberShaderVertexPermutations

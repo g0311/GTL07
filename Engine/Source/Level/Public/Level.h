@@ -3,6 +3,8 @@
 #include "Editor/Public/Camera.h"
 #include "Global/Enum.h"
 
+class UHeightFogComponent;
+
 namespace json { class JSON; }
 using JSON = json::JSON;
 
@@ -71,7 +73,6 @@ private:
 		static_cast<uint64>(EEngineShowFlags::SF_Billboard) |
 		static_cast<uint64>(EEngineShowFlags::SF_Bounds) |
 		static_cast<uint64>(EEngineShowFlags::SF_StaticMesh) |
-		static_cast<uint64>(EEngineShowFlags::SF_Text) |
 		static_cast<uint64>(EEngineShowFlags::SF_Decal) |
 		static_cast<uint64>(EEngineShowFlags::SF_Light);
 	
@@ -120,7 +121,9 @@ private:
 	-----------------------------------------------------------------------------*/
 public:
 	const TArray<ULightComponent*>& GetLights() const { return Lights; } 
+	const TArray<UHeightFogComponent*>& GetFogs() const { return Fogs; } 
 
 private:
 	TArray<ULightComponent*> Lights;
+	TArray<UHeightFogComponent*> Fogs;
 };

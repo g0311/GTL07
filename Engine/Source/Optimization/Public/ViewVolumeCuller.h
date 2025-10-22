@@ -1,9 +1,14 @@
 #pragma once
 
+#include <iosfwd>
+#include <vector>
+
+#include "Component/Light/Public/LightComponent.h"
 #include "Component/Public/PrimitiveComponent.h"
 #include "Physics/Public/AABB.h"
 
 class FOctree;
+class ULightComponent;
 
 enum class EBoundCheckResult
 {
@@ -52,6 +57,29 @@ struct FFrustum
         return Result;
     }
 
+    EBoundCheckResult CheckIntersection(const FBoundingSphere& Sphere) const
+    {
+        EBoundCheckResult Result = EBoundCheckResult::Inside;
+
+        for (int i = 0; i < 6; ++i)
+        {
+            const FVector4& P = Planes[i];
+            float Distance = P.Dot3(Sphere.Center) + P.W;
+
+            if (Distance > Sphere.Radius)
+            {
+                return EBoundCheckResult::Outside;
+            }
+
+            if (Distance > -Sphere.Radius)
+            {
+                Result = EBoundCheckResult::Intersect;
+            }
+        }
+
+        return Result;
+    }
+
     void Clear() { for (int i = 0; i < 6; ++i) { Planes[i] = FVector4::Zero(); }; }
 };
 
@@ -60,19 +88,22 @@ class ViewVolumeCuller
 public:
 	ViewVolumeCuller() = default;
 	~ViewVolumeCuller() = default;
-	ViewVolumeCuller(const ViewVolumeCuller& Other) = default;
+    ViewVolumeCuller(const ViewVolumeCuller& Other) = default;
 	ViewVolumeCuller& operator=(const ViewVolumeCuller& Other) = default;
 
 	void Cull(
         FOctree* StaticOctree,
-        TArray<UPrimitiveComponent*>& DynamicPrimitives,
+        const TArray<UPrimitiveComponent*>& DynamicPrimitives,
+        const TArray<ULightComponent*>& Lights,
 		const FCameraConstants& ViewProjConstants
 	);
 
 	const TArray<UPrimitiveComponent*>& GetRenderableObjects();
+    const TArray<ULightComponent*>& GetRenderableLights();
 private:
     void CullOctree(FOctree* Octree);
 
     FFrustum CurrentFrustum{};
     TArray<UPrimitiveComponent*> RenderableObjects{};
+    TArray<ULightComponent*> RenderableLights{};
 };

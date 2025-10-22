@@ -2,6 +2,7 @@
 #include "Actor/Public/Actor.h"
 #include "Component/Public/PrimitiveComponent.h"
 #include "Component/Light/Public/LightComponent.h"
+#include "Component/Public/HeightFogComponent.h"
 #include "Core/Public/Object.h"
 #include "Editor/Public/Editor.h"
 #include "Editor/Public/Viewport.h"
@@ -202,6 +203,10 @@ void ULevel::AddLevelComponent(AActor* Actor)
 		{
 			Lights.push_back(LightComponent);
 		}
+		else if (auto FogComponent = Cast<UHeightFogComponent>(Component))
+		{
+			Fogs.push_back(FogComponent);
+		}
 	}
 }
 
@@ -243,6 +248,24 @@ bool ULevel::DestroyActor(AActor* InActor)
 
 void ULevel::UpdatePrimitiveInOctree(UPrimitiveComponent* InComponent)
 {
+	// AABB가 실제로 변경되었는지 확인
+	FVector NewMin, NewMax;
+	InComponent->GetWorldAABB(NewMin, NewMax);
+	
+	// 이전 AABB와 비교 (허용 오차 범위 내면 업데이트 스킵)
+	static const float Threshold = 0.001f;
+	if (!InComponent->IsAABBCacheDirty())
+	{
+		FVector OldMin, OldMax;
+		InComponent->GetCachedWorldAABB(OldMin, OldMax);
+		
+		if ((NewMin - OldMin).LengthSquared() < Threshold && 
+			(NewMax - OldMax).LengthSquared() < Threshold)
+		{
+			return; // AABB 변경 없음, 옥트리 업데이트 스킵
+		}
+	}
+	
 	if (!StaticOctree->Remove(InComponent))
 		return;
 	OnPrimitiveUpdated(InComponent);

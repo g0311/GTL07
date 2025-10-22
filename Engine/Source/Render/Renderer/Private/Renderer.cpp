@@ -59,6 +59,7 @@ void URenderer::Init(HWND InWindowHandle)
 	CreateCopyShader();
 	CreateFXAAShader();
 	CreateBillboardShader();
+	CreateGizmoShader();
 
 	CreateConstantBuffers();
 	CreateLightBuffers();
@@ -154,6 +155,14 @@ void URenderer::CreateDepthStencilState()
 	DisabledDescription.DepthEnable = FALSE;
 	DisabledDescription.StencilEnable = FALSE;
 	GetDevice()->CreateDepthStencilState(&DisabledDescription, &DisabledDepthStencilState);
+
+	// Gizmo Depth State (Depth O, Depth Write O, Func=LESS_EQUAL)
+	D3D11_DEPTH_STENCIL_DESC GizmoDepthDescription = {};
+	GizmoDepthDescription.DepthEnable = TRUE;
+	GizmoDepthDescription.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	GizmoDepthDescription.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	GizmoDepthDescription.StencilEnable = FALSE;
+	GetDevice()->CreateDepthStencilState(&GizmoDepthDescription, &GizmoDepthState);
 }
 
 void URenderer::CreateBlendState()
@@ -369,6 +378,19 @@ void URenderer::CreateBillboardShader()
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/BillboardShader.hlsl", &BillboardPixelShader);
 }
 
+void URenderer::CreateGizmoShader()
+{
+	TArray<D3D11_INPUT_ELEMENT_DESC> GizmoLayout =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Normal), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(FNormalVertex, Color), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(FNormalVertex, TexCoord), D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/GizmoShader.hlsl", GizmoLayout, &GizmoVertexShader, &GizmoInputLayout);
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/GizmoShader.hlsl", &GizmoPixelShader);
+}
+
 void URenderer::ReleaseShader()
 {
 	SafeRelease(DefaultInputLayout);
@@ -415,6 +437,10 @@ void URenderer::ReleaseShader()
 	SafeRelease(BillboardVertexShader);
 	SafeRelease(BillboardPixelShader);
 	SafeRelease(BillboardInputLayout);
+
+	SafeRelease(GizmoVertexShader);
+	SafeRelease(GizmoPixelShader);
+	SafeRelease(GizmoInputLayout);
 }
 
 ID3D11VertexShader* URenderer::GetVertexShaderForLightingModel() const
@@ -467,6 +493,7 @@ void URenderer::ReleaseDepthStencilState()
 	SafeRelease(DefaultDepthStencilState);
 	SafeRelease(DecalDepthStencilState);
 	SafeRelease(DisabledDepthStencilState);
+	SafeRelease(GizmoDepthState);
 	if (GetDeviceContext())
 	{
 		GetDeviceContext()->OMSetRenderTargets(0, nullptr, nullptr);
@@ -638,24 +665,21 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 			RenderingContext.Decals.push_back(Decal);
 		}
 	}
-
-	for (const auto& Actor : CurrentLevel->GetLevelActors())
+	
+	TArray<ULightComponent*> FinalVisibleLightComponents = InViewportClient.Camera.GetViewVolumeCuller().GetRenderableLights();
+	for (auto& Light : FinalVisibleLightComponents)
 	{
-		for (const auto& Component : Actor->GetOwnedComponents())
+		if (Light->IsVisible())
 		{
-			if (!Component->IsVisible())	continue;
-					
-			if (auto Fog = Cast<UHeightFogComponent>(Component))
-			{
-				RenderingContext.Fogs.push_back(Fog);
-			}
-			else if (auto Light = Cast<ULightComponent>(Component))
-			{
-				if (RenderingContext.ShowFlags & EEngineShowFlags::SF_Light)
-				{
-					RenderingContext.Lights.push_back(Light);
-				}
-			}
+			RenderingContext.Lights.push_back(Light);
+		}
+	}
+	
+	for (auto& Fog : CurrentLevel->GetFogs())
+	{
+		if (Fog->IsVisible())
+		{
+			RenderingContext.Fogs.push_back(Fog);
 		}
 	}
 
@@ -667,21 +691,24 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 	}
 }
 
-void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride, uint32 InIndexBufferStride)
+void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride, uint32 InIndexBufferStride, bool bKeepCurrentTargets)
 {
     // Use the global stride if InStride is 0
     const uint32 FinalStride = (InStride == 0) ? Stride : InStride;
 
-	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
-	ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
-	GetDeviceContext()->OMSetRenderTargets(1, rtvs, DeviceResources->GetDepthStencilView());
+	if (!bKeepCurrentTargets)
+	{
+		auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
+		ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
+		GetDeviceContext()->OMSetRenderTargets(1, rtvs, DeviceResources->GetDepthStencilView());
+	}
 	
     // Allow for custom shaders, fallback to default
     FPipelineInfo PipelineInfo = {
         InPrimitive.InputLayout ? InPrimitive.InputLayout : DefaultInputLayout,
         InPrimitive.VertexShader ? InPrimitive.VertexShader : DefaultVertexShader,
 		FRenderResourceFactory::GetRasterizerState(InRenderState),
-        InPrimitive.bShouldAlwaysVisible ? DisabledDepthStencilState : DefaultDepthStencilState,
+		InPrimitive.bShouldAlwaysVisible ? GizmoDepthState : DefaultDepthStencilState,
         InPrimitive.PixelShader ? InPrimitive.PixelShader : DefaultPixelShader,
         nullptr,
         InPrimitive.Topology

@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "Optimization/Public/ViewVolumeCuller.h"
+
+#include "Component/Light/Public/AmbientLightComponent.h"
+#include "Component/Light/Public/DirectionalLightComponent.h"
 #include "Core/Public/Object.h"
 #include "Global/Octree.h"
 #include "Level/Public/Level.h"
@@ -15,10 +18,15 @@ namespace
 	}
 }
 
-void ViewVolumeCuller::Cull(FOctree* StaticOctree, TArray<UPrimitiveComponent*>& DynamicPrimitives, const FCameraConstants& ViewProjConstants)
+void ViewVolumeCuller::Cull (
+	FOctree* StaticOctree,
+	const TArray<UPrimitiveComponent*>& DynamicPrimitives,
+	const TArray<ULightComponent*>& Lights,
+	const FCameraConstants& ViewProjConstants)
 {
 	// 이전의 Cull했던 정보를 지운다.
 	RenderableObjects.clear();
+	RenderableLights.clear();
 	CurrentFrustum.Clear();
 
 	// 1. 절두체 'Key' 생성 
@@ -54,6 +62,22 @@ void ViewVolumeCuller::Cull(FOctree* StaticOctree, TArray<UPrimitiveComponent*>&
 			RenderableObjects.push_back(Primitive);
 		}
 	}
+
+	for (ULightComponent* Light : Lights)
+	{
+		if (Light)
+		{
+			if (IsA<UAmbientLightComponent>(Light) || IsA<UDirectionalLightComponent>(Light))
+			{
+				RenderableLights.push_back(Light);
+			}
+			else if (CurrentFrustum.CheckIntersection(Light->GetBoundingSphere()) != EBoundCheckResult::Outside)
+			{
+				RenderableLights.push_back(Light);
+			}
+		}
+	}
+	UE_LOG("전체 Light: %d , Frustum Cull 후 Light: %d", static_cast<int32>(Lights.size()),static_cast<int32>(RenderableLights.size()));
 }
 
 const TArray<UPrimitiveComponent*>& ViewVolumeCuller::GetRenderableObjects()
@@ -62,6 +86,11 @@ const TArray<UPrimitiveComponent*>& ViewVolumeCuller::GetRenderableObjects()
 	TArray<UPrimitiveComponent*>& DynamicPrimitives = GWorld->GetLevel()->GetDynamicPrimitives();
 	RenderableObjects.insert(RenderableObjects.end(), DynamicPrimitives.begin(), DynamicPrimitives.end());
 	return RenderableObjects;
+}
+
+const TArray<ULightComponent*>& ViewVolumeCuller::GetRenderableLights()
+{
+	return RenderableLights;
 }
 
 void ViewVolumeCuller::CullOctree(FOctree* Octree)
