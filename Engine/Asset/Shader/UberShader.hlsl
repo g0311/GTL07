@@ -312,13 +312,6 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
         Output.SceneColor= TexColor;
     };
 #else
-    if (MaterialFlags & UNLIT)
-    {
-        Output.SceneColor = float4(MaterialDiffuse, 1.0); /*Default Albedo is Diffuse*/
-        Output.NormalData = float4(Normal * 0.5f + 0.5f, 1.0);
-        return Output;
-    }
-
     FLightSegment LightColor;
     // Light Culling 비활성화 : 모든 라이트를 렌더링
     if (EnableCulling == 0)
