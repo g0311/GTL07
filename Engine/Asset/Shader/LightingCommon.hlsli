@@ -139,12 +139,22 @@ FSpotLightInfo ConvertToSpotLight(FLight light)
 
 float3 CalculateDiffuse(float3 LightColor, float3 WorldNormal, float3 LightDir)
 {
+    WorldNormal = normalize(WorldNormal); /* Defensive Normalize*/
+    LightDir = normalize(LightDir);       /* Defensive Normalize*/
     float NdotL = saturate(dot(WorldNormal, LightDir));
     return LightColor * NdotL;
 }
 
 float3 CalculateSpecular(float3 LightColor, float3 WorldNormal, float3 LightDir, float3 ViewDir, float Shininess)
 {
+    float NdotL = dot(WorldNormal, LightDir);
+    float NdotV = dot(WorldNormal, ViewDir);
+
+    if (NdotL <= 0 || NdotV <= 0) return 0;
+
+    WorldNormal = normalize(WorldNormal); /* Defensive Normalize*/
+    LightDir = normalize(LightDir);       /* Defensive Normalize*/
+    ViewDir = normalize(ViewDir);         /* Defensive Normalize*/
 #if LIGHTING_MODEL_LAMBERT
     return float3(0, 0, 0);
 #elif LIGHTING_MODEL_PHONG
@@ -154,6 +164,7 @@ float3 CalculateSpecular(float3 LightColor, float3 WorldNormal, float3 LightDir,
     if (VdotR <= EPS )
         return 0;
     return LightColor * pow(VdotR, Shininess);
+    
 #elif LIGHTING_MODEL_BLINNPHONG
     float3 H = normalize(LightDir + ViewDir);
     float NdotH = saturate(dot(WorldNormal, H));

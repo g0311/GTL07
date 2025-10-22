@@ -308,7 +308,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     Output.SceneColor= float4(0.5, 0.5, 0.5, 1);
     if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
-        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
+        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, UV);
         Output.SceneColor= TexColor;
     };
 #else
@@ -316,11 +316,11 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     // Light Culling 비활성화 : 모든 라이트를 렌더링
     if (EnableCulling == 0)
     {
-        LightColor = CalculateAllLights(Input.WorldPosition, Input.WorldNormal, ViewDir, Shininess);
+        LightColor = CalculateAllLights(Input.WorldPosition, Normal, ViewDir, Shininess);
     }
     else
     {
-        LightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Input.WorldNormal, ViewDir, Shininess,
+        LightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, Shininess,
             ViewportOffset, ViewportSize);
     }
 
