@@ -266,7 +266,16 @@ FLightSegment CalculateAllLights(float3 WorldPos, float3 WorldNormal, float3 Vie
         }
         else
         {
-            float3 LightDir = Light.Position.xyz - WorldPos;
+            float3 LightDir;
+            if (LightType == LIGHT_TYPE_DIRECTIONAL)
+            {
+                LightDir = normalize(-Light.Direction);
+            }
+            else
+            {
+                LightDir = Light.Position.xyz - WorldPos;
+            }
+            
             AccumulatedColor.Diffuse += CalculateDiffuse(LightColor, WorldNormal, LightDir);
             AccumulatedColor.Specular += CalculateSpecular(LightColor, WorldNormal, LightDir, ViewDir, Shininess);   
         }
