@@ -59,7 +59,7 @@ public:
 	void RenderBegin() const;
 	void RenderLevel(FViewportClient& InViewportClient);
 	void RenderEnd() const;
-	void RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride = 0, uint32 InIndexBufferStride = 0);
+	void RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride = 0, uint32 InIndexBufferStride = 0, bool bKeepCurrentTargets = false);
 
 	void OnResize(uint32 Inwidth = 0, uint32 InHeight = 0);
 
@@ -78,9 +78,11 @@ public:
 	FViewport* GetViewportClient() const { return ViewportClient; }
 	UPipeline* GetPipeline() const { return Pipeline; }
 	bool GetIsResizing() const { return bIsResizing; }
+	ID3D11DepthStencilView* GetGizmoDSV() const { return GizmoDSV; }
 
 	ID3D11DepthStencilState* GetDefaultDepthStencilState() const { return DefaultDepthStencilState; }
 	ID3D11DepthStencilState* GetDisabledDepthStencilState() const { return DisabledDepthStencilState; }
+	ID3D11DepthStencilState* GetGizmoDepthState() const { return GizmoDepthState; }
 	ID3D11BlendState* GetAlphaBlendState() const { return AlphaBlendState; }
 	ID3D11Buffer* GetConstantBufferModels() const { return ConstantBufferModels; }
 	ID3D11Buffer* GetConstantBufferViewProj() const { return ConstantBufferViewProj; }
@@ -130,6 +132,7 @@ private:
 	ID3D11DepthStencilState* DefaultDepthStencilState = nullptr;
 	ID3D11DepthStencilState* DecalDepthStencilState = nullptr;
 	ID3D11DepthStencilState* DisabledDepthStencilState = nullptr;
+	ID3D11DepthStencilState* GizmoDepthState = nullptr;
 	ID3D11BlendState* AlphaBlendState = nullptr;
 	ID3D11BlendState* AdditiveBlendState = nullptr;
 	
@@ -250,4 +253,8 @@ private:
 
 	// Shader Hot Reload System
 	FShaderHotReload* ShaderHotReload = nullptr;
+
+	// For Gizmo Render
+	ID3D11Texture2D* GizmoDepthTexture = nullptr;
+	ID3D11DepthStencilView* GizmoDSV = nullptr;
 };

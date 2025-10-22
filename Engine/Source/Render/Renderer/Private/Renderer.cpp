@@ -68,6 +68,26 @@ void URenderer::Init(HWND InWindowHandle)
 	
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
+	// Create Gizmo Depth Texture and DSV
+	D3D11_TEXTURE2D_DESC depthTexDesc = {};
+	depthTexDesc.Width = DeviceResources->GetWidth();
+	depthTexDesc.Height = DeviceResources->GetHeight();
+	depthTexDesc.MipLevels = 1;
+	depthTexDesc.ArraySize = 1;
+	depthTexDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthTexDesc.SampleDesc.Count = 1;
+	depthTexDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	HRESULT hr = GetDevice()->CreateTexture2D(&depthTexDesc, nullptr, &GizmoDepthTexture);
+	assert(SUCCEEDED(hr) && "Failed to create Gizmo Depth Texture!");
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	dsvDesc.Texture2D.MipSlice = 0;
+	hr = GetDevice()->CreateDepthStencilView(GizmoDepthTexture, &dsvDesc, &GizmoDSV);
+	assert(SUCCEEDED(hr) && "Failed to create Gizmo DSV!");
+
 	FLightCullingPass* LightCullPass = new FLightCullingPass(Pipeline, DeviceResources);
 	RenderPasses.push_back(LightCullPass);
 	
@@ -133,6 +153,9 @@ void URenderer::Release()
 	SafeDelete(ViewportClient);
 	SafeDelete(Pipeline);
 	SafeDelete(DeviceResources);
+
+	SafeRelease(GizmoDSV);
+	SafeRelease(GizmoDepthTexture);
 }
 
 void URenderer::CreateDepthStencilState()
@@ -159,6 +182,14 @@ void URenderer::CreateDepthStencilState()
 	DisabledDescription.DepthEnable = FALSE;
 	DisabledDescription.StencilEnable = FALSE;
 	GetDevice()->CreateDepthStencilState(&DisabledDescription, &DisabledDepthStencilState);
+
+	// Gizmo Depth State (Depth O, Depth Write O, Func=LESS_EQUAL)
+	D3D11_DEPTH_STENCIL_DESC GizmoDepthDescription = {};
+	GizmoDepthDescription.DepthEnable = TRUE;
+	GizmoDepthDescription.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	GizmoDepthDescription.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	GizmoDepthDescription.StencilEnable = FALSE;
+	GetDevice()->CreateDepthStencilState(&GizmoDepthDescription, &GizmoDepthState);
 }
 
 void URenderer::CreateBlendState()
@@ -489,6 +520,7 @@ void URenderer::ReleaseDepthStencilState()
 	SafeRelease(DefaultDepthStencilState);
 	SafeRelease(DecalDepthStencilState);
 	SafeRelease(DisabledDepthStencilState);
+	SafeRelease(GizmoDepthState);
 	if (GetDeviceContext())
 	{
 		GetDeviceContext()->OMSetRenderTargets(0, nullptr, nullptr);
@@ -687,21 +719,24 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 	}
 }
 
-void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride, uint32 InIndexBufferStride)
+void URenderer::RenderEditorPrimitive(const FEditorPrimitive& InPrimitive, const FRenderState& InRenderState, uint32 InStride, uint32 InIndexBufferStride, bool bKeepCurrentTargets)
 {
     // Use the global stride if InStride is 0
     const uint32 FinalStride = (InStride == 0) ? Stride : InStride;
 
-	auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
-	ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
-	GetDeviceContext()->OMSetRenderTargets(1, rtvs, DeviceResources->GetDepthStencilView());
+	if (!bKeepCurrentTargets)
+	{
+		auto* RenderTargetView = DeviceResources->GetFrameBufferRTV();
+		ID3D11RenderTargetView* rtvs[] = { RenderTargetView };
+		GetDeviceContext()->OMSetRenderTargets(1, rtvs, DeviceResources->GetDepthStencilView());
+	}
 	
     // Allow for custom shaders, fallback to default
     FPipelineInfo PipelineInfo = {
         InPrimitive.InputLayout ? InPrimitive.InputLayout : DefaultInputLayout,
         InPrimitive.VertexShader ? InPrimitive.VertexShader : DefaultVertexShader,
 		FRenderResourceFactory::GetRasterizerState(InRenderState),
-        InPrimitive.bShouldAlwaysVisible ? DisabledDepthStencilState : DefaultDepthStencilState,
+		InPrimitive.bShouldAlwaysVisible ? GizmoDepthState : DefaultDepthStencilState,
         InPrimitive.PixelShader ? InPrimitive.PixelShader : DefaultPixelShader,
         nullptr,
         InPrimitive.Topology
@@ -752,6 +787,9 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight)
 	DeviceResources->ReleaseNormalBuffer();
 	GetDeviceContext()->OMSetRenderTargets(0, nullptr, nullptr);
 	ReleaseLightCullBuffers();
+
+	SafeRelease(GizmoDSV);
+	SafeRelease(GizmoDepthTexture);
 	
     if (FAILED(GetSwapChain()->ResizeBuffers(2, InWidth, InHeight, DXGI_FORMAT_UNKNOWN, 0)))
     {
@@ -765,6 +803,26 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight)
 	DeviceResources->CreateDepthBuffer();
 	DeviceResources->CreateNormalBuffer();
 	CreateLightCullBuffers();
+
+	// Recreate Gizmo Depth Texture and DSV on resize
+	D3D11_TEXTURE2D_DESC depthTexDesc = {};
+	depthTexDesc.Width = InWidth;
+	depthTexDesc.Height = InHeight;
+	depthTexDesc.MipLevels = 1;
+	depthTexDesc.ArraySize = 1;
+	depthTexDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthTexDesc.SampleDesc.Count = 1;
+	depthTexDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	HRESULT hr = GetDevice()->CreateTexture2D(&depthTexDesc, nullptr, &GizmoDepthTexture);
+	assert(SUCCEEDED(hr) && "Failed to recreate Gizmo Depth Texture on resize!");
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	dsvDesc.Texture2D.MipSlice = 0;
+	hr = GetDevice()->CreateDepthStencilView(GizmoDepthTexture, &dsvDesc, &GizmoDSV);
+	assert(SUCCEEDED(hr) && "Failed to recreate Gizmo DSV on resize!");
 
     ID3D11RenderTargetView* targetView = DeviceResources->GetSceneColorRenderTargetView();
     ID3D11RenderTargetView* targetViews[] = { targetView };
