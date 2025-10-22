@@ -12,7 +12,7 @@ cbuffer PerFrame : register(b1)
     float4 CameraPos;
 };
 
-// totalColor´Â ±âÁ¸°ú µ¿ÀÏ
+// totalColorï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 cbuffer PerFrame : register(b2)
 {
     float4 totalColor;
@@ -36,12 +36,12 @@ PS_INPUT mainVS(VS_INPUT input)
 {
     PS_INPUT output;
 
-    // ¿ùµå ÁÂÇ¥°è·Î º¯È¯
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ï¿½ ï¿½ï¿½È¯
     float4 worldPos = mul(input.position, world);
     output.position = mul(worldPos, View);
     output.position = mul(output.position, Projection);
 
-    // ¿ùµå ³ë¸Ö °è»ê
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
     output.worldNormal = normalize(mul(input.normal, (float3x3) world));
     output.color = input.color;
 
@@ -52,18 +52,18 @@ float4 mainPS(PS_INPUT input) : SV_TARGET
 {
     float3 N = normalize(input.worldNormal);
 
-    // Directional Light (°íÁ¤µÈ ¹æÇâ)
-    // ¿À¸¥ÂÊ À§¿¡¼­ ºñÃß´Â ´À³¦
+    // Directional Light (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ß´ï¿½ ï¿½ï¿½ï¿½ï¿½
     float3 lightDir = normalize(float3(0.4, 0.6, -1.0));
 
-    // ±âº»ÀûÀÎ Lambert Á¶¸í
+    // ï¿½âº»ï¿½ï¿½ï¿½ï¿½ Lambert ï¿½ï¿½ï¿½ï¿½
     float NdotL = saturate(dot(N, lightDir));
-    float diffuse = 0.4 + 0.6 * NdotL; // ¿ÏÀü ¾îµÓÁö ¾Ê°Ô 0.4 ±âº»°ª Ãß°¡
+    float diffuse = 0.4 + 0.6 * NdotL; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê°ï¿½ 0.4 ï¿½âº»ï¿½ï¿½ ï¿½ß°ï¿½
 
     // base color
     float4 baseColor = lerp(input.color, totalColor, totalColor.a);
 
-    // ÃÖÁ¾ »ö»ó = ±âº»»ö * diffuse (À½¿µ)
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ = ï¿½âº»ï¿½ï¿½ * diffuse (ï¿½ï¿½ï¿½ï¿½)
     float4 finalColor = baseColor * diffuse;
 
     return finalColor;
