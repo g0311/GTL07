@@ -18,6 +18,9 @@ namespace
 UDirectionalLightDirectionGizmo::UDirectionalLightDirectionGizmo()
 {
 	UAssetManager& AssetManager = UAssetManager::GetInstance();
+	Primitive.InputLayout = URenderer::GetInstance().GetGizmoInputLayout();
+	Primitive.VertexShader = URenderer::GetInstance().GetGizmoVertexShader();
+	Primitive.PixelShader = URenderer::GetInstance().GetGizmoPixelShader();
 	Primitive.VertexBuffer = AssetManager.GetVertexbuffer(EPrimitiveType::Arrow);
 	Primitive.NumVertices = AssetManager.GetNumVertices(EPrimitiveType::Arrow);
 	Primitive.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
