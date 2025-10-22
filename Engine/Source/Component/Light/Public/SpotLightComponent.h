@@ -34,7 +34,9 @@ public:
 	float GetInnerConeAngleRad() { return InnerConeAngleRad; }
 	float GetOuterConeAngleRad() { return OuterConeAngleRad; }
 	float GetFallOff() {return Light.Falloff;}
-	
+
+	virtual FBoundingSphere GetBoundingSphere() override { return FBoundingSphere(GetWorldLocation(), Range); }
+
 	/* Todo : rename & 통일 Method name && set Dirty Bit*/
 	FSpotLightData GetSpotInfo()
 	{

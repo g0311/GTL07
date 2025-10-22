@@ -31,6 +31,8 @@ public:
     void SetAttenuationRadius(float InRadius) { AttenuationRadius = InRadius; }
     void SetLightFalloffExponent(float InExponent) { LightFalloffExponent = InExponent; }
 
+	virtual FBoundingSphere GetBoundingSphere()  override{ return FBoundingSphere(GetWorldLocation(), AttenuationRadius); } 
+
 private:
 	float AttenuationRadius;
 	float LightFalloffExponent;

@@ -2,6 +2,7 @@
 #include "Actor/Public/Actor.h"
 #include "Component/Public/PrimitiveComponent.h"
 #include "Component/Light/Public/LightComponent.h"
+#include "Component/Public/HeightFogComponent.h"
 #include "Core/Public/Object.h"
 #include "Editor/Public/Editor.h"
 #include "Editor/Public/Viewport.h"
@@ -201,6 +202,10 @@ void ULevel::AddLevelComponent(AActor* Actor)
 		else if (auto LightComponent = Cast<ULightComponent>(Component))
 		{
 			Lights.push_back(LightComponent);
+		}
+		else if (auto FogComponent = Cast<UHeightFogComponent>(Component))
+		{
+			Fogs.push_back(FogComponent);
 		}
 	}
 }
