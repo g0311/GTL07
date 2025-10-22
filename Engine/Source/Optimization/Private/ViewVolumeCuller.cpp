@@ -77,7 +77,7 @@ void ViewVolumeCuller::Cull (
 			}
 		}
 	}
-	UE_LOG("전체 Light: %d , Frustum Cull 후 Light: %d", static_cast<int32>(Lights.size()),static_cast<int32>(RenderableLights.size()));
+	//UE_LOG("전체 Light: %d , Frustum Cull 후 Light: %d", static_cast<int32>(Lights.size()),static_cast<int32>(RenderableLights.size()));
 }
 
 const TArray<UPrimitiveComponent*>& ViewVolumeCuller::GetRenderableObjects()
