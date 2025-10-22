@@ -204,8 +204,9 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
     
     const uint32 numTilesX = (viewportWidth + TILE_SIZE - 1) / TILE_SIZE;
     const uint32 numTilesY = (viewportHeight + TILE_SIZE - 1) / TILE_SIZE;
+    const uint32 numTilesZ = (viewportHeight + TILE_SIZE - 1) / TILE_SIZE;
 
-    DeviceContext->Dispatch(numTilesX, numTilesY, 1);
+    DeviceContext->Dispatch(numTilesX, numTilesY, numTilesZ);
 }
 
 void FLightCullingPass::PostExecute(FRenderingContext& Context)

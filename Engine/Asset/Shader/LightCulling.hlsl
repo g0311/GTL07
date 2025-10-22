@@ -21,17 +21,6 @@ struct Light
     float4 angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
 };
 
-// Z 범위(Near/Far) 컬링을 수행하는 함수
-bool IsInZRange(float4 lightPosView, float lightRadius)
-{
-    // isVisible 기본값을 true로 가정하고, 범위를 벗어날 때만 false를 반환
-    if (lightPosView.z + lightRadius < 0.1f || lightPosView.z - lightRadius > 1000.0f)
-    {
-        return false;
-    }
-    return true;
-}
-
 // 씬에 존재하는 모든 광원의 정보
 StructuredBuffer<Light> AllLights;
 
@@ -53,6 +42,21 @@ RWStructuredBuffer<uint2> TileLightInfo;   // 각 타일의 광원 정보 (Light
 // 스레드 그룹 내에서만 사용하는 공유 메모리. 한 타일에 속한 광원 인덱스들을 임시 저장
 groupshared uint visibleLightIndices[1024]; // 최대 1024개의 광원 인덱스 저장
 groupshared uint numVisibleLights;          // 현재 타일에서 찾은 광원의 개수
+
+
+// Z 범위(Near/Far) 컬링을 수행하는 함수
+bool IsInZRange(float4 lightPosView, float lightRadius)
+{
+    float near = -Projection[3][2] / Projection[2][2];
+    float far = Projection[3][2] / (Projection[2][2] - 1.0);
+    
+    // isVisible 기본값을 true로 가정하고, 범위를 벗어날 때만 false를 반환
+    if (lightPosView.z + lightRadius < near|| lightPosView.z - lightRadius > far)
+    {
+        return false;
+    }
+    return true;
+}
 
 // 컴퓨트 셰이더 메인 함수. TILE_SIZE x TILE_SIZE x 1 개의 스레드가 하나의 그룹으로 실행
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
