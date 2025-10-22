@@ -241,7 +241,7 @@ float3 CalculateSpotLight(FSpotLightInfo SpotLight, float3 WorldPos)
     float3 LightVec = SpotLight.Position - WorldPos;
     float Distance = length(LightVec);
 
-    // Attenuation : Range & Cone(Cos)
+    // Range Attenuation
     float RangeAttenuation = saturate(1.0 - Distance * Distance * SpotLight.InvRange2);
     if (RangeAttenuation != 0)
     {

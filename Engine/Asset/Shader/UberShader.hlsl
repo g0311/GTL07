@@ -416,7 +416,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float3 MaterialDiffuse = GetMaterialProperty(HAS_DIFFUSE_MAP, DiffuseTexture, UV, Kd);
     float3 MaterialSpecular = GetMaterialProperty(HAS_SPECULAR_MAP, SpecularTexture, UV, Ks);
     
-    float Shininess = (Ns == 0)? 1.0f : Ns;
+    float Shininess = (Ns == 0)? 200.0f : Ns;
     
     // ===== Alpha Setup =====
     if (MaterialFlags & HAS_ALPHA_MAP)
