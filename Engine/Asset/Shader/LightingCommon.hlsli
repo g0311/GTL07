@@ -9,12 +9,6 @@
 
 struct FLightSegment
 {
-    FLightSegment(float3 A, float3 D, float3 S)
-    {
-        Ambient = A;
-        Diffuse = D;
-        Specular = S;
-    }
     float3 Ambient;
     float3 Diffuse;
     float3 Specular;
@@ -243,7 +237,10 @@ float3 CalculateLight(FLight Light, uint LightType, float3 WorldPos)
 // no Tilled Culling (ex Gouraud)
 FLightSegment CalculateAllLights(float3 WorldPos, float3 WorldNormal, float3 ViewDir, float Shininess)
 {
-    FLightSegment AccumulatedColor{float3(0, 0, 0), float3(0, 0, 0),float3(0, 0, 0)};
+    FLightSegment AccumulatedColor;
+    AccumulatedColor.Ambient = float3(0, 0, 0);
+    AccumulatedColor.Diffuse = float3(0, 0, 0);
+    AccumulatedColor.Specular = float3(0, 0, 0); 
 
     for (uint i = 0; i < NumLights; ++i)
     {
@@ -258,7 +255,7 @@ FLightSegment CalculateAllLights(float3 WorldPos, float3 WorldNormal, float3 Vie
         }
         else
         {
-            float3 LightDir = WorldPos - Light.Position;
+            float3 LightDir = Light.Position.xyz - WorldPos;
             AccumulatedColor.Diffuse += CalculateDiffuse(LightColor, WorldNormal, LightDir);
             AccumulatedColor.Specular += CalculateSpecular(LightColor, WorldNormal, LightDir, ViewDir, Shininess);   
         }
@@ -281,7 +278,10 @@ FLightSegment CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 
     uint LightCount = TileLightInfo.y;
 
     // ===== Light Setup =====
-    FLightSegment LightColor{float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0)};
+    FLightSegment LightColor;
+    LightColor.Ambient = float3(0, 0, 0);
+    LightColor.Diffuse = float3(0, 0, 0);
+    LightColor.Specular = float3(0, 0, 0);
     
     // Iterate through all lights in the tile
     for (uint i = 0; i < LightCount; ++i)
@@ -299,7 +299,7 @@ FLightSegment CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 
         }
         else
         {
-            float3 LightDir = WorldPos - Light.Position;
+            float3 LightDir = Light.Position.xyz - WorldPos;
             LightColor.Diffuse += CalculateDiffuse(AccumulatedColor, WorldNormal, LightDir);
             LightColor.Specular += CalculateSpecular(AccumulatedColor, WorldNormal, LightDir, ViewDir, Shininess);   
         }

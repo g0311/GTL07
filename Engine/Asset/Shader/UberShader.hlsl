@@ -237,6 +237,7 @@ PS_INPUT mainVS(VS_INPUT Input)
     Output.Ambient = float3(1.0f, 1.0f, 1.0f);
     Output.Diffuse = float3(1.0f, 1.0f, 1.0f);
     Output.Specular = float3(1.0f, 1.0f, 1.0f);
+
 #if LIGHTING_MODEL_GOURAUD
     // Gouraud: 모든 라이트를 순회 (Tiled Culling 사용 안 함)
     float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
@@ -246,7 +247,7 @@ PS_INPUT mainVS(VS_INPUT Input)
 
     Output.Ambient = LightColor.Ambient;
     Output.Diffuse = LightColor.Diffuse;
-    Output.Specular = LightColor.Specular;
+    Output.Specular = LightColor.Specular;    
 #endif
     
     return Output;
