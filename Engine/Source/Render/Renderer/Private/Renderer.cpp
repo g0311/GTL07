@@ -60,6 +60,7 @@ void URenderer::Init(HWND InWindowHandle)
 	CreateCopyShader();
 	CreateFXAAShader();
 	CreateBillboardShader();
+	CreateGizmoShader();
 
 	CreateConstantBuffers();
 	CreateLightBuffers();
@@ -373,6 +374,19 @@ void URenderer::CreateBillboardShader()
 	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/BillboardShader.hlsl", &BillboardPixelShader);
 }
 
+void URenderer::CreateGizmoShader()
+{
+	TArray<D3D11_INPUT_ELEMENT_DESC> GizmoLayout =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(FNormalVertex, Normal), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(FNormalVertex, Color), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(FNormalVertex, TexCoord), D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/GizmoShader.hlsl", GizmoLayout, &GizmoVertexShader, &GizmoInputLayout);
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/GizmoShader.hlsl", &GizmoPixelShader);
+}
+
 void URenderer::ReleaseShader()
 {
 	SafeRelease(DefaultInputLayout);
@@ -419,6 +433,10 @@ void URenderer::ReleaseShader()
 	SafeRelease(BillboardVertexShader);
 	SafeRelease(BillboardPixelShader);
 	SafeRelease(BillboardInputLayout);
+
+	SafeRelease(GizmoVertexShader);
+	SafeRelease(GizmoPixelShader);
+	SafeRelease(GizmoInputLayout);
 }
 
 ID3D11VertexShader* URenderer::GetVertexShaderForLightingModel() const

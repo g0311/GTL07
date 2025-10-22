@@ -39,6 +39,7 @@ public:
 	void CreateCopyShader();
 	void CreateFXAAShader();
 	void CreateBillboardShader();
+	void CreateGizmoShader();
 
 	void CreateConstantBuffers();
 	void CreateLightBuffers();
@@ -83,6 +84,9 @@ public:
 	ID3D11BlendState* GetAlphaBlendState() const { return AlphaBlendState; }
 	ID3D11Buffer* GetConstantBufferModels() const { return ConstantBufferModels; }
 	ID3D11Buffer* GetConstantBufferViewProj() const { return ConstantBufferViewProj; }
+	ID3D11VertexShader* GetGizmoVertexShader() const { return GizmoVertexShader; }
+	ID3D11PixelShader* GetGizmoPixelShader() const { return GizmoPixelShader; }
+	ID3D11InputLayout* GetGizmoInputLayout() const { return GizmoInputLayout; }
 
 	ID3D11Buffer* GetLightIndexBuffer() const { return LightIndexBuffer; }
 	ID3D11UnorderedAccessView* GetLightIndexBufferUAV() const { return LightIndexBufferUAV; }
@@ -179,6 +183,11 @@ private:
 	ID3D11PixelShader* TexturePixelShader = nullptr;
 	ID3D11PixelShader* TexturePixelShaderWithNormalMap = nullptr;
 	ID3D11InputLayout* TextureInputLayout = nullptr;
+
+	// Gizmo Shaders
+	ID3D11VertexShader* GizmoVertexShader = nullptr;
+	ID3D11PixelShader* GizmoPixelShader = nullptr;
+	ID3D11InputLayout* GizmoInputLayout = nullptr;
 
 	// UberShader Permutations - All lighting models pre-compiled
 	struct FUberShaderVertexPermutations
