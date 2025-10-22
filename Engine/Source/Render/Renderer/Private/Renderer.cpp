@@ -649,7 +649,10 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 			}
 			else if (auto Light = Cast<ULightComponent>(Component))
 			{
-				RenderingContext.Lights.push_back(Light);
+				if (RenderingContext.ShowFlags & EEngineShowFlags::SF_Light)
+				{
+					RenderingContext.Lights.push_back(Light);
+				}
 			}
 		}
 	}
