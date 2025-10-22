@@ -16,9 +16,9 @@ UGizmo::UGizmo()
 	/* *
 	* @brief 0: Forward(x), 1: Right(y), 2: Up(z)
 	*/
-	GizmoColor[0] = FVector4(0.73f, 0.015f, 0.0f, 1.0f);
-	GizmoColor[1] = FVector4(0.18f, 0.51f, 0.0f, 1.0f);
-	GizmoColor[2] = FVector4(0.026f, 0.246f, 1.0f, 1.0f);
+	GizmoColor[0] = FVector4(0.84f, 0.03f, 0.01f, 1.0f);	// Red axis
+	GizmoColor[1] = FVector4(0.22f, 0.65f, 0.03f, 1.0f);	// Green axis
+	GizmoColor[2] = FVector4(0.026f, 0.25f, 1.0f, 1.0f);	// Blue axis
 
 	/* *
 	* @brief Translation Setting
