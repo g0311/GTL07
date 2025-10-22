@@ -154,43 +154,41 @@ void USceneHierarchyWidget::RenderActorInfo(AActor* InActor, int32 InIndex)
 	FName ActorName = InActor->GetName();
 	FString ActorDisplayName = ActorName.ToString();
 
-	// Actor의 PrimitiveComponent들의 Visibility 체크
-	bool bHasPrimitive = false;
-	bool bAllVisible = true;
-	UPrimitiveComponent* FirstPrimitive = nullptr;
+	// Actor의 모든 UActorComponent들의 Visibility 체크
+	bool bHasVisibleComponent = false;
+	bool bAllComponentsVisible = true;
 
-	// Actor의 모든 Component 중에서 PrimitiveComponent 찾기
 	for (auto& Component : InActor->GetOwnedComponents())
 	{
-		if (UPrimitiveComponent* PrimitiveComponent = Cast<UPrimitiveComponent>(Component))
+		// EditorOnly 또는 Visualization Component는 Visibility 토글 대상에서 제외
+		if (Component->IsEditorOnly() || Component->IsVisualizationComponent())
 		{
-			bHasPrimitive = true;
+			continue;
+		}
 
-			if (!FirstPrimitive)
-			{
-				FirstPrimitive = PrimitiveComponent;
-			}
+		bHasVisibleComponent = true;
 
-			if (!PrimitiveComponent->IsVisible())
-			{
-				bAllVisible = false;
-			}
+		if (!Component->IsVisible())
+		{
+			bAllComponentsVisible = false;
 		}
 	}
 
-	// PrimitiveComponent가 있는 경우에만 Visibility 버튼 표시
-	if (bHasPrimitive)
+	// Visibility 토글 가능한 컴포넌트가 있는 경우에만 Visibility 버튼 표시
+	if (bHasVisibleComponent)
 	{
-		if (ImGui::SmallButton(bAllVisible ? "[O]" : "[X]"))
+		if (ImGui::SmallButton(bAllComponentsVisible ? "[O]" : "[X]"))
 		{
-			// 모든 PrimitiveComponent의 Visibility 토글
-			bool bNewVisibility = !bAllVisible;
+			// 모든 UActorComponent의 Visibility 토글
+			bool bNewVisibility = !bAllComponentsVisible;
 			for (auto& Component : InActor->GetOwnedComponents())
 			{
-				if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(Component))
+				// EditorOnly 또는 Visualization Component는 Visibility 토글 대상에서 제외
+				if (Component->IsEditorOnly() || Component->IsVisualizationComponent())
 				{
-					PrimComp->SetVisibility(bNewVisibility);
+					continue;
 				}
+				Component->SetVisibility(bNewVisibility);
 			}
 			UE_LOG_INFO("SceneHierarchy: %s의 가시성이 %s로 변경되었습니다",
 			            ActorName.ToString().data(),
@@ -199,7 +197,7 @@ void USceneHierarchyWidget::RenderActorInfo(AActor* InActor, int32 InIndex)
 	}
 	else
 	{
-		// PrimitiveComponent가 없는 경우 비활성화된 버튼 표시
+		// 가시성 토글 가능한 컴포넌트가 없는 경우 비활성화된 버튼 표시
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
 		ImGui::SmallButton("[-]");
 		ImGui::PopStyleVar();

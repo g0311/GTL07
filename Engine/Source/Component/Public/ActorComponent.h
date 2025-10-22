@@ -39,12 +39,16 @@ public:
 
 protected:
 	bool bCanEverTick = false;
+	bool bVisible = true;
 
 private:
 	AActor* Owner;
 	
 public:
 	virtual UObject* Duplicate() override;
+
+	void SetVisibility(bool bNewVisibility) { bVisible = bNewVisibility; }
+	bool IsVisible() const { return bVisible; }
 
 protected:
 	virtual void DuplicateSubObjects(UObject* DuplicatedObject) override;
