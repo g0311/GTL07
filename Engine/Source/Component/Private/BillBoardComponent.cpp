@@ -64,17 +64,41 @@ void UBillBoardComponent::Serialize(const bool bInIsLoading, JSON& InOutHandle)
         InOutHandle["BillBoardScreenSize"] = to_string(ScreenSize); 
     }}
 
+void UBillBoardComponent::GetWorldAABB(FVector& OutMin, FVector& OutMax)
+{
+	if (!BoundingBox)
+	{
+		OutMin = FVector(); OutMax = FVector();
+		return;
+	}
+
+	if (bIsAABBCacheDirty)
+	{
+		// 회전 무시하고 위치 기준으로 구형 AABB 반환 (옥트리 업데이트 최소화)
+		FVector WorldPos = GetWorldLocation();
+		FVector Scale = GetWorldScale3D();
+		float MaxExtent = max(max(Scale.X, Scale.Y), Scale.Z) * 0.5f;
+		
+		CachedWorldMin = WorldPos - FVector(MaxExtent, MaxExtent, MaxExtent);
+		CachedWorldMax = WorldPos + FVector(MaxExtent, MaxExtent, MaxExtent);
+		bIsAABBCacheDirty = false;
+	}
+	
+	OutMin = CachedWorldMin;
+	OutMax = CachedWorldMax;
+}
+
 void UBillBoardComponent::FaceCamera(const FVector& CameraForward)
 {
-    FVector Forward = CameraForward;
-    FVector Right = Forward.Cross(FVector::UpVector()); Right.Normalize();
-    FVector Up = Right.Cross(Forward); Up.Normalize();
+	FVector Forward = CameraForward;
+	FVector Right = Forward.Cross(FVector::UpVector()); Right.Normalize();
+	FVector Up = Right.Cross(Forward); Up.Normalize();
     
-    // Construct the rotation matrix from the basis vectors
-    FMatrix RotationMatrix = FMatrix(Forward, Right, Up);
+	// Construct the rotation matrix from the basis vectors
+	FMatrix RotationMatrix = FMatrix(Forward, Right, Up);
     
-    // Convert the rotation matrix to a quaternion and set the relative rotation
-    SetWorldRotation(FQuaternion::FromRotationMatrix(RotationMatrix));
+	// Convert the rotation matrix to a quaternion and set the relative rotation
+	SetWorldRotation(FQuaternion::FromRotationMatrix(RotationMatrix));
 }
 
 UTexture* UBillBoardComponent::GetSprite() const

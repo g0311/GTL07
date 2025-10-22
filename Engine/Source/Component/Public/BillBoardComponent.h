@@ -14,6 +14,7 @@ public:
 
 	virtual void Serialize(const bool bInIsLoading, JSON& InOutHandle) override;
 
+	void GetWorldAABB(FVector& OutMin, FVector& OutMax) override;
 	void FaceCamera(const FVector& CameraForward);
 
 	UTexture* GetSprite() const;
