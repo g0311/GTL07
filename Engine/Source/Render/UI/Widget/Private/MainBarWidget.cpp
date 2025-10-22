@@ -426,23 +426,6 @@ void UMainBarWidget::RenderShowFlagsMenu()
 			}
 			CurrentLevel->SetShowFlags(ShowFlags);
 		}
-
-		// Light 표시 옵션
-		bool bShowLight = (ShowFlags & EEngineShowFlags::SF_Light) != 0;
-		if (ImGui::MenuItem("라이트 표시", nullptr, bShowLight))
-		{
-			if (bShowLight)
-			{
-				ShowFlags &= ~static_cast<uint64>(EEngineShowFlags::SF_Light);
-				UE_LOG("MainBarWidget: 라이트 비표시");
-			}
-			else
-			{
-				ShowFlags |= static_cast<uint64>(EEngineShowFlags::SF_Light);
-				UE_LOG("MainBarWidget: 라이트 표시");
-			}
-			CurrentLevel->SetShowFlags(ShowFlags);
-		}
 		
 		// FXAA 표시 옵션
 		bool bEnableFXAA = (ShowFlags & EEngineShowFlags::SF_FXAA) != 0;
@@ -457,6 +440,23 @@ void UMainBarWidget::RenderShowFlagsMenu()
 			{
 				ShowFlags |= static_cast<uint64>(EEngineShowFlags::SF_FXAA);
 				UE_LOG("MainBarWidget: FXAA 활성화");
+			}
+			CurrentLevel->SetShowFlags(ShowFlags);
+		}
+
+		// Light 표시 옵션
+		bool bShowLight = (ShowFlags & EEngineShowFlags::SF_Light) != 0;
+		if (ImGui::MenuItem("라이트 표시", nullptr, bShowLight))
+		{
+			if (bShowLight)
+			{
+				ShowFlags &= ~static_cast<uint64>(EEngineShowFlags::SF_Light);
+				UE_LOG("MainBarWidget: 라이트 비표시");
+			}
+			else
+			{
+				ShowFlags |= static_cast<uint64>(EEngineShowFlags::SF_Light);
+				UE_LOG("MainBarWidget: 라이트 표시");
 			}
 			CurrentLevel->SetShowFlags(ShowFlags);
 		}
