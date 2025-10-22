@@ -902,6 +902,7 @@ void URenderer::InitializeShaderHotReload()
 	ShaderHotReload->RegisterShader(L"Asset/Shader/BillboardShader.hlsl", "BillboardShader");
 	ShaderHotReload->RegisterShader(L"Asset/Shader/SampleShader.hlsl", "DefaultShader");
 	ShaderHotReload->RegisterShader(L"Asset/Shader/LightCulling.hlsl", "LightCullingShader");
+	ShaderHotReload->RegisterShader(L"Asset/Shader/LightingCommon.hlsli", "LightCommon");
 
 	UE_LOG("ShaderHotReload: Initialized and tracking shader files");
 }

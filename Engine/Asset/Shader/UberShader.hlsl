@@ -334,10 +334,6 @@ float3 GetMaterialProperty(uint TextureFlag,Texture2D Texture, float2 UV, float3
     {
         return Texture.Sample(SamplerWrap, UV).rgb;
     }
-    else if (TextureFlag!=HAS_DIFFUSE_MAP && MaterialFlags & HAS_DIFFUSE_MAP) // Fallback to diffuse texture
-    {
-        return DiffuseTexture.Sample(SamplerWrap, UV).rgb; 
-    }
     else if (DefaultValue.r == 0.0 && DefaultValue.b == 0.0 && DefaultValue.r == 0.0)
     {
         return float3(1.0f, 1.0f, 1.0f);
@@ -458,6 +454,7 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     AccumulatedLightWithMaterial += LightColor.Ambient * MaterialAmbient;
     AccumulatedLightWithMaterial += LightColor.Diffuse * MaterialDiffuse;
     AccumulatedLightWithMaterial += LightColor.Specular * MaterialSpecular;
+    AccumulatedLightWithMaterial = saturate(AccumulatedLightWithMaterial);
     Output.SceneColor.rgb = AccumulatedLightWithMaterial;
 #endif
     
