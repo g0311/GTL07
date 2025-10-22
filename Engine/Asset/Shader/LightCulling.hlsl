@@ -13,8 +13,7 @@
 #define LIGHT_TYPE_SPOT 3
 
 // 점 광원과 스포트라이트를 모두 표현하기 위한 범용 광원 구조체
-/* CAUTION : Lighting Common.hlsl Has SAME Struct, Caution Edit! */
-struct FLight
+struct Light
 {
     float4 position;    // xyz: 월드 위치, w: 영향 반경
     float4 color;       // xyz: 색상, w: 강도
@@ -34,7 +33,7 @@ bool IsInZRange(float4 lightPosView, float lightRadius)
 }
 
 // 씬에 존재하는 모든 광원의 정보
-StructuredBuffer<FLight> AllLights;
+StructuredBuffer<Light> AllLights;
 
 // 컬링 계산에 필요한 파라미터들을 담는 상수 버퍼
 cbuffer CullingParams : register(b0)
@@ -136,7 +135,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
     // Light Culling 활성화: 프러스텀 검사 로직 수행
     for (uint lightIndex = startLightIndex; lightIndex < endLightIndex; ++lightIndex)
     {
-        FLight light = AllLights[lightIndex];
+        Light light = AllLights[lightIndex];
         
         // 광원 위치를 월드 공간에서 뷰 공간으로 변환
         float4 lightPosView = mul(View, float4(light.position.xyz, 1.0));
