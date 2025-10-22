@@ -669,7 +669,7 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 	TArray<ULightComponent*> FinalVisibleLightComponents = InViewportClient.Camera.GetViewVolumeCuller().GetRenderableLights();
 	for (auto& Light : FinalVisibleLightComponents)
 	{
-		if (Light->IsVisible())
+		if (Light->IsVisible() && (RenderingContext.ShowFlags & EEngineShowFlags::SF_Light))
 		{
 			RenderingContext.Lights.push_back(Light);
 		}
