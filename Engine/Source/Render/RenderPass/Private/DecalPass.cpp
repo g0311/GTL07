@@ -139,18 +139,19 @@ FDecalPass::FDecalPass(UPipeline* InPipeline, ID3D11Buffer* InConstantBufferCame
 {
     ConstantBufferPrim = FRenderResourceFactory::CreateConstantBuffer<FModelConstants>();
     ConstantBufferDecal = FRenderResourceFactory::CreateConstantBuffer<FDecalConstants>();
+    GBufferSamplerState = FRenderResourceFactory::CreateSamplerState(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_CLAMP);
 }
 
 void FDecalPass::PreExecute(FRenderingContext& Context)
 {
 	const auto& Renderer = URenderer::GetInstance();
 	const auto& DeviceResources = Renderer.GetDeviceResources();
-	ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();	
-	ID3D11RenderTargetView* RTVs[2] = { RTV, DeviceResources->GetNormalRenderTargetView() };
+	ID3D11RenderTargetView* RTV = DeviceResources->GetSceneColorRenderTargetView();
 	ID3D11DepthStencilView* DSV = DeviceResources->GetDepthStencilView();
     // TODO: Set VS and PS from Renderer
-    
-	Pipeline->SetRenderTargets(2, RTVs, DSV);
+
+	// DecalPass only writes to SceneColor, not to Normal buffer (it reads from it)
+	Pipeline->SetRenderTargets(1, &RTV, DSV);
 }
 
 void FDecalPass::Execute(FRenderingContext& Context)
@@ -197,6 +198,12 @@ void FDecalPass::Execute(FRenderingContext& Context)
         DecalConstants.DecalViewProjection = View * Decal->GetProjectionMatrix();
         DecalConstants.FadeProgress = Decal->GetFadeProgress();
 
+        const auto& DeviceResources = URenderer::GetInstance().GetDeviceResources();
+        DecalConstants.DecalViewportSize = FVector2(
+            static_cast<float>(DeviceResources->GetWidth()),
+            static_cast<float>(DeviceResources->GetHeight())
+        );
+
         FRenderResourceFactory::UpdateConstantBufferData(ConstantBufferDecal, DecalConstants);
         Pipeline->SetConstantBuffer(2, false, ConstantBufferDecal);
         
@@ -213,6 +220,10 @@ void FDecalPass::Execute(FRenderingContext& Context)
             Pipeline->SetTexture(1, false, FadeTexture->GetTextureSRV());
             Pipeline->SetSamplerState(1, false, FadeTexture->GetTextureSampler());
         }
+
+        // --- Bind G-Buffer Normal ---
+        Pipeline->SetTexture(2, false, DeviceResources->GetNormalSRV());
+        Pipeline->SetSamplerState(2, false, GBufferSamplerState);
 
         TArray<UPrimitiveComponent*> Primitives;
         // --- Enable Octree Optimization --- 
@@ -257,6 +268,10 @@ void FDecalPass::Execute(FRenderingContext& Context)
 
 void FDecalPass::PostExecute(FRenderingContext& Context)
 {
+    // Unbind G-Buffer Normal texture
+    Pipeline->SetTexture(2, false, nullptr);
+    Pipeline->SetSamplerState(2, false, nullptr);
+
     // Tiled Lighting Structured Buffer SRV 언바인딩 (VS와 PS 모두)
     Pipeline->SetTexture(13, true, nullptr);
     Pipeline->SetTexture(13, false, nullptr);
@@ -266,10 +281,19 @@ void FDecalPass::PostExecute(FRenderingContext& Context)
     Pipeline->SetTexture(15, false, nullptr);
 }
 
+void FDecalPass::UpdateShaders(ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout)
+{
+    VS = InVS;
+    PS = InPS;
+    InputLayout = InLayout;
+    UE_LOG("DecalPass: Shaders updated for hot reload");
+}
+
 void FDecalPass::Release()
 {
     SafeRelease(ConstantBufferPrim);
     SafeRelease(ConstantBufferDecal);
+    SafeRelease(GBufferSamplerState);
 }
 void FDecalPass::Query(FOctree* InOctree, UDecalComponent* InDecal, TArray<UPrimitiveComponent*>& OutPrimitives)
 {

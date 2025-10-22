@@ -1,5 +1,6 @@
 #pragma once
 #include "Component/Public/SceneComponent.h"
+#include "Physics/Public/BoundingSphere.h"
 
 UCLASS(Abstract)
 class ULightComponentBase : public USceneComponent
@@ -19,7 +20,8 @@ public:
 
 	void SetColor(FVector4 InColor) { Color = InColor;}
 	FVector4 GetColor() { return Color;}
-
+	
+	virtual FBoundingSphere GetBoundingSphere() { return FBoundingSphere(); };
 protected:
 	float Intensity =  1.0f;
 	FVector4 Color = FVector4(1,1,1,1);

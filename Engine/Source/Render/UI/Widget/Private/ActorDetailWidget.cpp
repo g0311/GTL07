@@ -174,6 +174,7 @@ void UActorDetailWidget::RenderSceneComponents(USceneComponent* InSceneComponent
 	if (SelectedComponent == InSceneComponent)
 		NodeFlags |= ImGuiTreeNodeFlags_Selected;
 
+	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 	bool bNodeOpen = ImGui::TreeNodeEx((void*)InSceneComponent, NodeFlags, "%s", ComponentName.c_str());
 
 	// -----------------------------

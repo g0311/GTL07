@@ -39,7 +39,9 @@ public:
 	void SetColor(const FVector4& InColor) { Color = InColor; }
 
 	virtual const IBoundingVolume* GetBoundingBox();
-	void GetWorldAABB(FVector& OutMin, FVector& OutMax);
+	virtual void GetWorldAABB(FVector& OutMin, FVector& OutMax);
+	void GetCachedWorldAABB(FVector& OutMin, FVector& OutMax) const { OutMin = CachedWorldMin; OutMax = CachedWorldMax; }
+	bool IsAABBCacheDirty() const { return bIsAABBCacheDirty; }
 
 	virtual void MarkAsDirty() override;
 

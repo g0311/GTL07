@@ -665,24 +665,21 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 			RenderingContext.Decals.push_back(Decal);
 		}
 	}
-
-	for (const auto& Actor : CurrentLevel->GetLevelActors())
+	
+	TArray<ULightComponent*> FinalVisibleLightComponents = InViewportClient.Camera.GetViewVolumeCuller().GetRenderableLights();
+	for (auto& Light : FinalVisibleLightComponents)
 	{
-		for (const auto& Component : Actor->GetOwnedComponents())
+		if (Light->IsVisible())
 		{
-			if (!Component->IsVisible())	continue;
-					
-			if (auto Fog = Cast<UHeightFogComponent>(Component))
-			{
-				RenderingContext.Fogs.push_back(Fog);
-			}
-			else if (auto Light = Cast<ULightComponent>(Component))
-			{
-				if (RenderingContext.ShowFlags & EEngineShowFlags::SF_Light)
-				{
-					RenderingContext.Lights.push_back(Light);
-				}
-			}
+			RenderingContext.Lights.push_back(Light);
+		}
+	}
+	
+	for (auto& Fog : CurrentLevel->GetFogs())
+	{
+		if (Fog->IsVisible())
+		{
+			RenderingContext.Fogs.push_back(Fog);
 		}
 	}
 
@@ -979,6 +976,15 @@ void URenderer::ReloadDecalShader()
 	SafeRelease(DecalInputLayout);
 
 	CreateDecalShader();
+
+	// Update DecalPass with new shaders
+	for (FRenderPass* Pass : RenderPasses)
+	{
+		if (FDecalPass* DecalPass = dynamic_cast<FDecalPass*>(Pass))
+		{
+			DecalPass->UpdateShaders(DecalVertexShader, DecalPixelShader, DecalInputLayout);
+		}
+	}
 
 	UE_LOG("ShaderHotReload: DecalShader reloaded successfully!");
 }
