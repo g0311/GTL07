@@ -4,9 +4,6 @@
     <FxCompile Include="Asset\Shader\BillboardShader.hlsl">
       <Filter>Asset\Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Asset\Shader\UberLit.hlsl">
-      <Filter>Asset\Shader</Filter>
-    </FxCompile>
     <FxCompile Include="Asset\Shader\UberShader.hlsl">
       <Filter>Asset\Shader</Filter>
     </FxCompile>
@@ -40,6 +37,7 @@
     <FxCompile Include="Asset\Shader\TextureVS.hlsl">
       <Filter>Asset\Shader</Filter>
     </FxCompile>
+    <FxCompile Include="Asset\Shader\GizmoShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Utility\Private\ScopeCycleCounter.cpp">
@@ -183,9 +181,6 @@
       <Filter>Source\Render\RenderPass\Private</Filter>
     </ClCompile>
     <ClCompile Include="Source\Render\RenderPass\Private\DecalPass.cpp">
-      <Filter>Source\Render\RenderPass\Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Render\RenderPass\Private\LightCullingDebugPass.cpp">
       <Filter>Source\Render\RenderPass\Private</Filter>
     </ClCompile>
     <ClCompile Include="Source\Render\RenderPass\Private\LightCullingPass.cpp">
@@ -497,6 +492,7 @@
     <ClCompile Include="Source\Optimization\Private\ViewVolumeCuller.cpp">
       <Filter>Source\Optimization\Private</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Render\Renderer\Private\ShaderHotReload.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Global\BVH.h">
@@ -636,9 +632,6 @@
       <Filter>Source\Render\RenderPass\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Render\RenderPass\Public\DecalPass.h">
-      <Filter>Source\Render\RenderPass\Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Render\RenderPass\Public\LightCullingDebugPass.h">
       <Filter>Source\Render\RenderPass\Public</Filter>
     </ClInclude>
     <ClInclude Include="Source\Render\RenderPass\Public\LightCullingPass.h">
@@ -998,6 +991,7 @@
     <ClInclude Include="Source\Optimization\Public\ViewVolumeCuller.h">
       <Filter>Source\Optimization\Public</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Render\Renderer\Public\ShaderHotReload.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Asset">

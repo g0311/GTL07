@@ -1,0 +1,196 @@
+# Blender 4.5.3 LTS MTL File: 'Sketchfab_2024_09_26_09_52_11.blend'
+# www.blender.org
+
+newmtl BackWindow
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/BackWindowBase Color - 2048px.png
+map_Ns Texture/Building/BackWindowRoughness - 2048px.png
+map_refl Texture/Building/BackWindowMetallic - 2048px.png
+
+newmtl Balcony
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/BalconyBase Color - 2048px.png
+map_Ns Texture/Building/BalconyRoughness - 2048px.png
+map_refl Texture/Building/BalconyMetallic - 2048px.png
+
+newmtl Balcony2
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/Balcony_2Base Color - 2048px.png
+map_Ns Texture/Building/Balcony_2Roughness - 2048px.png
+map_refl Texture/Building/Balcony_2Metallic - 2048px.png
+
+newmtl BalconyWindow
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/BalconyWindowBase Color - 2048px.png
+map_Ns Texture/Building/BalconyWindowRoughness - 2048px.png
+map_refl Texture/Building/BalconyWindowMetallic - 2048px.png
+
+newmtl BalconyWindow2
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/BackWindow_2Base Color - 2048px.png
+map_Ns Texture/Building/BackWindow_2Roughness - 2048px.png
+map_refl Texture/Building/BackWindow_2Metallic - 2048px.png
+
+newmtl Cover
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/CoverBase Color - 2048px.png
+map_Ns Texture/Building/CoverRoughness - 2048px.png
+map_refl Texture/Building/CoverMetallic - 2048px.png
+
+newmtl Door
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/DoorBase Color - 2048px.png
+map_Ns Texture/Building/DoorRoughness - 2048px.png
+map_refl Texture/Building/DoorMetallic - 2048px.png
+
+newmtl Doorbell
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/DoorbellBase Color - 2048px.png
+map_Ns Texture/Building/DoorbellRoughness - 2048px.png
+map_refl Texture/Building/DoorbellMetallic - 2048px.png
+
+newmtl Grey
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/WindowBase Color - 2048px.png
+map_Ns Texture/Building/WindowRoughness - 2048px.png
+map_refl Texture/Building/WindowMetallic - 2048px.png
+
+newmtl Grey.001
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl Material.017
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/BuildingBase Color - 2048px.png
+map_Ns Texture/Building/BuildingRoughness - 2048px.png
+map_refl Texture/Building/BuildingMetallic - 2048px.png
+
+newmtl Outer_/_Inner_Gloss_Glass_(Crystal)
+Ns 1000.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.879227 0.855458 0.921581
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl Panel
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.033648 0.002946
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Railing
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/RailingBase Color - 2048px.png
+map_Ns Texture/Building/RailingRoughness - 2048px.png
+map_refl Texture/Building/RailingMetallic - 2048px.png
+
+newmtl Railing2
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/Railing_2Base Color - 2048px.png
+map_Ns Texture/Building/Railing_2Roughness - 2048px.png
+map_refl Texture/Building/Railing_2Metallic - 2048px.png
+
+newmtl SmallWindow
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/SmallWindowBase Color - 2048px.png
+map_Ns Texture/Building/SmallWindowRoughness - 2048px.png
+map_refl Texture/Building/SmallWindowMetallic - 2048px.png
+
+newmtl SmallestWindow
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Texture/Building/SmallestWindowBase Color - 2048px.png
+map_Ns Texture/Building/SmallestWindowRoughness - 2048px.png
+map_refl Texture/Building/SmallestWindowMetallic - 2048px.png
+
+newmtl black_floor_tiles
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
