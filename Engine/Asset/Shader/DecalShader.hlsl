@@ -80,6 +80,13 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	}
 	
 	// ===== Sample G-Buffer Normal =====
+	float3 N;
+
+#if LIGHTING_MODEL_GOURAUD
+	// Gouraud shading: Use decal mesh normal (vertex normal) only
+	// G-Buffer normal map is not used in Gouraud mode as lighting is computed per-vertex
+	N = normalize(Input.Normal.xyz);
+#else
 	// Calculate screen-space UV from SV_POSITION
 	float2 ScreenUV = Input.Position.xy / DecalViewportSize;
 
@@ -87,7 +94,6 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	float4 GBufferNormalData = GBufferNormal.Sample(GBufferNormalSampler, ScreenUV);
 
 	// If GBuffer has valid normal (alpha > 0 means geometry was rendered there), use it; otherwise fallback to decal mesh normal
-	float3 N;
 	if (GBufferNormalData.a > 0.001f)
 	{
 		// Decode normal from [0,1] to [-1,1] range
@@ -99,6 +105,7 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 		// No geometry rendered at this pixel, use decal mesh normal as fallback
 		N = normalize(Input.Normal.xyz);
 	}
+#endif
 
 	// ===== Lighting Calculation =====
     float3 V = normalize(ViewWorldLocation - Input.WorldPos.xyz);

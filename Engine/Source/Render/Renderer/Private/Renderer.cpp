@@ -75,7 +75,7 @@ void URenderer::Init(HWND InWindowHandle)
 	RenderPasses.push_back(StaticMeshPass);
 
 	FDecalPass* DecalPass = new FDecalPass(Pipeline, ConstantBufferViewProj,
-		DecalVertexShader, DecalPixelShader, DecalInputLayout, DecalDepthStencilState, AlphaBlendState);
+		DecalVertexShader, DecalShaderPermutations.Default, DecalInputLayout, DecalDepthStencilState, AlphaBlendState);
 	RenderPasses.push_back(DecalPass);
 	
 	FBillboardPass* BillboardPass = new FBillboardPass(Pipeline, ConstantBufferViewProj, ConstantBufferModels,
@@ -310,7 +310,19 @@ void URenderer::CreateDecalShader()
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(FNormalVertex, TexCoord), D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 	FRenderResourceFactory::CreateVertexShaderAndInputLayout(L"Asset/Shader/DecalShader.hlsl", DecalLayout, &DecalVertexShader, &DecalInputLayout);
-	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/DecalShader.hlsl", &DecalPixelShader);
+
+	// Default version (for Lambert, Phong, BlinnPhong, Unlit)
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/DecalShader.hlsl", &DecalShaderPermutations.Default);
+
+	// Gouraud version
+	D3D_SHADER_MACRO GouraudDefines[] = {
+		{ "LIGHTING_MODEL_GOURAUD", "1" },
+		{ nullptr, nullptr }
+	};
+	FRenderResourceFactory::CreatePixelShader(L"Asset/Shader/DecalShader.hlsl", &DecalShaderPermutations.Gouraud, GouraudDefines);
+
+	// Set legacy pointer to default for backward compatibility
+	DecalPixelShader = DecalShaderPermutations.Default;
 }
 
 void URenderer::CreatePointLightShader()
@@ -415,7 +427,9 @@ void URenderer::ReleaseShader()
 	SafeRelease(UberShaderPermutations.BlinnPhongWithNormalMap);
 	
 	SafeRelease(DecalVertexShader);
-	SafeRelease(DecalPixelShader);
+	SafeRelease(DecalShaderPermutations.Default);
+	SafeRelease(DecalShaderPermutations.Gouraud);
+	DecalPixelShader = nullptr; // Legacy pointer, don't release (it points to DecalShaderPermutations.Default)
 	SafeRelease(DecalInputLayout);
 	
 	SafeRelease(PointLightVertexShader);
@@ -484,7 +498,26 @@ ID3D11PixelShader* URenderer::GetPixelShaderForLightingModel(bool bHasNormalMap)
 		case ELightingModel::BlinnPhong:
 		default:
 			return UberShaderPermutations.BlinnPhong;
-		}	
+		}
+	}
+}
+
+void URenderer::SetLightingModel(ELightingModel InModel)
+{
+	CurrentLightingModel = InModel;
+
+	// Update DecalPass shader when lighting model changes
+	ID3D11PixelShader* CurrentDecalPS = (CurrentLightingModel == ELightingModel::Gouraud)
+		? DecalShaderPermutations.Gouraud
+		: DecalShaderPermutations.Default;
+
+	for (FRenderPass* Pass : RenderPasses)
+	{
+		if (FDecalPass* DecalPass = dynamic_cast<FDecalPass*>(Pass))
+		{
+			DecalPass->UpdateShaders(DecalVertexShader, CurrentDecalPS, DecalInputLayout);
+			break;
+		}
 	}
 }
 
@@ -972,17 +1005,20 @@ void URenderer::ReloadDecalShader()
 	UE_LOG("ShaderHotReload: Reloading DecalShader...");
 
 	SafeRelease(DecalVertexShader);
-	SafeRelease(DecalPixelShader);
+	SafeRelease(DecalShaderPermutations.Default);
+	SafeRelease(DecalShaderPermutations.Gouraud);
+	DecalPixelShader = nullptr; // Legacy pointer, don't release (it points to DecalShaderPermutations.Default)
 	SafeRelease(DecalInputLayout);
 
 	CreateDecalShader();
 
-	// Update DecalPass with new shaders
+	// Update DecalPass with new shaders (use current lighting model)
+	ID3D11PixelShader* CurrentDecalPS = (CurrentLightingModel == ELightingModel::Gouraud) ? DecalShaderPermutations.Gouraud : DecalShaderPermutations.Default;
 	for (FRenderPass* Pass : RenderPasses)
 	{
 		if (FDecalPass* DecalPass = dynamic_cast<FDecalPass*>(Pass))
 		{
-			DecalPass->UpdateShaders(DecalVertexShader, DecalPixelShader, DecalInputLayout);
+			DecalPass->UpdateShaders(DecalVertexShader, CurrentDecalPS, DecalInputLayout);
 		}
 	}
 

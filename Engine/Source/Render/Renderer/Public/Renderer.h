@@ -102,7 +102,7 @@ public:
 
 	// Lighting Model
 	ELightingModel GetLightingModel() const { return CurrentLightingModel; }
-	void SetLightingModel(ELightingModel InModel) { CurrentLightingModel = InModel; }
+	void SetLightingModel(ELightingModel InModel);
 	ID3D11VertexShader* GetVertexShaderForLightingModel() const;
 	ID3D11PixelShader* GetPixelShaderForLightingModel(bool bHasNormalMap) const;
 	
@@ -217,9 +217,17 @@ private:
 	ELightingModel CurrentLightingModel = ELightingModel::BlinnPhong;
 
 	// Decal Shaders
+	struct
+	{
+		ID3D11PixelShader* Default = nullptr;
+		ID3D11PixelShader* Gouraud = nullptr;
+	} DecalShaderPermutations;
+
 	ID3D11VertexShader* DecalVertexShader = nullptr;
-	ID3D11PixelShader* DecalPixelShader = nullptr;
 	ID3D11InputLayout* DecalInputLayout = nullptr;
+
+	// Legacy - for backward compatibility during transition
+	ID3D11PixelShader* DecalPixelShader = nullptr;
 
 	// Point Light Shaders
 	ID3D11VertexShader* PointLightVertexShader = nullptr;
