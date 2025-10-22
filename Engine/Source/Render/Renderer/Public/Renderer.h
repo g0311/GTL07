@@ -237,7 +237,6 @@ private:
 
 	FCopyPass* CopyPass = nullptr;
 	FFXAAPass* FXAAPass = nullptr;
-	class FLightCullingDebugPass* LightCullingDebugPass = nullptr;
 
 	// Shader Hot Reload System
 	FShaderHotReload* ShaderHotReload = nullptr;

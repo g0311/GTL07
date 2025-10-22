@@ -117,6 +117,8 @@ cbuffer TiledLightingParams : register(b3)
     uint2 ViewportSize;   // viewport size
     uint NumLights;       // total number of lights in the scene (for Gouraud)
     uint EnableCulling;   // Light Culling 활성화 여부 (1=활성화, 0=모든라이트렌더)
+    uint EnableCullingDebug; // Light Culling Debug 모드 활성화 여부 (1=활성화, 0=비활성화)
+    uint Padding;
 };
 
 // Light Culling용 Structured Buffer
@@ -360,6 +362,38 @@ FLightSegment CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 
             LightColor.Diffuse += CalculateDiffuse(AccumulatedColor, WorldNormal, LightDir);
             LightColor.Specular += CalculateSpecular(AccumulatedColor, WorldNormal, LightDir, ViewDir, Shininess);   
         }
+    }
+    
+    // 컬링 디버그 모드 활성화 시 라이트 개수에 따라 색깔 설정
+    if (EnableCullingDebug == 1)
+    {
+        float t = saturate((float)LightCount / 20.0); // 20개 라이트 기준으로 정규화
+        
+        // Heat map 색상: 파란색(0) -> 초록색 -> 노란색 -> 빨간색(많음)
+        float3 debugColor;
+        if (t < 0.25)
+        {
+            // 파란색 -> 하늘색
+            debugColor = lerp(float3(0.0, 0.0, 1.0), float3(0.0, 1.0, 1.0), t * 4.0);
+        }
+        else if (t < 0.5)
+        {
+            // 하늘색 -> 초록색
+            debugColor = lerp(float3(0.0, 1.0, 1.0), float3(0.0, 1.0, 0.0), (t - 0.25) * 4.0);
+        }
+        else if (t < 0.75)
+        {
+            // 초록색 -> 노란색
+            debugColor = lerp(float3(0.0, 1.0, 0.0), float3(1.0, 1.0, 0.0), (t - 0.5) * 4.0);
+        }
+        else
+        {
+            // 노란색 -> 빨간색
+            debugColor = lerp(float3(1.0, 1.0, 0.0), float3(1.0, 0.0, 0.0), (t - 0.75) * 4.0);
+        }
+        
+        // 기존 라이팅 결과를 디버그 색상으로 덮어쓰기
+        LightColor.Diffuse = debugColor;
     }
     
     return LightColor;

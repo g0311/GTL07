@@ -127,7 +127,8 @@ struct FTiledLightingParams
 	uint32 ViewportSize[2];     // 뷰포트 크기
 	uint32 NumLights;           // 씬의 전체 라이트 개수 (Gouraud용)
 	uint32 EnableCulling;       // Light Culling 활성화 여부 (1=활성화, 0=모든라이트렌더)
-	
+	uint32 EnableCullingDebug;  // Light Culling Debug 모드 활성화 여부 (1=활성화, 0=비활성화)
+	uint32 Padding;             // 16바이트 정렬을 위한 패딩
 };
 struct FVertex
 {
