@@ -6,7 +6,8 @@ struct FDecalConstants
     FMatrix DecalWorld;
     FMatrix DecalViewProjection;
     float FadeProgress;
-    float Padding[3];
+    FVector2 DecalViewportSize;
+    float DecalPadding;
 };
 
 class FDecalPass : public FRenderPass
@@ -38,4 +39,5 @@ private:
 
     ID3D11Buffer* ConstantBufferDecal = nullptr;
     ID3D11Buffer* ConstantBufferPrim = nullptr;
+    ID3D11SamplerState* GBufferSamplerState = nullptr;
 };
