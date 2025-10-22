@@ -160,28 +160,27 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
         // 포인트 라이트: 구-프러스텀 교차 검사를 수행
         else if (lightType == LIGHT_TYPE_POINT)
         {
-            // 측면 4개 평면 체크 (원점 통과, d=0)
-            [unroll]
-            for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
+            float lightMinZ = lightPosView.z - lightRadius;
+            float lightMaxZ = lightPosView.z + lightRadius;
+                
+            // 클러스터 범위: [nearZ, farZ]
+            if (lightMaxZ < nearZ || lightMinZ > farZ)
             {
-                float distance = dot(frustumPlanes[planeIndex].xyz, lightPosView.xyz);
-                if (distance < -lightRadius)
-                {
-                    isVisible = false;
-                    break;
-                }
+                isVisible = false;
             }
-            
             // Near/Far 평면 체크 (구의 Z 범위와 클러스터 Z 범위 비교)
             if (isVisible)
             {
-                float lightMinZ = lightPosView.z - lightRadius;
-                float lightMaxZ = lightPosView.z + lightRadius;
-                
-                // 클러스터 범위: [nearZ, farZ]
-                if (lightMaxZ < nearZ || lightMinZ > farZ)
+                // 측면 4개 평면 체크 (원점 통과, d=0)
+                [unroll]
+                for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
                 {
-                    isVisible = false;
+                    float distance = dot(frustumPlanes[planeIndex].xyz, lightPosView.xyz);
+                    if (distance < -lightRadius)
+                    {
+                        isVisible = false;
+                        break;
+                    }
                 }
             }
         }
@@ -199,28 +198,27 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 Tid : SV_DispatchThreadID, uint GI : S
             float3 sphereCenter = (lightPosView.xyz + coneEnd) * 0.5f;
             float halfHeight = coneHeight * 0.5f;
             float sphereRadius = sqrt(halfHeight * halfHeight + baseRadius * baseRadius);
-            
-            // 측면 4개 평면 체크
-            [unroll]
-            for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
+
+            float sphereMinZ = sphereCenter.z - sphereRadius;
+            float sphereMaxZ = sphereCenter.z + sphereRadius;
+                
+            if (sphereMaxZ < nearZ || sphereMinZ > farZ)
             {
-                float distance = dot(frustumPlanes[planeIndex].xyz, sphereCenter);
-                if (distance < -sphereRadius)
-                {
-                    isVisible = false;
-                    break;
-                }
+                isVisible = false;
             }
-            
-            // Near/Far 평면 체크 (바운딩 스피어의 Z 범위와 클러스터 Z 범위 비교)
+
             if (isVisible)
             {
-                float sphereMinZ = sphereCenter.z - sphereRadius;
-                float sphereMaxZ = sphereCenter.z + sphereRadius;
-                
-                if (sphereMaxZ < nearZ || sphereMinZ > farZ)
+                // 측면 4개 평면 체크
+                [unroll]
+                for (uint planeIndex = 0; planeIndex < 4; ++planeIndex)
                 {
-                    isVisible = false;
+                    float distance = dot(frustumPlanes[planeIndex].xyz, sphereCenter);
+                    if (distance < -sphereRadius)
+                    {
+                        isVisible = false;
+                        break;
+                    }
                 }
             }
         }
