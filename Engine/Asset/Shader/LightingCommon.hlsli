@@ -235,7 +235,11 @@ float3 CalculateSpotLight(FSpotLightInfo spotLight, float3 WorldPos)
     float Distance = length(LightVec);
 
     // Attenuation : Range & Cone(Cos)
-    float RangeAttenuation = pow(saturate(1.0 - Distance * Distance * spotLight.InvRange2), max(spotLight.Falloff, 0.0));
+    float RangeAttenuation = saturate(1.0 - Distance * Distance * spotLight.InvRange2);
+    if (RangeAttenuation != 0)
+    {
+        RangeAttenuation = pow(RangeAttenuation, max(spotLight.Falloff, 0.0));
+    }
 
     // SpotLight Cone Attenuation
     float CurCos = dot(-normalize(LightVec), normalize(spotLight.Direction));
