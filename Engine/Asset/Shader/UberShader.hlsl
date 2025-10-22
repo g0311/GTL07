@@ -88,8 +88,8 @@ float2 ParallaxOcclusionMapping(
         return UV;
 
     // 레이어 수 동적 조절 (각도에 따라)
-    const int MinLayers = 16;
-    const int MaxLayers = 64;
+    const int MinLayers = 32;
+    const int MaxLayers = 128;
     float NumLayers = lerp(MaxLayers, MinLayers, abs(dot(float3(0, 0, 1), ViewDirTangent)));
 
     float LayerDepth = 1.0f / NumLayers;
@@ -110,11 +110,20 @@ float2 ParallaxOcclusionMapping(
     [unroll(64)]
     for(int i = 0; i < NumLayers; i++)
     {
-        // 현재 레이어 깊이가 높이맵보다 깊으면 교차점 발견
-        if(CurrentLayerDepth >= CurrentHeight)
-            break;
+        // // 현재 레이어 깊이가 높이맵보다 깊으면 교차점 발견
+        // float FlipHeight = 1.0f - CurrentHeight; // 높이맵은 흰색=높음, 검정색=낮음
+        // if(CurrentLayerDepth >= FlipHeight)
+        // {
+        //     break;
+        // }
 
+        if(CurrentLayerDepth >= CurrentHeight)
+        {
+             break;
+        }
+        
         // UV 이동 및 다음 높이 샘플링
+        // CurrentUV += DeltaUV;
         CurrentUV -= DeltaUV;
         CurrentHeight = BumpTexture.Sample(SamplerWrap, CurrentUV).r;
         CurrentLayerDepth += LayerDepth;
@@ -145,6 +154,129 @@ float2 ParallaxOcclusionMapping(
 
     return FinalUV;
 }
+
+
+
+
+// // --- Helpers ---
+// float2 ClampToRect(float2 uv, float2 rmin, float2 rmax)
+// {
+//     return float2(clamp(uv.x, rmin.x, rmax.x),
+//                   clamp(uv.y, rmin.y, rmax.y));
+// }
+//
+// // 원래 UV(Base) 기준으로 "반대편으로 넘어가지 않게" 보정
+// float ClampOneSidedFromBase(float baseV, float valueV)
+// {
+//     float shift = valueV - baseV;
+//     // +방향으로 밀렸다면 base보다 작아지는 것(반대편) 금지
+//     // -방향으로 밀렸다면 base보다 커지는 것(반대편) 금지
+//     return (shift > 0.0) ? max(valueV, baseV)
+//                          : min(valueV, baseV);
+// }
+//
+// float2 ParallaxOcclusionMapping(
+//     float2 UV,
+//     float3 ViewDirTangent,
+//     float  HeightScale)
+// {
+//     // cbuffer 미바인딩 시 기본값 사용
+//     float2 AtlasMin         = float2(0,0);
+//     float2 AtlasMax         = float2(1,1);
+//     int    MinLayers        = 128;
+//     int    MaxLayers        = 256;
+//     float  GrazingZMin      = 0.1f;
+//     float  UvShiftClamp     = 0.5f;
+//     int    BinarySearchStep = 5;
+//     float  FlipX            = -1.0f; // DirectX 좌표계 X 반전
+//
+//     // 1) 안전 체크
+//     if (length(ViewDirTangent) < 1e-3 || abs(HeightScale) < 1e-5)
+//         return UV;
+//
+//     // 2) 정규화 + 그래이징 하한
+//     float3 V     = normalize(ViewDirTangent);
+//     float  AbsVz = max(abs(V.z), GrazingZMin);
+//
+//     // 3) 각도 기반 레이어 수
+//     float  t          = saturate(abs(V.z));
+//     float  numLayersF = lerp((float)MaxLayers, (float)MinLayers, t);
+//     int    NumLayers  = (int)clamp(round(numLayersF), (float)MinLayers, (float)MaxLayers);
+//     float  LayerDepth = rcp((float)NumLayers);
+//
+//     // 4) Parallax 방향 (V.xy / |V.z|) + 규약에 따른 X 반전
+//     float2 ParallaxDir = V.xy * rcp(AbsVz);
+//     ParallaxDir.x *= FlipX;
+//
+//     // 5) 레이어당 UV 이동량
+//     float2 DeltaUV = ParallaxDir * (HeightScale * LayerDepth);
+//
+//     // 6) 레이 마칭(교차 전/후 두 점 확보)
+//     float2 CurrentUV         = UV;
+//     float  CurrentLayerDepth = 0.0;
+//     // LOD 안정화를 위해 화면 미분 사용 (가능하면 SampleGrad)
+//     float2 ddxUV = ddx(UV);
+//     float2 ddyUV = ddy(UV);
+//     float  CurrentH = BumpTexture.SampleGrad(SamplerWrap, CurrentUV, ddxUV, ddyUV).r;
+//
+//     [loop]
+//     for (int i = 0; i < NumLayers; ++i)
+//     {
+//         float FlipH = 1.0f - CurrentH; // 높이맵은 흰색=높음, 검정색=낮음
+//         if (CurrentLayerDepth >= FlipH)
+//         {
+//             break;
+//         }
+//         
+//         // if (CurrentLayerDepth >= CurrentH)
+//         // {
+//         //     break;
+//         // }
+//         
+//         CurrentUV += DeltaUV;
+//         // CurrentUV -= DeltaUV;
+//         CurrentH   = BumpTexture.SampleGrad(SamplerWrap, CurrentUV, ddxUV, ddyUV).r;
+//         CurrentLayerDepth += LayerDepth;
+//     }
+//
+//     // 7) 이분 탐색(정밀화)
+//     float2 PrevUV = CurrentUV + DeltaUV;     // 직전 지점
+//     float  dA = CurrentLayerDepth - LayerDepth;
+//     float  dB = CurrentLayerDepth;
+//
+//     float2 A = PrevUV;
+//     float2 B = CurrentUV;
+//
+//     [unroll]
+//     for (int k = 0; k < BinarySearchStep; ++k)
+//     {
+//         float2 M  = 0.5 * (A + B);
+//         float  dM = 0.5 * (dA + dB);
+//         float  hM = BumpTexture.SampleGrad(SamplerWrap, M, ddxUV, ddyUV).r;
+//
+//         // h > d → 표면 위(더 깊이) → A=M
+//         // h <= d → 이미 지난 쪽 → B=M
+//         if (hM > dM) { A = M; dA = dM; }
+//         else         { B = M; dB = dM; }
+//     }
+//
+//     float2 FinalUV = 0.5 * (A + B);
+//
+//     // 8) 아틀라스/타일 경계 클램프
+//     FinalUV = ClampToRect(FinalUV, AtlasMin, AtlasMax);
+//
+//     // 9) 원래 UV 기준 "반대편으로 넘어가지 않게" 보정
+//     FinalUV.x = ClampOneSidedFromBase(UV.x, FinalUV.x);
+//     FinalUV.y = ClampOneSidedFromBase(UV.y, FinalUV.y);
+//
+//     // 10) 과도 이동 가드(안정장치)
+//     float2 dUV = abs(FinalUV - UV);
+//     if (dUV.x > UvShiftClamp || dUV.y > UvShiftClamp)
+//         FinalUV = UV;
+//
+//     return FinalUV;
+// }
+
 // #endif
 
 float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
