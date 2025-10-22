@@ -177,7 +177,7 @@ float3 CalculateDiffuse(float3 LightColor, float3 WorldNormal, float3 LightDir)
 {
     WorldNormal = normalize(WorldNormal); /* Defensive Normalize*/
     LightDir = normalize(LightDir);       /* Defensive Normalize*/
-    float NdotL = dot(WorldNormal, LightDir);
+    float NdotL = saturate(dot(WorldNormal, LightDir));
     return LightColor * NdotL * INV_PI;;
 }
 
