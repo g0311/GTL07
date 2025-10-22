@@ -581,14 +581,14 @@ void URenderer::BindTiledLightingBuffers()
 	// UberShader에서 사용할 Light Culling Structured Buffer SRV 바인딩
 	const auto& Renderer = URenderer::GetInstance();
 
-	// AllLights: t13, LightIndexBuffer: t14, TileLightInfo: t15
+	// AllLights: t13, LightIndexBuffer: t14, ClusterLightInfo: t15
 	// VS와 PS 모두에 바인딩 (Gouraud 모드에서는 VS에서 라이팅 계산)
 	Pipeline->SetTexture(13, true, Renderer.GetAllLightsSRV());
 	Pipeline->SetTexture(13, false, Renderer.GetAllLightsSRV());
 	Pipeline->SetTexture(14, true, Renderer.GetLightIndexBufferSRV());
 	Pipeline->SetTexture(14, false, Renderer.GetLightIndexBufferSRV());
-	Pipeline->SetTexture(15, true, Renderer.GetTileLightInfoSRV());
-	Pipeline->SetTexture(15, false, Renderer.GetTileLightInfoSRV());
+	Pipeline->SetTexture(15, true, Renderer.GetClusterLightInfoSRV());
+	Pipeline->SetTexture(15, false, Renderer.GetClusterLightInfoSRV());
 }
 
 void URenderer::RenderLevel(FViewportClient& InViewportClient)
@@ -786,11 +786,14 @@ void URenderer::CreateLightCullBuffers()
 {
 	HRESULT hr;
 	const uint32 MAX_SCENE_LIGHTS = 1024;
-	const uint32 TILE_SIZE = 32;
-	const uint32 numTilesX = (DeviceResources->GetWidth() + TILE_SIZE - 1) / TILE_SIZE;
-	const uint32 numTilesY = (DeviceResources->GetHeight() + TILE_SIZE - 1) / TILE_SIZE;
-	const uint32 MAX_TILES = numTilesX * numTilesY;
-	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * 256;
+	const uint32 CLUSTER_SIZE_X = 32;
+	const uint32 CLUSTER_SIZE_Y = 32;
+	const uint32 CLUSTER_SIZE_Z = 16;
+	const uint32 numClustersX = (DeviceResources->GetWidth() + CLUSTER_SIZE_X - 1) / CLUSTER_SIZE_X;
+	const uint32 numClustersY = (DeviceResources->GetHeight() + CLUSTER_SIZE_Y - 1) / CLUSTER_SIZE_Y;
+	const uint32 numClustersZ = CLUSTER_SIZE_Z;
+	const uint32 MAX_CLUSTERS = numClustersX * numClustersY * numClustersZ;
+	const uint32 MAX_TOTAL_LIGHT_INDICES = MAX_SCENE_LIGHTS * MAX_CLUSTERS * 8;
         
 	// LightIndexBuffer 생성
 	D3D11_BUFFER_DESC lightIndexBufferDesc = {};
@@ -822,34 +825,34 @@ void URenderer::CreateLightCullBuffers()
 	hr = DeviceResources->GetDevice()->CreateShaderResourceView(LightIndexBuffer, &lightIndexSRVDesc, &LightIndexBufferSRV);
 	assert(SUCCEEDED(hr) && "LightIndexBufferSRV 생성 실패");
         
-	// TileLightInfoBuffer 재생성
-	D3D11_BUFFER_DESC tileLightInfoBufferDesc = {};
-	tileLightInfoBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	tileLightInfoBufferDesc.ByteWidth = sizeof(uint32) * 2 * MAX_TILES;
-	tileLightInfoBufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	tileLightInfoBufferDesc.StructureByteStride = sizeof(uint32) * 2;
-	tileLightInfoBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	// ClusterLightInfoBuffer 재생성
+	D3D11_BUFFER_DESC clusterLightInfoBufferDesc = {};
+	clusterLightInfoBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	clusterLightInfoBufferDesc.ByteWidth = sizeof(uint32) * 2 * MAX_CLUSTERS;
+	clusterLightInfoBufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	clusterLightInfoBufferDesc.StructureByteStride = sizeof(uint32) * 2;
+	clusterLightInfoBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
         
-	hr = DeviceResources->GetDevice()->CreateBuffer(&tileLightInfoBufferDesc, nullptr, &TileLightInfoBuffer);
-	assert(SUCCEEDED(hr) && "TileLightInfoBuffer 생성 실패");
+	hr = DeviceResources->GetDevice()->CreateBuffer(&clusterLightInfoBufferDesc, nullptr, &ClusterLightInfoBuffer);
+	assert(SUCCEEDED(hr) && "ClusterLightInfoBuffer 생성 실패");
         
-	D3D11_UNORDERED_ACCESS_VIEW_DESC tileLightInfoUAVDesc = {};
-	tileLightInfoUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
-	tileLightInfoUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-	tileLightInfoUAVDesc.Buffer.FirstElement = 0;
-	tileLightInfoUAVDesc.Buffer.NumElements = MAX_TILES;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC clusterLightInfoUAVDesc = {};
+	clusterLightInfoUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	clusterLightInfoUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	clusterLightInfoUAVDesc.Buffer.FirstElement = 0;
+	clusterLightInfoUAVDesc.Buffer.NumElements = MAX_CLUSTERS;
         
-	hr = DeviceResources->GetDevice()->CreateUnorderedAccessView(TileLightInfoBuffer, &tileLightInfoUAVDesc, &TileLightInfoUAV);
-	assert(SUCCEEDED(hr) && "TileLightInfoUAV 생성 실패");
+	hr = DeviceResources->GetDevice()->CreateUnorderedAccessView(ClusterLightInfoBuffer, &clusterLightInfoUAVDesc, &ClusterLightInfoUAV);
+	assert(SUCCEEDED(hr) && "ClusterLightInfoUAV 생성 실패");
         
-	D3D11_SHADER_RESOURCE_VIEW_DESC tileLightInfoSRVDesc = {};
-	tileLightInfoSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
-	tileLightInfoSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-	tileLightInfoSRVDesc.Buffer.FirstElement = 0;
-	tileLightInfoSRVDesc.Buffer.NumElements = MAX_TILES;
+	D3D11_SHADER_RESOURCE_VIEW_DESC clusterLightInfoSRVDesc = {};
+	clusterLightInfoSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	clusterLightInfoSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	clusterLightInfoSRVDesc.Buffer.FirstElement = 0;
+	clusterLightInfoSRVDesc.Buffer.NumElements = MAX_CLUSTERS;
         
-	hr = DeviceResources->GetDevice()->CreateShaderResourceView(TileLightInfoBuffer, &tileLightInfoSRVDesc, &TileLightInfoSRV);
-	assert(SUCCEEDED(hr) && "TileLightInfoSRV 생성 실패");
+	hr = DeviceResources->GetDevice()->CreateShaderResourceView(ClusterLightInfoBuffer, &clusterLightInfoSRVDesc, &ClusterLightInfoSRV);
+	assert(SUCCEEDED(hr) && "ClusterLightInfoSRV 생성 실패");
 }
 
 void URenderer::ReleaseConstantBuffers()
@@ -871,9 +874,9 @@ void URenderer::ReleaseLightCullBuffers()
 	SafeRelease(LightIndexBuffer);
 	SafeRelease(LightIndexBufferUAV);
 	SafeRelease(LightIndexBufferSRV);
-	SafeRelease(TileLightInfoBuffer);
-	SafeRelease(TileLightInfoUAV);
-	SafeRelease(TileLightInfoSRV);
+	SafeRelease(ClusterLightInfoBuffer);
+	SafeRelease(ClusterLightInfoUAV);
+	SafeRelease(ClusterLightInfoSRV);
 }
 
 // ========================================

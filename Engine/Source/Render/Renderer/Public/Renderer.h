@@ -87,9 +87,9 @@ public:
 	ID3D11Buffer* GetLightIndexBuffer() const { return LightIndexBuffer; }
 	ID3D11UnorderedAccessView* GetLightIndexBufferUAV() const { return LightIndexBufferUAV; }
 	ID3D11ShaderResourceView* GetLightIndexBufferSRV() const { return LightIndexBufferSRV; }
-	ID3D11Buffer* GetTileLightInfoBuffer() const { return TileLightInfoBuffer; }
-	ID3D11UnorderedAccessView* GetTileLightInfoUAV() const { return TileLightInfoUAV; }
-	ID3D11ShaderResourceView* GetTileLightInfoSRV() const { return TileLightInfoSRV; }
+	ID3D11Buffer* GetClusterLightInfoBuffer() const { return ClusterLightInfoBuffer; }
+	ID3D11UnorderedAccessView* GetClusterLightInfoUAV() const { return ClusterLightInfoUAV; }
+	ID3D11ShaderResourceView* GetClusterLightInfoSRV() const { return ClusterLightInfoSRV; }
 	ID3D11Buffer* GetAllLightsBuffer() const { return AllLightsBuffer; }
 	ID3D11ShaderResourceView* GetAllLightsSRV() const { return AllLightsSRV; }
 
@@ -140,9 +140,9 @@ private:
 	ID3D11UnorderedAccessView* LightIndexBufferUAV = nullptr;
 	ID3D11ShaderResourceView* LightIndexBufferSRV = nullptr;
 
-	ID3D11Buffer* TileLightInfoBuffer = nullptr;
-	ID3D11UnorderedAccessView* TileLightInfoUAV = nullptr;
-	ID3D11ShaderResourceView* TileLightInfoSRV = nullptr;
+	ID3D11Buffer* ClusterLightInfoBuffer = nullptr;
+	ID3D11UnorderedAccessView* ClusterLightInfoUAV = nullptr;
+	ID3D11ShaderResourceView* ClusterLightInfoSRV = nullptr;
     
 	// ?�이???�이??버퍼 (고정 ?�기)
 	ID3D11Buffer* AllLightsBuffer = nullptr;

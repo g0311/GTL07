@@ -72,17 +72,17 @@ void FLightCullingPass::PreExecute(FRenderingContext& Context)
     ID3D11DeviceContext* DeviceContext = DeviceResources->GetDeviceContext();
 
     LightIndexBufferUAV = Renderer.GetLightIndexBufferUAV();
-    TileLightInfoUAV = Renderer.GetTileLightInfoUAV();
+    ClusterLightInfoUAV = Renderer.GetClusterLightInfoUAV();
     
     AllLightsBuffer = Renderer.GetAllLightsBuffer();
     AllLightsSRV = Renderer.GetAllLightsSRV();
     
+    // 상수 버퍼 업데이트
     // Clear UAVs
     const UINT clearValues[4] = { 0, 0, 0, 0 };
-    DeviceContext->ClearUnorderedAccessViewUint(TileLightInfoUAV, clearValues);
+    DeviceContext->ClearUnorderedAccessViewUint(ClusterLightInfoUAV, clearValues);
     DeviceContext->ClearUnorderedAccessViewUint(LightIndexBufferUAV, clearValues);
     
-    // 상수 버퍼 업데이트
     FCullingParams cullingParams;
     cullingParams.View = Context.CurrentCamera->GetFViewProjConstants().View;
     cullingParams.Projection = Context.CurrentCamera->GetFViewProjConstants().Projection;
@@ -95,10 +95,12 @@ void FLightCullingPass::PreExecute(FRenderingContext& Context)
     const uint32 totalLights = static_cast<uint32>(Context.Lights.size());
     cullingParams.NumLights = totalLights;
     
+    // Near/Far 클리핑 평면
+    cullingParams.NearClip = Context.CurrentCamera->GetFViewProjConstants().NearClip;
+    cullingParams.FarClip = Context.CurrentCamera->GetFViewProjConstants().FarClip;
+    
     // 패딩 필드 초기화
-    cullingParams.Padding[0] = 0;
-    cullingParams.Padding[1] = 0;
-    cullingParams.Padding[2] = 0;
+    cullingParams.Padding = 0;
     
     // 라이트 데이터 배열 준비 (AllLights 버퍼용)
     TArray<FLightParams> allLights;
@@ -195,18 +197,17 @@ void FLightCullingPass::Execute(FRenderingContext& Context)
 
     // UAVs 바인딩
     DeviceContext->CSSetUnorderedAccessViews(0, 1, &LightIndexBufferUAV, nullptr);
-    DeviceContext->CSSetUnorderedAccessViews(1, 1, &TileLightInfoUAV, nullptr);
+    DeviceContext->CSSetUnorderedAccessViews(1, 1, &ClusterLightInfoUAV, nullptr);
 
-    // 컴퓨트 셰이더 디스패치 (뷰포트 크기 기반)
-    const uint32 TILE_SIZE = 32;
+    // 컴퓨트 셰이더 디스패치 (클러스터 3D 그리드 기반)
     const uint32 viewportWidth = static_cast<uint32>(Context.Viewport.Width);
     const uint32 viewportHeight = static_cast<uint32>(Context.Viewport.Height);
     
-    const uint32 numTilesX = (viewportWidth + TILE_SIZE - 1) / TILE_SIZE;
-    const uint32 numTilesY = (viewportHeight + TILE_SIZE - 1) / TILE_SIZE;
-    const uint32 numTilesZ = (viewportHeight + TILE_SIZE - 1) / TILE_SIZE;
+    const uint32 numClustersX = (viewportWidth + CLUSTER_SIZE_X - 1) / CLUSTER_SIZE_X;
+    const uint32 numClustersY = (viewportHeight + CLUSTER_SIZE_Y - 1) / CLUSTER_SIZE_Y;
+    const uint32 numClustersZ = CLUSTER_SIZE_Z;
 
-    DeviceContext->Dispatch(numTilesX, numTilesY, numTilesZ);
+    DeviceContext->Dispatch(numClustersX, numClustersY, numClustersZ);
 }
 
 void FLightCullingPass::PostExecute(FRenderingContext& Context)
