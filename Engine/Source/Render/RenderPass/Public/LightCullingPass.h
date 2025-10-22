@@ -13,7 +13,9 @@ struct FCullingParams
     uint32 ViewportOffset[2];    // 8 bytes
     uint32 ViewportSize[2];      // 8 bytes
     uint32 NumLights;            // 4 bytes
-    uint32 Padding[3];           // 12 bytes - 16바이트 정렬을 위한 패딩
+    float NearClip;              // 4 bytes
+    float FarClip;               // 4 bytes
+    uint32 Padding;              // 4 bytes - 16바이트 정렬을 위한 패딩
 };
 
 // 라이트 타입 상수
@@ -60,10 +62,15 @@ private:
 
     // UAV Buffers for light lists
     ID3D11UnorderedAccessView* LightIndexBufferUAV = nullptr;
-    ID3D11UnorderedAccessView* TileLightInfoUAV = nullptr;
+    ID3D11UnorderedAccessView* ClusterLightInfoUAV = nullptr;
     
     // 라이트 데이터 버퍼 (고정 크기)
     ID3D11Buffer* AllLightsBuffer = nullptr;
     ID3D11ShaderResourceView* AllLightsSRV = nullptr;
     static constexpr uint32 MAX_LIGHTS = 1024; // 최대 라이트 개수
+    
+    // 클러스터 그리드 상수
+    static constexpr uint32 CLUSTER_SIZE_X = 32;
+    static constexpr uint32 CLUSTER_SIZE_Y = 32;
+    static constexpr uint32 CLUSTER_SIZE_Z = 16;
 };

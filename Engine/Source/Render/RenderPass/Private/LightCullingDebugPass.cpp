@@ -20,7 +20,7 @@ void FLightCullingDebugPass::CreateResources()
 {
     // Create Staging Buffer
     D3D11_BUFFER_DESC desc;
-    URenderer::GetInstance().GetTileLightInfoBuffer()->GetDesc(&desc);
+    URenderer::GetInstance().GetClusterLightInfoBuffer()->GetDesc(&desc);
     desc.Usage = D3D11_USAGE_STAGING;
     desc.BindFlags = 0;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -148,7 +148,7 @@ void FLightCullingDebugPass::RenderDebugInfo(FRenderingContext& Context)
     ID3D11DeviceContext* Ctx = DeviceResources->GetDeviceContext();
     URenderer& renderer = URenderer::GetInstance();
 
-    Ctx->CopyResource(TileLightInfoStagingBuffer, renderer.GetTileLightInfoBuffer());
+    Ctx->CopyResource(TileLightInfoStagingBuffer, renderer.GetClusterLightInfoBuffer());
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     HRESULT hr = Ctx->Map(TileLightInfoStagingBuffer, 0, D3D11_MAP_READ, 0, &mappedResource);
