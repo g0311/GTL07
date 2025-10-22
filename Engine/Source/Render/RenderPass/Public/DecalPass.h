@@ -6,7 +6,8 @@ struct FDecalConstants
     FMatrix DecalWorld;
     FMatrix DecalViewProjection;
     float FadeProgress;
-    float Padding[3];
+    FVector2 DecalViewportSize;
+    float DecalPadding;
 };
 
 class FDecalPass : public FRenderPass
@@ -21,6 +22,9 @@ public:
     void Execute(FRenderingContext& Context) override;
     void PostExecute(FRenderingContext& Context) override;
     void Release() override;
+
+	// Shader Hot Reload
+    void UpdateShaders(ID3D11VertexShader* InVS, ID3D11PixelShader* InPS, ID3D11InputLayout* InLayout);
 
 	// Tiled Lighting
     void SetUpTiledLighting(const FRenderingContext& Context);
@@ -38,4 +42,5 @@ private:
 
     ID3D11Buffer* ConstantBufferDecal = nullptr;
     ID3D11Buffer* ConstantBufferPrim = nullptr;
+    ID3D11SamplerState* GBufferSamplerState = nullptr;
 };

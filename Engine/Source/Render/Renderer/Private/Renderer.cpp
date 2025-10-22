@@ -977,6 +977,15 @@ void URenderer::ReloadDecalShader()
 
 	CreateDecalShader();
 
+	// Update DecalPass with new shaders
+	for (FRenderPass* Pass : RenderPasses)
+	{
+		if (FDecalPass* DecalPass = dynamic_cast<FDecalPass*>(Pass))
+		{
+			DecalPass->UpdateShaders(DecalVertexShader, DecalPixelShader, DecalInputLayout);
+		}
+	}
+
 	UE_LOG("ShaderHotReload: DecalShader reloaded successfully!");
 }
 

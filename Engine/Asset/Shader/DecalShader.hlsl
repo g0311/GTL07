@@ -5,6 +5,8 @@ cbuffer DecalConstants : register(b2)
 	row_major float4x4 DecalWorld;
     row_major float4x4 DecalViewProjection;
 	float FadeProgress;
+	float2 DecalViewportSize;
+	float DecalPadding;
 };
 
 Texture2D DecalTexture : register(t0);
@@ -12,6 +14,9 @@ SamplerState DecalSampler : register(s0);
 
 Texture2D FadeTexture : register(t1);
 SamplerState FadeSampler : register(s1);
+
+Texture2D GBufferNormal : register(t2);
+SamplerState GBufferNormalSampler : register(s2);
 
 struct VS_INPUT
 {
@@ -73,19 +78,39 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	{
 		discard;
 	}
+	
+	// ===== Sample G-Buffer Normal =====
+	// Calculate screen-space UV from SV_POSITION
+	float2 ScreenUV = Input.Position.xy / DecalViewportSize;
+
+	// Sample the normal from G-Buffer (underlying mesh normal)
+	float4 GBufferNormalData = GBufferNormal.Sample(GBufferNormalSampler, ScreenUV);
+
+	// If GBuffer has valid normal (alpha > 0 means geometry was rendered there), use it; otherwise fallback to decal mesh normal
+	float3 N;
+	if (GBufferNormalData.a > 0.001f)
+	{
+		// Decode normal from [0,1] to [-1,1] range
+		float3 DecodedNormal = GBufferNormalData.xyz * 2.0f - 1.0f;
+		N = normalize(DecodedNormal);
+	}
+	else
+	{
+		// No geometry rendered at this pixel, use decal mesh normal as fallback
+		N = normalize(Input.Normal.xyz);
+	}
 
 	// ===== Lighting Calculation =====
-    float3 N = normalize(Input.Normal.xyz);
     float3 V = normalize(ViewWorldLocation - Input.WorldPos.xyz);
-	
+
     float3 kD = DecalColor.rgb; // Diffuse = decal base color
     float3 kS = float3(1.0f, 1.0f, 1.0f); // Specular
 	float3 kA = float3(1.0f, 1.0f, 1.0f); // Ambient
-    float Ns = 16.0f; // Shininess 
-	
+    float Ns = 16.0f; // Shininess
+
     FLightSegment TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPos.xyz, N, V, Ns,
     	ViewportOffset, ViewportSize);
-	
+
     float3 finalColor = kA * TiledLightColor.Ambient + kD * TiledLightColor.Diffuse + kS * TiledLightColor.Specular;
     return float4(finalColor, DecalColor.a);
 }
