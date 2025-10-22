@@ -36,6 +36,9 @@ UGizmo::UGizmo()
 	/* *
 	* @brief Rotation Setting
 	*/
+	Primitives[1].VertexShader = URenderer::GetInstance().GetGizmoVertexShader();
+	Primitives[1].PixelShader = URenderer::GetInstance().GetGizmoPixelShader();
+	Primitives[1].InputLayout = URenderer::GetInstance().GetGizmoInputLayout();
 	Primitives[1].VertexBuffer = ResourceManager.GetVertexbuffer(EPrimitiveType::Ring);
 	Primitives[1].NumVertices = ResourceManager.GetNumVertices(EPrimitiveType::Ring);
 	Primitives[1].Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -139,20 +142,41 @@ void UGizmo::RenderGizmo(UCamera* InCamera)
 	}
 	FVector LocalRotEuler = LocalRot.ToEuler();
 
-	// X축 (Forward) - 빨간색
-	P.Rotation = FQuaternion::Identity() * LocalRot;
-	P.Color = ColorFor(EGizmoDirection::Forward);
-	Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
-	
-	// Y축 (Right) - 초록색 (Z축 주위로 -90도 회전)
-	P.Rotation =  FQuaternion::FromAxisAngle(FVector::UpVector(), -90.0f * (PI / 180.0f)) * LocalRot;
-	P.Color = ColorFor(EGizmoDirection::Right);
-	Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
-	
-	// Z축 (Up) - 파란색 (Y축 주위로 90도 회전)
-	P.Rotation =  FQuaternion::FromAxisAngle(FVector::RightVector(), 90.0f * (PI / 180.0f)) * LocalRot;
-	P.Color = ColorFor(EGizmoDirection::Up);
-	Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+	if (GizmoMode == EGizmoMode::Rotate)
+	{
+		// X축 (Forward) - 빨간색
+		P.Rotation = FQuaternion::FromAxisAngle(FVector::ForwardVector(), -90.0f * (PI / 180.0f)) * LocalRot;
+		P.Rotation = FQuaternion::FromAxisAngle(FVector::UpVector(), -90.0f * (PI / 180.0f)) * P.Rotation;
+		P.Color = ColorFor(EGizmoDirection::Forward);
+		Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+
+		// Y축 (Right) - 초록색 (Z축 주위로 -90도 회전)
+		P.Rotation = FQuaternion::FromAxisAngle(FVector::RightVector(), 90.0f * (PI / 180.0f)) * LocalRot;
+		P.Color = ColorFor(EGizmoDirection::Right);
+		Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+
+		// Z축 (Up) - 파란색 (Y축 주위로 90도 회전)
+		P.Rotation = FQuaternion::FromAxisAngle(FVector::ForwardVector(), -90.0f * (PI / 180.0f)) * LocalRot;
+		P.Color = ColorFor(EGizmoDirection::Up);
+		Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+	}
+	else
+	{
+		// X축 (Forward) - 빨간색
+		P.Rotation = FQuaternion::Identity() * LocalRot;
+		P.Color = ColorFor(EGizmoDirection::Forward);
+		Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+
+		// Y축 (Right) - 초록색 (Z축 주위로 -90도 회전)
+		P.Rotation = FQuaternion::FromAxisAngle(FVector::UpVector(), -90.0f * (PI / 180.0f)) * LocalRot;
+		P.Color = ColorFor(EGizmoDirection::Right);
+		Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+
+		// Z축 (Up) - 파란색 (Y축 주위로 90도 회전)
+		P.Rotation = FQuaternion::FromAxisAngle(FVector::RightVector(), 90.0f * (PI / 180.0f)) * LocalRot;
+		P.Color = ColorFor(EGizmoDirection::Up);
+		Renderer.RenderEditorPrimitive(P, RenderState, 0, 0, true);
+	}
 
 	// Restore original render targets and depth stencil view
 	Renderer.GetDeviceContext()->OMSetRenderTargets(1, &pOrigRTV, pOrigDSV);
