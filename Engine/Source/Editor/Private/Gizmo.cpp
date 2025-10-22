@@ -45,6 +45,9 @@ UGizmo::UGizmo()
 	/* *
 	* @brief Scale Setting
 	*/
+	Primitives[2].VertexShader = URenderer::GetInstance().GetGizmoVertexShader();
+	Primitives[2].PixelShader = URenderer::GetInstance().GetGizmoPixelShader();
+	Primitives[2].InputLayout = URenderer::GetInstance().GetGizmoInputLayout();
 	Primitives[2].VertexBuffer = ResourceManager.GetVertexbuffer(EPrimitiveType::CubeArrow);
 	Primitives[2].NumVertices = ResourceManager.GetNumVertices(EPrimitiveType::CubeArrow);
 	Primitives[2].Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -109,10 +112,10 @@ void UGizmo::RenderGizmo(UCamera* InCamera)
 
 	// Set main RTV and Gizmo DSV
 	ID3D11RenderTargetView* mainRTV = Renderer.GetDeviceResources()->GetFrameBufferRTV(); // assume main rtv
-	Renderer.GetDeviceContext()->OMSetRenderTargets(1, &mainRTV, Renderer.GetGizmoDSV());
+	Renderer.GetDeviceContext()->OMSetRenderTargets(1, &mainRTV, Renderer.GetDeviceResources()->GetGizmoDSV());
 
 	// Clear the Gizmo DSV
-	Renderer.GetDeviceContext()->ClearDepthStencilView(Renderer.GetGizmoDSV(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	Renderer.GetDeviceContext()->ClearDepthStencilView(Renderer.GetDeviceResources()->GetGizmoDSV(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
 	const int Mode = static_cast<int>(GizmoMode);
 	auto& P = Primitives[Mode];

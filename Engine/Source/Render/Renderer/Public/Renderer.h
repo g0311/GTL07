@@ -78,7 +78,6 @@ public:
 	FViewport* GetViewportClient() const { return ViewportClient; }
 	UPipeline* GetPipeline() const { return Pipeline; }
 	bool GetIsResizing() const { return bIsResizing; }
-	ID3D11DepthStencilView* GetGizmoDSV() const { return GizmoDSV; }
 
 	ID3D11DepthStencilState* GetDefaultDepthStencilState() const { return DefaultDepthStencilState; }
 	ID3D11DepthStencilState* GetDisabledDepthStencilState() const { return DisabledDepthStencilState; }
@@ -253,8 +252,4 @@ private:
 
 	// Shader Hot Reload System
 	FShaderHotReload* ShaderHotReload = nullptr;
-
-	// For Gizmo Render
-	ID3D11Texture2D* GizmoDepthTexture = nullptr;
-	ID3D11DepthStencilView* GizmoDSV = nullptr;
 };

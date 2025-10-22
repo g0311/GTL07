@@ -68,26 +68,6 @@ void URenderer::Init(HWND InWindowHandle)
 	
 	ViewportClient->InitializeLayout(DeviceResources->GetViewportInfo());
 
-	// Create Gizmo Depth Texture and DSV
-	D3D11_TEXTURE2D_DESC depthTexDesc = {};
-	depthTexDesc.Width = DeviceResources->GetWidth();
-	depthTexDesc.Height = DeviceResources->GetHeight();
-	depthTexDesc.MipLevels = 1;
-	depthTexDesc.ArraySize = 1;
-	depthTexDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthTexDesc.SampleDesc.Count = 1;
-	depthTexDesc.Usage = D3D11_USAGE_DEFAULT;
-	depthTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	HRESULT hr = GetDevice()->CreateTexture2D(&depthTexDesc, nullptr, &GizmoDepthTexture);
-	assert(SUCCEEDED(hr) && "Failed to create Gizmo Depth Texture!");
-
-	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Texture2D.MipSlice = 0;
-	hr = GetDevice()->CreateDepthStencilView(GizmoDepthTexture, &dsvDesc, &GizmoDSV);
-	assert(SUCCEEDED(hr) && "Failed to create Gizmo DSV!");
-
 	FLightCullingPass* LightCullPass = new FLightCullingPass(Pipeline, DeviceResources);
 	RenderPasses.push_back(LightCullPass);
 	
@@ -153,9 +133,6 @@ void URenderer::Release()
 	SafeDelete(ViewportClient);
 	SafeDelete(Pipeline);
 	SafeDelete(DeviceResources);
-
-	SafeRelease(GizmoDSV);
-	SafeRelease(GizmoDepthTexture);
 }
 
 void URenderer::CreateDepthStencilState()
@@ -787,9 +764,6 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight)
 	DeviceResources->ReleaseNormalBuffer();
 	GetDeviceContext()->OMSetRenderTargets(0, nullptr, nullptr);
 	ReleaseLightCullBuffers();
-
-	SafeRelease(GizmoDSV);
-	SafeRelease(GizmoDepthTexture);
 	
     if (FAILED(GetSwapChain()->ResizeBuffers(2, InWidth, InHeight, DXGI_FORMAT_UNKNOWN, 0)))
     {
@@ -803,26 +777,6 @@ void URenderer::OnResize(uint32 InWidth, uint32 InHeight)
 	DeviceResources->CreateDepthBuffer();
 	DeviceResources->CreateNormalBuffer();
 	CreateLightCullBuffers();
-
-	// Recreate Gizmo Depth Texture and DSV on resize
-	D3D11_TEXTURE2D_DESC depthTexDesc = {};
-	depthTexDesc.Width = InWidth;
-	depthTexDesc.Height = InHeight;
-	depthTexDesc.MipLevels = 1;
-	depthTexDesc.ArraySize = 1;
-	depthTexDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthTexDesc.SampleDesc.Count = 1;
-	depthTexDesc.Usage = D3D11_USAGE_DEFAULT;
-	depthTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	HRESULT hr = GetDevice()->CreateTexture2D(&depthTexDesc, nullptr, &GizmoDepthTexture);
-	assert(SUCCEEDED(hr) && "Failed to recreate Gizmo Depth Texture on resize!");
-
-	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Texture2D.MipSlice = 0;
-	hr = GetDevice()->CreateDepthStencilView(GizmoDepthTexture, &dsvDesc, &GizmoDSV);
-	assert(SUCCEEDED(hr) && "Failed to recreate Gizmo DSV on resize!");
 
     ID3D11RenderTargetView* targetView = DeviceResources->GetSceneColorRenderTargetView();
     ID3D11RenderTargetView* targetViews[] = { targetView };
