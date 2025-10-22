@@ -56,28 +56,28 @@ struct PS_OUTPUT
     float4 NormalData : SV_Target1;
 };
 
+// #ifdef HAS_NORMAL_MAP
 //==================================================//
 //==================== POM Functions ===============//
 //==================================================//
 
 // World space vector를 Tangent space로 변환
-float3 WorldToTangentSpace(float3 worldVec, float3 worldNormal, float3 worldTangent, float3 worldBitangent)
+float3 WorldToTangentSpace(float3 WorldVec, float3 WorldNormal, float3 WorldTangent, float3 WorldBitangent)
 {
-    float3 T = normalize(worldTangent);
-    float3 B = normalize(worldBitangent);
-    float3 N = normalize(worldNormal);
+    float3 T = normalize(WorldTangent);
+    float3 B = normalize(WorldBitangent);
+    float3 N = normalize(WorldNormal);
 
     // World -> Tangent 변환 행렬 (전치 행렬)
-    float3x3 TBN = float3x3(T, B, N);
-    return mul(TBN, worldVec);
+    float3x3 TBN = transpose(float3x3(T, B, N));
+    return mul(WorldVec, TBN);
 }
 
 // Parallax Occlusion Mapping with Texture Size Normalization
 float2 ParallaxOcclusionMapping(
     float2 UV,
     float3 ViewDirTangent,
-    float heightScale,
-    float2 textureSize)
+    float HeightScale)
 {
     // Safety check: ViewDirTangent이 너무 작으면 POM 비활성화
     if (length(ViewDirTangent) < 0.001f)
@@ -88,63 +88,64 @@ float2 ParallaxOcclusionMapping(
         return UV;
 
     // 레이어 수 동적 조절 (각도에 따라)
-    const int minLayers = 8;
-    const int maxLayers = 32;
-    float numLayers = lerp(maxLayers, minLayers, abs(dot(float3(0, 0, 1), ViewDirTangent)));
+    const int MinLayers = 16;
+    const int MaxLayers = 64;
+    float NumLayers = lerp(MaxLayers, MinLayers, abs(dot(float3(0, 0, 1), ViewDirTangent)));
 
-    float layerDepth = 1.0f / numLayers;
-    float currentLayerDepth = 0.0f;
+    float LayerDepth = 1.0f / NumLayers;
+    float CurrentLayerDepth = 0.0f;
 
     // ViewDirTangent.z로 나눠서 올바른 parallax 비율 계산
-    float2 parallaxDir = ViewDirTangent.xy / ViewDirTangent.z;
-    parallaxDir.x = -parallaxDir.x;  // X축 반전
+    float2 ParallaxDir = ViewDirTangent.xy / ViewDirTangent.z;
+    ParallaxDir.x = -ParallaxDir.x;  // X축 반전
 
     // 텍스처 해상도 정규화 제거 (문제 발생)
-    // 대신 heightScale만 사용
-    float2 deltaUV = parallaxDir * heightScale / numLayers;
+    // 대신 HeightScale만 사용
+    float2 DeltaUV = ParallaxDir * HeightScale / NumLayers;
 
     // Ray Marching: 표면과 교차점 찾기
-    float2 currentUV = UV;
-    float currentHeight = BumpTexture.Sample(SamplerWrap, currentUV).r;
+    float2 CurrentUV = UV;
+    float CurrentHeight = BumpTexture.Sample(SamplerWrap, CurrentUV).r;
 
-    [unroll(32)]
-    for(int i = 0; i < numLayers; i++)
+    [unroll(64)]
+    for(int i = 0; i < NumLayers; i++)
     {
         // 현재 레이어 깊이가 높이맵보다 깊으면 교차점 발견
-        if(currentLayerDepth >= currentHeight)
+        if(CurrentLayerDepth >= CurrentHeight)
             break;
 
         // UV 이동 및 다음 높이 샘플링
-        currentUV -= deltaUV;
-        currentHeight = BumpTexture.Sample(SamplerWrap, currentUV).r;
-        currentLayerDepth += layerDepth;
+        CurrentUV -= DeltaUV;
+        CurrentHeight = BumpTexture.Sample(SamplerWrap, CurrentUV).r;
+        CurrentLayerDepth += LayerDepth;
     }
 
     // 선형 보간 (Relief Mapping) - 교차점 정밀화
-    float2 prevUV = currentUV + deltaUV;
+    float2 PrevUV = CurrentUV + DeltaUV;
 
-    float afterDepth = currentHeight - currentLayerDepth;
-    float beforeDepth = BumpTexture.Sample(SamplerWrap, prevUV).r - (currentLayerDepth - layerDepth);
+    float AfterDepth = CurrentHeight - CurrentLayerDepth;
+    float BeforeDepth = BumpTexture.Sample(SamplerWrap, PrevUV).r - (CurrentLayerDepth - LayerDepth);
 
     // Division by zero 방지
-    float denominator = afterDepth - beforeDepth;
-    float weight = 0.5f; // 기본값
-    if (abs(denominator) > 0.0001f)
+    float Denominator = AfterDepth - BeforeDepth;
+    float Weight = 0.5f; // 기본값
+    if (abs(Denominator) > 0.0001f)
     {
-        weight = saturate(afterDepth / denominator);
+        Weight = saturate(AfterDepth / Denominator);
     }
 
-    float2 finalUV = lerp(currentUV, prevUV, weight);
+    float2 FinalUV = lerp(CurrentUV, PrevUV, Weight);
 
     // UV가 너무 많이 이동했다면 원본 UV 반환
-    float2 uvDelta = abs(finalUV - UV);
-    if (uvDelta.x > 0.5f || uvDelta.y > 0.5f)
+    float2 UVDelta = abs(FinalUV - UV);
+    if (UVDelta.x > 0.5f || UVDelta.y > 0.5f)
     {
         return UV;
     }
 
-    return finalUV;
+    return FinalUV;
 }
+// #endif
 
 float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
 {
@@ -257,6 +258,8 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
     float2 UV = Input.Tex;
     float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
 
+
+// #ifdef HAS_NORMAL_MAP
     // POM: Parallax Occlusion Mapping 적용
     if (MaterialFlags & HAS_BUMP_MAP)
     {
@@ -267,10 +270,11 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
             Input.WorldBitangent
         );
 
-        UV = ParallaxOcclusionMapping(UV, ViewDirTangent, HeightScale, HeightTextureSize);
+        UV = ParallaxOcclusionMapping(UV, ViewDirTangent, HeightScale);
     }
-
-    // Normal 계산 (POM으로 수정된 UV 사용)
+// #endif
+    
+    // Normal 계산 
     float3 Normal = CalculateWorldNormal(Input, UV);
 
     // Encode world normal to [0,1] range for storage
