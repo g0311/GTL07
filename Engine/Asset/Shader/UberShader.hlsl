@@ -47,7 +47,9 @@ struct PS_INPUT
     float2 Tex : TEXCOORD2;
     float3 WorldTangent : TEXCOORD3;
     float3 WorldBitangent : TEXCOORD4;
-    float4 Color : COLOR;
+    float3 Ambient : LIGHT0; /* Gouraud */
+    float3 Diffuse : LIGHT1; /* Gouraud */
+    float3 Specular : LIGHT2; /* Gouraud */
 };
 
 struct PS_OUTPUT
@@ -61,7 +63,11 @@ struct PS_OUTPUT
 //==================================================//
 
 // World space vector를 Tangent space로 변환
-float3 WorldToTangentSpace(float3 worldVec, float3 worldNormal, float3 worldTangent, float3 worldBitangent)
+float3 WorldToTangentSpace(
+    float3 worldVec,
+    float3 worldNormal,
+    float3 worldTangent,
+    float3 worldBitangent)
 {
     float3 T = normalize(worldTangent);
     float3 B = normalize(worldBitangent);
@@ -76,8 +82,8 @@ float3 WorldToTangentSpace(float3 worldVec, float3 worldNormal, float3 worldTang
 float2 ParallaxOcclusionMapping(
     float2 UV,
     float3 ViewDirTangent,
-    float heightScale,
-    float2 textureSize)
+    float HeightScale,
+    float2 TextureSize)
 {
     // Safety check: ViewDirTangent이 너무 작으면 POM 비활성화
     if (length(ViewDirTangent) < 0.001f)
@@ -101,7 +107,7 @@ float2 ParallaxOcclusionMapping(
 
     // 텍스처 해상도 정규화 제거 (문제 발생)
     // 대신 heightScale만 사용
-    float2 deltaUV = parallaxDir * heightScale / numLayers;
+    float2 deltaUV = parallaxDir * HeightScale / numLayers;
 
     // Ray Marching: 표면과 교차점 찾기
     float2 currentUV = UV;
@@ -186,13 +192,38 @@ float3 CalculateWorldNormal(PS_INPUT Input, float2 UV)
     return WorldNormal;
 }
 
+//==================================================//
+//============Light Segment Functions ===============//
+//==================================================//
+float3 GetMaterialProperty(uint TextureFlag,Texture2D Texture, float2 UV, float3 DefaultValue)
+{
+    if (MaterialFlags & TextureFlag)
+    {
+        return Texture.Sample(SamplerWrap, UV).rgb;
+    }
+    else if (TextureFlag!=HAS_DIFFUSE_MAP && MaterialFlags & HAS_DIFFUSE_MAP) // Fallback to diffuse texture
+    {
+        return DiffuseTexture.Sample(SamplerWrap, UV).rgb; 
+    }
+    else if (DefaultValue.r == 0.0 && DefaultValue.b == 0.0 && DefaultValue.r == 0.0)
+    {
+        return float3(1.0f, 1.0f, 1.0f);
+    }
+    else
+    {
+        return DefaultValue.rgb;
+    }
+}
+
+//==================================================//
+//============main Functions =======================//
+//==================================================//
 PS_INPUT mainVS(VS_INPUT Input)
 {
     PS_INPUT Output;
     Output.WorldPosition = mul(float4(Input.Position, 1.0f), World).xyz;
     Output.Position = mul(mul(mul(float4(Input.Position, 1.0f), World), View), Projection);
-
-    // Transform normal to world space using inverse transpose for non-uniform scale
+    
     // Do NOT normalize here - let GPU interpolate, then normalize in PS
     Output.WorldNormal = mul(Input.Normal, (float3x3)WorldInverseTranspose);
 
@@ -203,61 +234,33 @@ PS_INPUT mainVS(VS_INPUT Input)
     Output.WorldBitangent = mul(Input.Bitangent, (float3x3)WorldInverseTranspose);
 
     Output.Tex = Input.Tex;
-    Output.Color = Input.Color;
+    Output.Ambient = float3(1.0f, 1.0f, 1.0f);
+    Output.Diffuse = float3(1.0f, 1.0f, 1.0f);
+    Output.Specular = float3(1.0f, 1.0f, 1.0f);
 
 #if LIGHTING_MODEL_GOURAUD
-    float3 Normal = normalize(Output.WorldNormal);
-    float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
-
-    // Vertex Shader에서는 텍스처 샘플링 불가 - Material 상수만 사용
-    // Ka가 0이면 Kd 사용, Ks가 0이면 white(1,1,1) 사용
-    float3 kA = all(Ka.rgb == 0.0) ? Kd.rgb : Ka.rgb;
-    float3 kD = Kd.rgb;
-    float3 kS = all(Ks.rgb == 0.0) ? float3(1, 1, 1) : Ks.rgb;
-
     // Gouraud: 모든 라이트를 순회 (Tiled Culling 사용 안 함)
-    float3 LightColor = CalculateAllLightsGouraud(Output.WorldPosition, Normal, ViewDir, kA, kD, kS, Ns);
+    float3 ViewDir = normalize(ViewWorldLocation - Output.WorldPosition);
+    float Shininess = (Ns == 0)? 1.0f : Ns;
+    
+    FLightSegment LightColor = CalculateAllLights(Output.WorldPosition, Output.WorldNormal, ViewDir, Shininess);
 
-    // 입력 버텍스 컬러와 라이팅 결과를 블렌드
-    Output.Color.rgb = LightColor;
-    Output.Color.a = Input.Color.a;
+    Output.Ambient = LightColor.Ambient;
+    Output.Diffuse = LightColor.Diffuse;
+    Output.Specular = LightColor.Specular;    
 #endif
+    
     return Output;
 }
 
 PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 {
     PS_OUTPUT Output;
-#if LIGHTING_MODEL_GOURAUD
-    // Gouraud: VS에서 계산된 라이팅을 그대로 사용
-    Output.SceneColor = Input.Color;
-
-    // Normal 데이터 출력
-    float3 Normal = CalculateWorldNormal(Input, Input.Tex);
-    float3 EncodedNormal = Normal * 0.5f + 0.5f;
-    Output.NormalData = float4(EncodedNormal, 1.0f);
     
-    // 텍스처가 있다면 곱하기
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
-        Output.SceneColor.rgb *= TexColor.rgb;
-        Output.SceneColor.a = TexColor.a;
-    }
+    float3 ViewDir = normalize(ViewWorldLocation - Input.WorldPosition);
 
-#elif LIGHTING_MODEL_UNLIT
-    // TODO : 원래는 Albedo로 해야하지만, 현재는 DiffuseTexture = Albedo임
-    Output.SceneColor= float4(0.5, 0.5, 0.5, 1);
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, Input.Tex);
-        Output.SceneColor= TexColor;
-    };
-#else
+    // ===== UV Setup (POM: Parallax Occlusion Mapping 적용) =====
     float2 UV = Input.Tex;
-    float3 ViewDir  = normalize(ViewWorldLocation - Input.WorldPosition);
-
-    // POM: Parallax Occlusion Mapping 적용
     if (MaterialFlags & HAS_BUMP_MAP)
     {
         float3 ViewDirTangent = WorldToTangentSpace(
@@ -269,95 +272,56 @@ PS_OUTPUT mainPS(PS_INPUT Input) : SV_TARGET
 
         UV = ParallaxOcclusionMapping(UV, ViewDirTangent, HeightScale, HeightTextureSize);
     }
-
-    // Normal 계산 (POM으로 수정된 UV 사용)
+    
+    // ===== Normal Setup =====
     float3 Normal = CalculateWorldNormal(Input, UV);
-
-    // Encode world normal to [0,1] range for storage
-    float3 EncodedNormal = Normal * 0.5f + 0.5f;
+    float3 EncodedNormal = Normal * 0.5f + 0.5f; /* Encode world normal to [0,1] range for storage */
     Output.NormalData = float4(EncodedNormal, 1.0f);
 
     // ===== Material Property Setup =====
-
-    // Ambient: Use AmbientTexture if available, otherwise fallback to DiffuseTexture or Ka constant
-    float3 kA;
-    if (MaterialFlags & HAS_AMBIENT_MAP)
-    {
-        kA = AmbientTexture.Sample(SamplerWrap, UV).rgb;
-    }
-    else if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        kA = DiffuseTexture.Sample(SamplerWrap, UV).rgb;  // Fallback to diffuse texture
-    }
-    else
-    {
-        if (Ka.r == 0.0 && Ka.b == 0.0 && Ka.r == 0.0)
-            kA = float3(1.0f, 1.0f, 1.0f);
-        else
-            kA = Ka.rgb;
-    }
-
-    // Diffuse: Use DiffuseTexture if available, otherwise Kd constant
-    float3 kD;
-    if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        kD = DiffuseTexture.Sample(SamplerWrap, UV).rgb;
-    }
-    else
-    {
-        if (Kd.r == 0.0 && Kd.b == 0.0 && Kd.r == 0.0)
-            kD = float3(1.0f, 1.0f, 1.0f);
-        else
-            kD = Kd.rgb;
-    }
-
-    // Specular: Use SpecularTexture if available, otherwise fallback to DiffuseTexture or Ks constant
-    float3 kS;
-    if (MaterialFlags & HAS_SPECULAR_MAP)
-    {
-        kS = SpecularTexture.Sample(SamplerWrap, UV).rgb;
-    }
-    else if (MaterialFlags & HAS_DIFFUSE_MAP)
-    {
-        kS = DiffuseTexture.Sample(SamplerWrap, UV).rgb;  // Fallback to diffuse texture
-    }
-    else
-    {
-        if (Ks.r == 0.0 && Ks.b == 0.0 && Ks.r == 0.0)
-            kS = float3(1.0f, 1.0f, 1.0f);
-        else
-            kS = Ks.rgb;
-    }
-
-    float Shininess = 1.0f;
-    if (Ns != 0)
-        Shininess = Ns;
+    float3 MaterialAmbient = GetMaterialProperty(HAS_AMBIENT_MAP, AmbientTexture, UV, Ka);
+    float3 MaterialDiffuse = GetMaterialProperty(HAS_DIFFUSE_MAP, DiffuseTexture, UV, Kd);
+    float3 MaterialSpecular = GetMaterialProperty(HAS_SPECULAR_MAP, SpecularTexture, UV, Ks);
     
-    if (MaterialFlags & UNLIT)
-    {
-        Output.SceneColor = float4(kD, 1.0);
-        Output.NormalData = float4(Normal * 0.5f + 0.5f, 1.0);
-        return Output;
-    }
+    float Shininess = (Ns == 0)? 1.0f : Ns;
     
-    float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, kA, kD, kS, Shininess, ViewportOffset, ViewportSize);
-    
-    float4 FinalColor;
-    FinalColor.rgb = TiledLightColor;
-    FinalColor.a = 1.0f;
-     
-    // Alpha handling
+    // ===== Alpha Setup =====
     if (MaterialFlags & HAS_ALPHA_MAP)
     {
-        float alpha = AlphaTexture.Sample(SamplerWrap, UV).w;
-        FinalColor.a = D * alpha;
+        float Alpha = AlphaTexture.Sample(SamplerWrap, UV).w;
+        Output.SceneColor.a = D * Alpha;
     }
     else if (MaterialFlags & HAS_DIFFUSE_MAP)
     {
-        float alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
-        FinalColor.a = D * alpha;
+        float Alpha = DiffuseTexture.Sample(SamplerWrap, UV).w;
+        Output.SceneColor.a = D * Alpha;
     }
-    Output.SceneColor = FinalColor;
+
+#if LIGHTING_MODEL_GOURAUD
+    float3 AccumulatedLightWithMaterial = float3(0, 0, 0);
+    AccumulatedLightWithMaterial += Input.Ambient * MaterialAmbient;
+    AccumulatedLightWithMaterial += Input.Diffuse * MaterialDiffuse;
+    AccumulatedLightWithMaterial += Input.Specular * MaterialSpecular;
+    Output.SceneColor.rgb = AccumulatedLightWithMaterial;
+#elif LIGHTING_MODEL_UNLIT
+    /* TODO : 원래는 Albedo로 해야하지만, 현재는 DiffuseTexture = Albedo임 */
+    Output.SceneColor= float4(0.5, 0.5, 0.5, 1);
+    if (MaterialFlags & HAS_DIFFUSE_MAP)
+    {
+        float4 TexColor = DiffuseTexture.Sample(SamplerWrap, UV);
+        Output.SceneColor= TexColor;
+    };
+#else
+    FLightSegment LightColor;
+    
+    LightColor = CalculateTiledLighting(Input.Position, Input.WorldPosition, Normal, ViewDir, Shininess,
+        ViewportOffset, ViewportSize);
+    
+    float3 AccumulatedLightWithMaterial = float3(0, 0, 0);
+    AccumulatedLightWithMaterial += LightColor.Ambient * MaterialAmbient;
+    AccumulatedLightWithMaterial += LightColor.Diffuse * MaterialDiffuse;
+    AccumulatedLightWithMaterial += LightColor.Specular * MaterialSpecular;
+    Output.SceneColor.rgb = AccumulatedLightWithMaterial;
 #endif
     
     return Output;

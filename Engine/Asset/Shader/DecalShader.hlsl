@@ -43,7 +43,7 @@ PS_INPUT mainVS(VS_INPUT Input)
 
 float4 mainPS(PS_INPUT Input) : SV_TARGET
 {
-	// +-+-+ Decal Projection & Texture Sampling +-+-+
+	// ===== Decal Projection & Texture Sampling =====
     float2 DecalUV;
 	
 	// Decal Local Transition
@@ -62,17 +62,19 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	//UV Transition
 	// ([-0.5~0.5], [-0.5~0.5]) -> ([0~1.0], [1.0~0])
     DecalUV = ((DecalLocalPos.yz) * float2(0.5f, -0.5f) + 0.5f);
-    
+	
 	float4 DecalColor = DecalTexture.Sample(DecalSampler, DecalUV);
 
-	// +-+-+ Alpha & Fade Handling +-+-+
+	// ===== Alpha & Fade Handling =====
 	float FadeValue = FadeTexture.Sample(FadeSampler, DecalUV).r;
 	DecalColor.a *= 1.0f - saturate(FadeProgress / (FadeValue + 1e-6));
 	
-	if (DecalColor.a < 0.001f) { discard; }
-    //return DecalColor;
-	
-	// +-+-+ Lighting Calculation +-+-+
+	if (DecalColor.a < 0.001f)
+	{
+		discard;
+	}
+
+	// ===== Lighting Calculation =====
     float3 N = normalize(Input.Normal.xyz);
     float3 V = normalize(ViewWorldLocation - Input.WorldPos.xyz);
 	
@@ -81,8 +83,9 @@ float4 mainPS(PS_INPUT Input) : SV_TARGET
 	float3 kA = float3(0.1f, 0.1f, 0.1f); // Ambient
     float Ns = 16.0f; // Roughness
 	
-    float3 TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPos.xyz, N, V, kA, kD, kS, Ns, ViewportOffset, ViewportSize);
+    FLightSegment TiledLightColor = CalculateTiledLighting(Input.Position, Input.WorldPos.xyz, N, V, Ns,
+    	ViewportOffset, ViewportSize);
 	
-    float3 finalColor = DecalColor.rgb * TiledLightColor;
+    float3 finalColor = kA * TiledLightColor.Ambient + kD * TiledLightColor.Diffuse + kS * TiledLightColor.Specular;
     return float4(finalColor, DecalColor.a);
 }
