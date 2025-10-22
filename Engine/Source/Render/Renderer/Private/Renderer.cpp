@@ -620,6 +620,8 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 	RenderingContext.AllPrimitives = FinalVisiblePrims;
 	for (auto& Prim : FinalVisiblePrims)
 	{
+		if (!Prim->IsVisible())	continue;
+
 		if (auto StaticMesh = Cast<UStaticMeshComponent>(Prim))
 		{
 			RenderingContext.StaticMeshes.push_back(StaticMesh);
@@ -643,6 +645,8 @@ void URenderer::RenderLevel(FViewportClient& InViewportClient)
 	{
 		for (const auto& Component : Actor->GetOwnedComponents())
 		{
+			if (!Component->IsVisible())	continue;
+					
 			if (auto Fog = Cast<UHeightFogComponent>(Component))
 			{
 				RenderingContext.Fogs.push_back(Fog);
