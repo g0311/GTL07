@@ -54,10 +54,12 @@
 #define LIGHT_TYPE_SPOT        3
 
 // ============================================================================
-// TILED LIGHTING / LIGHT CULLING
+// CLUSTERED LIGHTING / LIGHT CULLING
 // ============================================================================
-// Defines the screen tile size for the light culling algorithm.
+// Defines the 3D cluster grid size for the clustered light culling algorithm.
 
-#define TILE_SIZE 32
+#define CLUSTER_SIZE_X 32
+#define CLUSTER_SIZE_Y 32
+#define CLUSTER_SIZE_Z 16
 
 #endif // SHADER_DEFINES_HLSLI

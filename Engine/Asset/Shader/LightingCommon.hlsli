@@ -68,17 +68,46 @@ struct FLight
     float4 Angles;      // x: 내부 원뿔 각도(cos), y: 외부 원뿔 각도(cos), z: falloff extent/falloff, w: InvRange2 (스포트전용)
 };
 
-uint2 GetTileIndexFromPixelViewport(float2 screenPos, uint2 viewportOffset)
+// NDC 깊이(0~1)를 뷰 공간 깊이로 변환
+// Projection 행렬을 사용하여 역변환
+float NDCDepthToViewZ(float ndcDepth, matrix proj)
 {
-    float2 viewportRelativePos = screenPos - viewportOffset;
-    return uint2(floor(viewportRelativePos.x / TILE_SIZE), floor(viewportRelativePos.y / TILE_SIZE));
+    // DirectX perspective projection:
+    // proj[2][2] = Far / (Far - Near)
+    // proj[3][2] = -Near * Far / (Far - Near)
+    // z_ndc = (z_view * proj[2][2] + proj[3][2]) / z_view
+    // 
+    // 역변환:
+    // z_ndc * z_view = z_view * proj[2][2] + proj[3][2]
+    // z_view * (z_ndc - proj[2][2]) = proj[3][2]
+    // z_view = proj[3][2] / (z_ndc - proj[2][2])
+    
+    return proj[3][2] / (ndcDepth - proj[2][2]);
 }
 
-uint GetCurrentTileArrayIndex(float4 svPosition, uint2 viewportOffset, uint2 viewportSize)
+// 클러스터 인덱스 계산 (픽셀 SV_Position과 뷰 공간 Z 기반)
+// 선형 분포를 사용
+uint3 GetClusterIndexFromSVPos(float4 svPosition, float viewZ, uint2 viewportOffset, uint2 viewportSize, float nearClip, float farClip)
 {
-    uint2 viewportTileIndex = GetTileIndexFromPixelViewport(svPosition, viewportOffset);
-    uint tilesPerRow = (viewportSize.x + TILE_SIZE - 1) / TILE_SIZE;
-    return viewportTileIndex.y * tilesPerRow + viewportTileIndex.x;
+    // 화면 좌표 -> 뷰포트 상대 좌표
+    float2 viewportRelativePos = svPosition.xy - viewportOffset;
+    uint clusterX = (uint)floor(viewportRelativePos.x / CLUSTER_SIZE_X);
+    uint clusterY = (uint)floor(viewportRelativePos.y / CLUSTER_SIZE_Y);
+
+    // 뷰 공간 Z를 선형 분포로 클러스터 Z 인덱스 계산
+    float t = (viewZ - nearClip) / (farClip - nearClip);
+    uint clusterZ = (uint)min((uint)(t * CLUSTER_SIZE_Z), CLUSTER_SIZE_Z - 1);
+    
+    return uint3(clusterX, clusterY, clusterZ);
+}
+
+// 현재 픽셀의 클러스터 1D 배열 인덱스 계산
+uint GetCurrentClusterArrayIndex(float4 svPosition, float viewZ, uint2 viewportOffset, uint2 viewportSize)
+{
+    uint2 clustersXY = uint2((viewportSize.x + CLUSTER_SIZE_X - 1) / CLUSTER_SIZE_X,
+                             (viewportSize.y + CLUSTER_SIZE_Y - 1) / CLUSTER_SIZE_Y);
+    uint3 c = GetClusterIndexFromSVPos(svPosition, viewZ, viewportOffset, viewportSize, NearClip, FarClip);
+    return c.z * (clustersXY.x * clustersXY.y) + c.y * clustersXY.x + c.x;
 }
 
 // Viewport Info for Tiled Lighting
@@ -93,7 +122,7 @@ cbuffer TiledLightingParams : register(b3)
 // Light Culling용 Structured Buffer
 StructuredBuffer<FLight> AllLights : register(t13);
 StructuredBuffer<uint> LightIndexBuffer : register(t14);
-StructuredBuffer<uint2> TileLightInfos : register(t15); // (offset, count)
+StructuredBuffer<uint2> ClusterLightInfo : register(t15); // (offset, count)
 
 FAmbientLightInfo ConvertToAmbientLight(FLight light)
 {
@@ -293,15 +322,13 @@ FLightSegment CalculateTiledLighting(float4 svPosition, float3 WorldPos, float3 
     {
         return CalculateAllLights(WorldPos, WorldNormal, ViewDir, Shininess);    
     }
-    
-    // ===== Tile Setup =====
-    // Current pixel's tile index
-    uint TileArrayIndex = GetCurrentTileArrayIndex(svPosition, viewportOffset, viewportSize);
+    float viewZ = svPosition.w;
+    uint clusterArrayIndex = GetCurrentClusterArrayIndex(svPosition, viewZ, viewportOffset, viewportSize);
 
-    // Fetch tile's light information
-    uint2 TileLightInfo = TileLightInfos[TileArrayIndex];
-    uint LightIndexOffset = TileLightInfo.x;
-    uint LightCount = TileLightInfo.y;
+    // Fetch cluster's light information
+    uint2 clusterLight = ClusterLightInfo[clusterArrayIndex];
+    uint LightIndexOffset = clusterLight.x;
+    uint LightCount = clusterLight.y;
 
     // ===== Light Setup =====
     FLightSegment LightColor;
